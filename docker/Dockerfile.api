@@ -1,0 +1,24 @@
+# Build
+FROM mcr.microsoft.com/dotnet/sdk:10.0-preview AS build
+WORKDIR /src
+COPY backend/*.slnx backend/
+COPY backend/src/Qseng.Api/*.csproj backend/src/Qseng.Api/
+COPY backend/src/Qseng.Application/*.csproj backend/src/Qseng.Application/
+COPY backend/src/Qseng.Domain/*.csproj backend/src/Qseng.Domain/
+COPY backend/src/Qseng.Infrastructure/*.csproj backend/src/Qseng.Infrastructure/
+RUN dotnet restore backend/Qseng.slnx
+
+COPY backend/ backend/
+RUN dotnet publish backend/src/Qseng.Api/Qseng.Api.csproj -c Release -o /app/publish --no-restore
+
+# Runtime
+FROM mcr.microsoft.com/dotnet/aspnet:10.0-preview AS runtime
+WORKDIR /app
+RUN adduser -D -u 1000 qseng 2>/dev/null || useradd -u 1000 -m qseng
+RUN mkdir -p /data && chown qseng /data
+USER qseng
+COPY --from=build --chown=qseng /app/publish .
+ENV ASPNETCORE_URLS=http://+:8080
+ENV ASPNETCORE_ENVIRONMENT=Production
+EXPOSE 8080
+ENTRYPOINT ["dotnet", "Qseng.Api.dll"]

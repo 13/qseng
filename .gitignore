@@ -1,0 +1,27 @@
+# .NET
+backend/**/bin/
+backend/**/obj/
+backend/**/*.user
+backend/**/*.db
+backend/**/*.db-shm
+backend/**/*.db-wal
+*.slnx.user
+
+# Angular
+frontend/node_modules/
+frontend/dist/
+frontend/.angular/
+
+# Docker
+*.env.local
+
+# start.sh runtime
+.api.log
+*.db
+*.db-shm
+*.db-wal
+
+# Editor
+.vscode/
+.idea/
+*.swp

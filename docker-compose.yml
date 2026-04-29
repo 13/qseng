@@ -1,0 +1,42 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: qseng
+      POSTGRES_USER: qseng
+      POSTGRES_PASSWORD: qseng
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U qseng"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.api
+    environment:
+      DB_PROVIDER: postgres
+      CONNECTION_STRING: "Host=postgres;Database=qseng;Username=qseng;Password=qseng"
+      Jwt__Issuer: qseng
+      Jwt__Audience: qseng
+      Jwt__Key: "change-me-in-prod-please-32+chars-long-key!"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+
+  frontend:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.web
+    depends_on: [api]
+    ports:
+      - "8081:80"
+
+volumes:
+  pgdata:

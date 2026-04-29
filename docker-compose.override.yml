@@ -1,0 +1,16 @@
+services:
+  api:
+    environment:
+      DB_PROVIDER: sqlite
+      CONNECTION_STRING: "Data Source=/data/qseng.db"
+      ASPNETCORE_ENVIRONMENT: Development
+    volumes:
+      - sqlitedata:/data
+    build:
+      args:
+        - ASPNETCORE_ENVIRONMENT=Development
+  postgres:
+    profiles: ["disabled"]
+
+volumes:
+  sqlitedata:

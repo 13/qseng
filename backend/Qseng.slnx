@@ -1,0 +1,12 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Qseng.Api/Qseng.Api.csproj" />
+    <Project Path="src/Qseng.Application/Qseng.Application.csproj" />
+    <Project Path="src/Qseng.Domain/Qseng.Domain.csproj" />
+    <Project Path="src/Qseng.Infrastructure/Qseng.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Qseng.Application.Tests/Qseng.Application.Tests.csproj" />
+    <Project Path="tests/Qseng.Domain.Tests/Qseng.Domain.Tests.csproj" />
+  </Folder>
+</Solution>
