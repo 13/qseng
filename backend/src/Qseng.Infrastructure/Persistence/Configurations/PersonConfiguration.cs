@@ -14,6 +14,7 @@ public class PersonConfiguration : IEntityTypeConfiguration<Person>
         e.Property(x => x.LastName).HasMaxLength(200).IsRequired();
         e.Property(x => x.MaidenName).HasMaxLength(200);
         e.Property(x => x.Notes);
+        e.Property(x => x.CauseOfDeath);
 
         e.OwnsOne(x => x.Birth, p =>
         {
@@ -32,6 +33,11 @@ public class PersonConfiguration : IEntityTypeConfiguration<Person>
 
         e.HasIndex(x => x.TreeId);
         e.HasIndex(x => new { x.TreeId, x.LastName, x.FirstName });
+
+        e.HasOne<Tree>()
+            .WithMany()
+            .HasForeignKey(x => x.TreeId)
+            .OnDelete(DeleteBehavior.Cascade);
 
         e.HasMany(x => x.Timeline)
          .WithOne()

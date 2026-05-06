@@ -13,5 +13,20 @@ public class RelationshipConfiguration : IEntityTypeConfiguration<Relationship>
         e.HasIndex(x => new { x.TreeId, x.FromPersonId });
         e.HasIndex(x => new { x.TreeId, x.ToPersonId });
         e.HasIndex(x => new { x.TreeId, x.FromPersonId, x.ToPersonId, x.Type }).IsUnique();
+
+        e.HasOne<Tree>()
+            .WithMany()
+            .HasForeignKey(x => x.TreeId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        e.HasOne<Person>()
+            .WithMany()
+            .HasForeignKey(x => x.FromPersonId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        e.HasOne<Person>()
+            .WithMany()
+            .HasForeignKey(x => x.ToPersonId)
+            .OnDelete(DeleteBehavior.Cascade);
     }
 }

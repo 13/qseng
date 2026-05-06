@@ -32,13 +32,13 @@ public class PersonsController : ControllerBase
     public async Task<IActionResult> Create(Guid treeId, PersonRequest r, CancellationToken ct) =>
         (await _mediator.Send(new CreatePersonCommand(
             treeId, r.FirstName, r.LastName, r.MaidenName,
-            r.Sex, r.Notes, r.Birth, r.Death, r.BirthPlace, r.DeathPlace), ct)).ToActionResult();
+            r.Sex, r.Notes, r.Birth, r.Death, r.BirthPlace, r.DeathPlace, r.CauseOfDeath), ct)).ToActionResult();
 
     [HttpPut("persons/{id:guid}")]
     public async Task<IActionResult> Update(Guid id, PersonRequest r, CancellationToken ct) =>
         (await _mediator.Send(new UpdatePersonCommand(
             id, r.FirstName, r.LastName, r.MaidenName,
-            r.Sex, r.Notes, r.Birth, r.Death, r.BirthPlace, r.DeathPlace), ct)).ToActionResult();
+            r.Sex, r.Notes, r.Birth, r.Death, r.BirthPlace, r.DeathPlace, r.CauseOfDeath), ct)).ToActionResult();
 
     [HttpGet("persons/{id:guid}/relations")]
     public async Task<IActionResult> GetRelations(Guid id, CancellationToken ct) =>
@@ -53,4 +53,5 @@ public record PersonRequest(
     string FirstName, string LastName, string? MaidenName,
     Sex Sex, string? Notes,
     PartialDate? Birth, PartialDate? Death,
-    string? BirthPlace, string? DeathPlace);
+    string? BirthPlace, string? DeathPlace,
+    string? CauseOfDeath);

@@ -1,4 +1,4 @@
-# Qseng
+# <img src="assets/qseng.png" width="30" height="30" /> Qseng
 
 A modern family tree and genealogy app. Browse ancestors, visualize relationships, manage timelines, and import German-language genealogy text.
 
@@ -28,7 +28,9 @@ Email:    demo@qseng.app
 Password: Demo123!
 ```
 
-The Egger-Sulzer-Spath family tree (5 generations, 10 people) is seeded automatically on first boot.
+The Escobar-Smith-Spath family tree (5 generations, 42 people) is seeded automatically on first boot.
+
+> **Re-seed demo data** (after updates): `rm backend/qseng.db` then restart — the database is recreated from scratch.
 
 ---
 
@@ -69,11 +71,18 @@ Stop both processes with **Ctrl+C**.
 
 ```bash
 # Terminal 1 — API
+
+pacman -S aspnet-runtime dotnet-runtime dotnet-sdk
+
 cd backend
 dotnet run --project src/Qseng.Api
 
 # Terminal 2 — Frontend
+
+pacman -S npm
+
 cd frontend
+npm install
 npm start
 ```
 
@@ -157,8 +166,11 @@ Base path: `/api/v1`
 | `DELETE` | `/persons/{id}/timeline/{eid}` | Delete event |
 | `POST` | `/trees/{id}/import/preview` | Dry-run text import |
 | `POST` | `/trees/{id}/import/commit` | Commit text import |
+| `GET` | `/persons/{id}/media` | List person's media |
+| `POST` | `/persons/{id}/media` | Upload photo / document |
+| `DELETE` | `/persons/{id}/media/{mid}` | Delete media |
 
-Swagger UI available at http://localhost:5000/swagger in development.
+Swascobar UI available at http://localhost:5000/swascobar in development.
 
 All endpoints except `/auth/*` and `/health` require `Authorization: Bearer <token>`.
 
@@ -169,10 +181,10 @@ All endpoints except `/auth/*` and `/health` require `Authorization: Bearer <tok
 Paste German-notation genealogy text into the Import screen:
 
 ```
-Johann Egger * 12.04.1878 in Tirol + 03.11.1949
-Maria Sulzer, geb. Huber * 01.06.1882 + 14.02.1955
+Johann Escobar * 12.04.1878 in Tirol + 03.11.1949
+Maria Smith, geb. Huber * 01.06.1882 + 14.02.1955
 
-Johann Egger oo Maria Sulzer, 1905
+Johann Escobar oo Maria Smith, 1905
 ```
 
 - `*` = born · `+` = died · `oo` = marriage

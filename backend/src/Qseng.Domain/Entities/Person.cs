@@ -10,12 +10,13 @@ public class Person : Entity
     public string FirstName { get; set; } = "";
     public string LastName { get; set; } = "";
     public string? MaidenName { get; set; }
-    public Sex Sex { get; set; } = Sex.Unknown;
+    public Sex Sex { get; set; } = Sex.Male;
     public string? Notes { get; set; }
     public PartialDate? Birth { get; set; }
     public PartialDate? Death { get; set; }
     public string? BirthPlace { get; set; }
     public string? DeathPlace { get; set; }
+    public string? CauseOfDeath { get; set; }
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
     private readonly List<TimelineEvent> _timeline = [];

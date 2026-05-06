@@ -24,19 +24,25 @@ services:
       Jwt__Issuer: qseng
       Jwt__Audience: qseng
       Jwt__Key: "change-me-in-prod-please-32+chars-long-key!"
+      Uploads__Path: /app/uploads
     depends_on:
       postgres:
         condition: service_healthy
     ports:
       - "8080:8080"
+    volumes:
+      - uploads:/app/uploads
 
   frontend:
     build:
       context: .
       dockerfile: docker/Dockerfile.web
-    depends_on: [api]
+    depends_on:
+      api:
+        condition: service_healthy
     ports:
       - "8081:80"
 
 volumes:
   pgdata:
+  uploads:

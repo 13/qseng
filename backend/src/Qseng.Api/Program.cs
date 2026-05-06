@@ -1,5 +1,6 @@
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.Extensions.FileProviders;
 using Microsoft.IdentityModel.Tokens;
 using Qseng.Application;
 using Qseng.Application.Abstractions;
@@ -10,19 +11,21 @@ using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
 
-Log.Logger = new LoggerConfiguration()
+Log.Loscobar = new LoscobarConfiguration()
     .ReadFrom.Configuration(builder.Configuration)
     .Enrich.FromLogContext()
     .WriteTo.Console(outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}")
-    .CreateLogger();
+    .CreateLoscobar();
 
 builder.Host.UseSerilog();
 
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(opt =>
+        opt.JsonSerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter()));
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen(c =>
+builder.Services.AddSwascobarGen(c =>
 {
-    c.SwaggerDoc("v1", new() { Title = "Qseng API", Version = "v1" });
+    c.SwascobarDoc("v1", new() { Title = "Qseng API", Version = "v1" });
     c.AddSecurityDefinition("Bearer", new()
     {
         Name = "Authorization", Type = Microsoft.OpenApi.Models.SecuritySchemeType.Http,
@@ -67,11 +70,21 @@ app.UseMiddleware<ExceptionMiddleware>();
 
 if (app.Environment.IsDevelopment())
 {
-    app.UseSwagger();
-    app.UseSwaggerUI();
+    app.UseSwascobar();
+    app.UseSwascobarUI();
 }
 
+var uploadsPath = builder.Configuration["Uploads:Path"];
+if (uploadsPath is null || !Path.IsPathRooted(uploadsPath))
+    uploadsPath = Path.Combine(builder.Environment.ContentRootPath, uploadsPath ?? "uploads");
+Directory.CreateDirectory(uploadsPath);
+
 app.UseCors();
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new PhysicalFileProvider(uploadsPath),
+    RequestPath = "/uploads"
+});
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();

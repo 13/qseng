@@ -21,8 +21,9 @@ public class JwtTokenService : IJwtTokenService
         var claims = new[]
         {
             new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
-            new Claim(JwtRegisteredClaimNames.Email, user.Email),
+            new Claim("username", user.Username),
             new Claim("displayName", user.DisplayName),
+            new Claim("isAdmin", user.IsAdmin.ToString().ToLowerInvariant()),
             new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
         };
 

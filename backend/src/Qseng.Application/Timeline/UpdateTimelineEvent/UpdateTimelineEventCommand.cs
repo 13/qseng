@@ -24,12 +24,19 @@ public class UpdateTimelineEventValidator : AbstractValidator<UpdateTimelineEven
 public class UpdateTimelineEventHandler : IRequestHandler<UpdateTimelineEventCommand, Result<TimelineEventDto>>
 {
     private readonly IQsengDbContext _db;
-    public UpdateTimelineEventHandler(IQsengDbContext db) => _db = db;
+    private readonly ICurrentUser _currentUser;
+
+    public UpdateTimelineEventHandler(IQsengDbContext db, ICurrentUser currentUser)
+    { _db = db; _currentUser = currentUser; }
 
     public async Task<Result<TimelineEventDto>> Handle(UpdateTimelineEventCommand cmd, CancellationToken ct)
     {
         var ev = await _db.TimelineEvents.FindAsync([cmd.Id], ct);
         if (ev is null) return Result<TimelineEventDto>.NotFound("Event not found.");
+
+        var person = await _db.Persons.FindAsync([ev.PersonId], ct);
+        var tree = person is null ? null : await _db.Trees.FindAsync([person.TreeId], ct);
+        if (tree is null || tree.OwnerId != _currentUser.UserId) return Result<TimelineEventDto>.Fail("Forbidden.", 403);
 
         ev.Type = cmd.Type; ev.Title = cmd.Title; ev.Description = cmd.Description;
         ev.Start = cmd.Start; ev.End = cmd.End; ev.Location = cmd.Location;

@@ -1,3 +1,3 @@
 namespace Qseng.Domain.Enums;
 
-public enum Sex { Unknown, Male, Female, Other }
+public enum Sex { Male = 1, Female = 2 }

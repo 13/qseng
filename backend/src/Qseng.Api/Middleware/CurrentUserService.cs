@@ -20,4 +20,7 @@ public class CurrentUserService : ICurrentUser
 
     public bool IsAuthenticated =>
         _accessor.HttpContext?.User.Identity?.IsAuthenticated == true;
+
+    public bool IsAdmin =>
+        _accessor.HttpContext?.User.FindFirstValue("isAdmin") == "true";
 }

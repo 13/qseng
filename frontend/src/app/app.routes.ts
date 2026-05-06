@@ -1,9 +1,9 @@
 import { Routes } from '@angular/router';
-import { authGuard } from './core/auth/auth.guard';
+import { authGuard, adminGuard } from './core/auth/auth.guard';
 
 export const routes: Routes = [
   { path: '', redirectTo: '/trees', pathMatch: 'full' },
-  { path: 'login', loadComponent: () => import('./features/auth/login.component').then(m => m.LoginComponent) },
+  { path: 'login',    loadComponent: () => import('./features/auth/login.component').then(m => m.LoginComponent) },
   { path: 'register', loadComponent: () => import('./features/auth/register.component').then(m => m.RegisterComponent) },
   {
     path: 'trees', canActivate: [authGuard],
@@ -32,6 +32,14 @@ export const routes: Routes = [
   {
     path: 'persons/:id/edit', canActivate: [authGuard],
     loadComponent: () => import('./features/persons/person-edit.component').then(m => m.PersonEditComponent)
+  },
+  {
+    path: 'settings', canActivate: [authGuard],
+    loadComponent: () => import('./features/settings/settings.component').then(m => m.SettingsComponent)
+  },
+  {
+    path: 'admin/users', canActivate: [adminGuard],
+    loadComponent: () => import('./features/admin/admin-users.component').then(m => m.AdminUsersComponent)
   },
   { path: '**', redirectTo: '/trees' }
 ];

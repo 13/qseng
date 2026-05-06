@@ -13,5 +13,10 @@ public class TreeConfiguration : IEntityTypeConfiguration<Tree>
         e.Property(x => x.Name).HasMaxLength(200).IsRequired();
         e.Property(x => x.Description).HasMaxLength(1000);
         e.HasIndex(x => x.OwnerId);
+
+        e.HasOne<User>()
+            .WithMany()
+            .HasForeignKey(x => x.OwnerId)
+            .OnDelete(DeleteBehavior.Cascade);
     }
 }

@@ -4,8 +4,10 @@ services:
       DB_PROVIDER: sqlite
       CONNECTION_STRING: "Data Source=/data/qseng.db"
       ASPNETCORE_ENVIRONMENT: Development
+      Uploads__Path: /app/uploads
     volumes:
       - sqlitedata:/data
+      - uploads:/app/uploads
     build:
       args:
         - ASPNETCORE_ENVIRONMENT=Development
@@ -14,3 +16,4 @@ services:
 
 volumes:
   sqlitedata:
+  uploads:

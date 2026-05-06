@@ -15,6 +15,7 @@ public class QsengDbContext : DbContext, IQsengDbContext
     public DbSet<TimelineEvent> TimelineEvents => Set<TimelineEvent>();
     public DbSet<Media> Media => Set<Media>();
     public DbSet<ImportJob> ImportJobs => Set<ImportJob>();
+    public DbSet<SiteSettings> SiteSettings => Set<SiteSettings>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {

@@ -10,12 +10,22 @@ public record DeleteRelationshipCommand(Guid Id) : IRequest<Result<bool>>;
 public class DeleteRelationshipHandler : IRequestHandler<DeleteRelationshipCommand, Result<bool>>
 {
     private readonly IQsengDbContext _db;
-    public DeleteRelationshipHandler(IQsengDbContext db) => _db = db;
+    private readonly ICurrentUser _currentUser;
+
+    public DeleteRelationshipHandler(IQsengDbContext db, ICurrentUser currentUser)
+    {
+        _db = db;
+        _currentUser = currentUser;
+    }
 
     public async Task<Result<bool>> Handle(DeleteRelationshipCommand cmd, CancellationToken ct)
     {
         var rel = await _db.Relationships.FindAsync([cmd.Id], ct);
         if (rel is null) return Result<bool>.NotFound("Relationship not found.");
+
+        var tree = await _db.Trees.FindAsync([rel.TreeId], ct);
+        if (tree is null) return Result<bool>.NotFound("Relationship not found.");
+        if (tree.OwnerId != _currentUser.UserId) return Result<bool>.Fail("Forbidden.", 403);
 
         // Clean up auto-generated events linked to this relationship
         var autoEvents = await _db.TimelineEvents

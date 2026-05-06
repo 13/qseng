@@ -12,5 +12,16 @@ public class ImportJobConfiguration : IEntityTypeConfiguration<ImportJob>
         e.HasKey(x => x.Id);
         e.Property(x => x.Status).HasMaxLength(50).IsRequired();
         e.HasIndex(x => x.UserId);
+        e.HasIndex(x => x.TreeId);
+
+        e.HasOne<User>()
+            .WithMany()
+            .HasForeignKey(x => x.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        e.HasOne<Tree>()
+            .WithMany()
+            .HasForeignKey(x => x.TreeId)
+            .OnDelete(DeleteBehavior.Cascade);
     }
 }

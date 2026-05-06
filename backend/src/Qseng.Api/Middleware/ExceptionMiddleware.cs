@@ -6,9 +6,9 @@ namespace Qseng.Api.Middleware;
 public class ExceptionMiddleware
 {
     private readonly RequestDelegate _next;
-    private readonly ILogger<ExceptionMiddleware> _log;
+    private readonly ILoscobar<ExceptionMiddleware> _log;
 
-    public ExceptionMiddleware(RequestDelegate next, ILogger<ExceptionMiddleware> log)
+    public ExceptionMiddleware(RequestDelegate next, ILoscobar<ExceptionMiddleware> log)
     { _next = next; _log = log; }
 
     public async Task InvokeAsync(HttpContext ctx)

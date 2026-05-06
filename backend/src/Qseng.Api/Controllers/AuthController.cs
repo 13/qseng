@@ -14,12 +14,12 @@ public class AuthController : ControllerBase
 
     [HttpPost("register")]
     public async Task<IActionResult> Register(RegisterRequest r, CancellationToken ct) =>
-        (await _mediator.Send(new RegisterCommand(r.Email, r.Password, r.DisplayName), ct)).ToActionResult();
+        (await _mediator.Send(new RegisterCommand(r.Username, r.Password, r.DisplayName, r.Email), ct)).ToActionResult();
 
     [HttpPost("login")]
     public async Task<IActionResult> Login(LoginRequest r, CancellationToken ct) =>
-        (await _mediator.Send(new LoginCommand(r.Email, r.Password), ct)).ToActionResult();
+        (await _mediator.Send(new LoginCommand(r.Username, r.Password), ct)).ToActionResult();
 }
 
-public record RegisterRequest(string Email, string Password, string DisplayName);
-public record LoginRequest(string Email, string Password);
+public record RegisterRequest(string Username, string Password, string? DisplayName, string? Email);
+public record LoginRequest(string Username, string Password);

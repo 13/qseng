@@ -15,10 +15,12 @@ RUN dotnet publish backend/src/Qseng.Api/Qseng.Api.csproj -c Release -o /app/pub
 FROM mcr.microsoft.com/dotnet/aspnet:10.0-preview AS runtime
 WORKDIR /app
 RUN adduser -D -u 1000 qseng 2>/dev/null || useradd -u 1000 -m qseng
-RUN mkdir -p /data && chown qseng /data
+RUN mkdir -p /data /app/uploads && chown qseng /data /app/uploads
 USER qseng
 COPY --from=build --chown=qseng /app/publish .
 ENV ASPNETCORE_URLS=http://+:8080
 ENV ASPNETCORE_ENVIRONMENT=Production
 EXPOSE 8080
+HEALTHCHECK --interval=15s --timeout=5s --start-period=30s --retries=3 \
+  CMD wget -qO- http://localhost:8080/api/v1/health || exit 1
 ENTRYPOINT ["dotnet", "Qseng.Api.dll"]

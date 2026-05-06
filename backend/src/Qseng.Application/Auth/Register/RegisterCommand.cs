@@ -7,18 +7,19 @@ using Qseng.Domain.Entities;
 
 namespace Qseng.Application.Auth.Register;
 
-public record RegisterCommand(string Email, string Password, string DisplayName)
+public record RegisterCommand(string Username, string Password, string? DisplayName, string? Email)
     : IRequest<Result<AuthResponse>>;
 
-public record AuthResponse(string AccessToken, Guid UserId, string DisplayName);
+public record AuthResponse(string AccessToken, Guid UserId, string DisplayName, string Username, bool IsAdmin);
 
 public class RegisterValidator : AbstractValidator<RegisterCommand>
 {
     public RegisterValidator()
     {
-        RuleFor(x => x.Email).NotEmpty().EmailAddress().MaximumLength(256);
-        RuleFor(x => x.Password).NotEmpty().MinimumLength(8).MaximumLength(128);
-        RuleFor(x => x.DisplayName).NotEmpty().MaximumLength(100);
+        RuleFor(x => x.Username).NotEmpty().MinimumLength(3).MaximumLength(50)
+            .Matches("^[a-zA-Z0-9_.-]+$").WithMessage("Username may only contain letters, digits, _, ., and -.");
+        RuleFor(x => x.Password).NotEmpty().MinimumLength(5).MaximumLength(128);
+        RuleFor(x => x.Email).EmailAddress().When(x => !string.IsNullOrWhiteSpace(x.Email));
     }
 }
 
@@ -29,24 +30,43 @@ public class RegisterHandler : IRequestHandler<RegisterCommand, Result<AuthRespo
     private readonly IJwtTokenService _jwt;
 
     public RegisterHandler(IQsengDbContext db, IPasswordHasher hasher, IJwtTokenService jwt)
-    {
-        _db = db; _hasher = hasher; _jwt = jwt;
-    }
+    { _db = db; _hasher = hasher; _jwt = jwt; }
 
     public async Task<Result<AuthResponse>> Handle(RegisterCommand cmd, CancellationToken ct)
     {
-        var exists = await _db.Users.AnyAsync(u => u.Email == cmd.Email.ToLowerInvariant(), ct);
-        if (exists) return Result<AuthResponse>.Conflict("Email already registered.");
+        var isFirstUser = !await _db.Users.AnyAsync(ct);
+
+        if (!isFirstUser)
+        {
+            var s = await _db.SiteSettings.FindAsync([SiteSettings.SettingsId], ct);
+            if (s is { RegistrationEnabled: false })
+                return Result<AuthResponse>.Fail("Registration is currently disabled.", 403);
+        }
+
+        var usernameTaken = await _db.Users.AnyAsync(
+            u => u.Username == cmd.Username.ToLowerInvariant(), ct);
+        if (usernameTaken) return Result<AuthResponse>.Conflict("Username already taken.");
+
+        if (!string.IsNullOrWhiteSpace(cmd.Email))
+        {
+            var emailTaken = await _db.Users.AnyAsync(
+                u => u.Email == cmd.Email.ToLowerInvariant(), ct);
+            if (emailTaken) return Result<AuthResponse>.Conflict("Email already registered.");
+        }
 
         var user = new User
         {
-            Email = cmd.Email.ToLowerInvariant(),
+            Username = cmd.Username.ToLowerInvariant(),
+            Email = string.IsNullOrWhiteSpace(cmd.Email) ? null : cmd.Email.ToLowerInvariant(),
             PasswordHash = _hasher.Hash(cmd.Password),
-            DisplayName = cmd.DisplayName
+            DisplayName = string.IsNullOrWhiteSpace(cmd.DisplayName) ? cmd.Username : cmd.DisplayName,
+            IsAdmin = isFirstUser,
+            IsActive = isFirstUser,
         };
         _db.Users.Add(user);
         await _db.SaveChangesAsync(ct);
 
-        return Result<AuthResponse>.Ok(new AuthResponse(_jwt.GenerateAccessToken(user), user.Id, user.DisplayName));
+        return Result<AuthResponse>.Ok(new AuthResponse(
+            _jwt.GenerateAccessToken(user), user.Id, user.DisplayName, user.Username, user.IsAdmin));
     }
 }

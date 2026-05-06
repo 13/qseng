@@ -31,5 +31,10 @@ public class TimelineEventConfiguration : IEntityTypeConfiguration<TimelineEvent
 
         e.HasIndex(x => x.PersonId);
         e.Ignore(x => x.SortableDate);
+
+        e.HasOne<Relationship>()
+            .WithMany()
+            .HasForeignKey(x => x.SourceRelationshipId)
+            .OnDelete(DeleteBehavior.SetNull);
     }
 }

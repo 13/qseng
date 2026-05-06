@@ -3,6 +3,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Qseng.Application.Abstractions;
 using Qseng.Infrastructure.Auth;
+using Qseng.Infrastructure.Files;
 using Qseng.Infrastructure.Parsing;
 using Qseng.Infrastructure.Persistence;
 using Qseng.Infrastructure.Seeding;
@@ -22,7 +23,7 @@ public static class DependencyInjection
             {
                 case "postgres":
                 case "postgresql":
-                    opt.UseNpgsql(conn);
+                    opt.UseNpgsql(conn, b => b.MigrationsAssembly("Qseng.Infrastructure"));
                     break;
                 default:
                     opt.UseSqlite(conn);
@@ -34,6 +35,7 @@ public static class DependencyInjection
         services.AddScoped<IPasswordHasher, BcryptPasswordHasher>();
         services.AddScoped<IJwtTokenService, JwtTokenService>();
         services.AddScoped<IGenealogyParser, GenealogyTextParser>();
+        services.AddScoped<IFileStorage, LocalFileStorage>();
         services.AddScoped<DbSeeder>();
         return services;
     }

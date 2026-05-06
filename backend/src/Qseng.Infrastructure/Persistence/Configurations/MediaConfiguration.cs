@@ -13,5 +13,9 @@ public class MediaConfiguration : IEntityTypeConfiguration<Media>
         e.Property(x => x.Url).HasMaxLength(2048).IsRequired();
         e.Property(x => x.Caption).HasMaxLength(500);
         e.HasIndex(x => x.PersonId);
+        e.HasOne<Person>()
+         .WithMany()
+         .HasForeignKey(x => x.PersonId)
+         .OnDelete(DeleteBehavior.Cascade);
     }
 }

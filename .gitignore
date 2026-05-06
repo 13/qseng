@@ -25,3 +25,6 @@ frontend/.angular/
 .vscode/
 .idea/
 *.swp
+
+# claude
+CLAUDE.md

@@ -2,50 +2,70 @@ import { Component, OnInit, signal, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { ApiClient, Tree } from '../../core/api/api-client.service';
+import { I18nService } from '../../core/i18n/i18n.service';
+import { TranslatePipe } from '../../core/i18n/translate.pipe';
 
 @Component({
   selector: 'qs-tree-list',
   standalone: true,
-  imports: [RouterLink, FormsModule],
+  imports: [RouterLink, FormsModule, TranslatePipe],
   template: `
     <div class="trees-page">
       <div class="trees-page-header">
-        <h2>My Trees</h2>
+        <h2>{{ 'trees.title' | translate }}</h2>
         <button class="primary" (click)="showNewForm.set(!showNewForm())">
-          {{ showNewForm() ? '✕ Cancel' : '+ New Tree' }}
+          {{ showNewForm() ? ('trees.cancel' | translate) : ('trees.new' | translate) }}
         </button>
       </div>
 
       @if (showNewForm()) {
         <div class="tree-new-form" style="margin-bottom:1.5rem">
-          <h3>New family tree</h3>
+          <h3>{{ 'trees.new.title' | translate }}</h3>
           <div class="fields">
-            <label>Name <input [(ngModel)]="newName" name="name" placeholder="Mustermann Family" required></label>
-            <label>Description <input [(ngModel)]="newDesc" name="desc" placeholder="Optional description"></label>
+            <label>
+              {{ 'trees.new.name' | translate }}
+              <input [(ngModel)]="newName" name="name" placeholder="Smith Family" required>
+            </label>
+            <label>
+              {{ 'trees.new.desc' | translate }}
+              <input [(ngModel)]="newDesc" name="desc" [placeholder]="'trees.optional' | translate">
+            </label>
           </div>
-          <button class="primary" (click)="createTree()" [disabled]="!newName.trim()">Create Tree</button>
+          @if (createErr()) {
+            <p class="error-msg" style="margin-bottom:.5rem">{{ createErr() }}</p>
+          }
+          <button class="primary" (click)="createTree()" [disabled]="!newName.trim()">
+            {{ 'trees.new.submit' | translate }}
+          </button>
         </div>
       }
 
-      @if (trees().length === 0 && !loading()) {
+      @if (loadErr()) {
+        <div class="error-msg" role="alert">{{ loadErr() }}</div>
+      } @else if (trees().length === 0 && !loading()) {
         <div class="empty-state">
           <span class="empty-icon">🌳</span>
-          <p>No trees yet. Create your first family tree above.</p>
+          <p>{{ 'trees.empty' | translate }}</p>
         </div>
       } @else {
         <div class="tree-grid">
           @for (tree of trees(); track tree.id) {
             @if (editingId() === tree.id) {
               <div class="card tree-card">
-                <label>Name
+                <label>
+                  {{ 'trees.new.name' | translate }}
                   <input [(ngModel)]="editName" name="editName" (keydown.escape)="cancelEdit()">
                 </label>
-                <label style="margin-top:.5rem">Description
-                  <input [(ngModel)]="editDesc" name="editDesc" placeholder="Optional" (keydown.escape)="cancelEdit()">
+                <label style="margin-top:.5rem">
+                  {{ 'trees.new.desc' | translate }}
+                  <input [(ngModel)]="editDesc" name="editDesc" [placeholder]="'trees.optional' | translate" (keydown.escape)="cancelEdit()">
                 </label>
+                @if (editErr()) {
+                  <p class="error-msg" style="font-size:.78rem;margin:.25rem 0">{{ editErr() }}</p>
+                }
                 <div class="tree-card__actions" style="margin-top:.5rem">
-                  <button class="primary sm" (click)="saveEdit(tree.id)">Save</button>
-                  <button class="sm ghost" (click)="cancelEdit()">Cancel</button>
+                  <button class="primary sm" (click)="saveEdit(tree.id)">{{ 'trees.save' | translate }}</button>
+                  <button class="sm ghost" (click)="cancelEdit()">{{ 'trees.editCancel' | translate }}</button>
                 </div>
               </div>
             } @else {
@@ -54,11 +74,14 @@ import { ApiClient, Tree } from '../../core/api/api-client.service';
                 @if (tree.description) {
                   <p class="tree-card__desc">{{ tree.description }}</p>
                 }
-                <p class="tree-card__meta">Created {{ formatDate(tree.createdAt) }}</p>
+                <p class="tree-card__meta">{{ 'trees.created' | translate }} {{ formatDate(tree.createdAt) }}</p>
+                @if (deleteErr()[tree.id]) {
+                  <p class="error-msg" style="font-size:.75rem">{{ deleteErr()[tree.id] }}</p>
+                }
                 <div class="tree-card__actions">
-                  <a [routerLink]="['/trees', tree.id]" class="btn primary sm">Open</a>
-                  <button class="sm ghost" (click)="startEdit(tree)" title="Rename">✏️ Edit</button>
-                  <button class="sm danger" (click)="deleteTree(tree.id)" title="Delete">Delete</button>
+                  <a [routerLink]="['/trees', tree.id]" class="btn primary sm">{{ 'trees.open' | translate }}</a>
+                  <button class="sm ghost" (click)="startEdit(tree)">{{ 'trees.edit' | translate }}</button>
+                  <button class="sm danger" (click)="deleteTree(tree.id)">{{ 'trees.delete' | translate }}</button>
                 </div>
               </div>
             }
@@ -79,32 +102,39 @@ import { ApiClient, Tree } from '../../core/api/api-client.service';
 })
 export class TreeListComponent implements OnInit {
   private api = inject(ApiClient);
+  private i18n = inject(I18nService);
 
-  trees = signal<Tree[]>([]);
-  loading = signal(true);
+  trees      = signal<Tree[]>([]);
+  loading    = signal(true);
+  loadErr    = signal('');
   showNewForm = signal(false);
+  createErr  = signal('');
 
   newName = '';
   newDesc = '';
 
   editingId = signal<string | null>(null);
-  editName = '';
-  editDesc = '';
+  editName  = '';
+  editDesc  = '';
+  editErr   = signal('');
+  deleteErr = signal<Record<string, string>>({});
 
   ngOnInit() { this.load(); }
 
   load() {
     this.loading.set(true);
-    this.api.getTrees().subscribe(t => { this.trees.set(t); this.loading.set(false); });
+    this.api.getTrees().subscribe({
+      next: t => { this.trees.set(t); this.loading.set(false); },
+      error: e => { this.loadErr.set(e.error?.error ?? this.i18n.t('trees.err.load')); this.loading.set(false); }
+    });
   }
 
   createTree() {
     if (!this.newName.trim()) return;
-    this.api.createTree(this.newName.trim(), this.newDesc.trim() || undefined).subscribe(() => {
-      this.newName = '';
-      this.newDesc = '';
-      this.showNewForm.set(false);
-      this.load();
+    this.createErr.set('');
+    this.api.createTree(this.newName.trim(), this.newDesc.trim() || undefined).subscribe({
+      next: () => { this.newName = ''; this.newDesc = ''; this.showNewForm.set(false); this.load(); },
+      error: e => this.createErr.set(e.error?.error ?? this.i18n.t('trees.err.create'))
     });
   }
 
@@ -112,21 +142,26 @@ export class TreeListComponent implements OnInit {
     this.editingId.set(tree.id);
     this.editName = tree.name;
     this.editDesc = tree.description ?? '';
+    this.editErr.set('');
   }
 
   saveEdit(id: string) {
     if (!this.editName.trim()) return;
-    this.api.updateTree(id, this.editName.trim(), this.editDesc.trim() || undefined).subscribe(() => {
-      this.editingId.set(null);
-      this.load();
+    this.editErr.set('');
+    this.api.updateTree(id, this.editName.trim(), this.editDesc.trim() || undefined).subscribe({
+      next: () => { this.editingId.set(null); this.load(); },
+      error: e => this.editErr.set(e.error?.error ?? this.i18n.t('trees.err.save'))
     });
   }
 
   cancelEdit() { this.editingId.set(null); }
 
   deleteTree(id: string) {
-    if (!confirm('Delete this tree and all its data?')) return;
-    this.api.deleteTree(id).subscribe(() => this.load());
+    if (!confirm(this.i18n.t('trees.delete.confirm'))) return;
+    this.api.deleteTree(id).subscribe({
+      next: () => this.load(),
+      error: e => this.deleteErr.update(prev => ({ ...prev, [id]: e.error?.error ?? this.i18n.t('trees.err.delete') }))
+    });
   }
 
   formatDate(iso: string): string {

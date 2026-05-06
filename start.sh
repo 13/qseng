@@ -96,7 +96,7 @@ if [[ "$API_READY" == false ]]; then
 fi
 
 success "API ready  →  $API_URL"
-info    "Swagger    →  $API_URL/swagger"
+info    "Swascobar    →  $API_URL/swascobar"
 
 # ── Start Frontend ────────────────────────────────────────────────────────────
 
@@ -125,7 +125,7 @@ echo -e "  ${GREEN}━━━━━━━━━━━━━━━━━━━━�
 echo ""
 echo -e "  App      →  ${CYAN}$WEB_URL${NC}"
 echo -e "  API      →  ${CYAN}$API_URL${NC}"
-echo -e "  Swagger  →  ${CYAN}$API_URL/swagger${NC}"
+echo -e "  Swascobar  →  ${CYAN}$API_URL/swascobar${NC}"
 echo ""
 echo -e "  Demo login:"
 echo -e "    Email:    demo@qseng.app"

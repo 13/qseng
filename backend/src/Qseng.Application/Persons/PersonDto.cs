@@ -9,4 +9,6 @@ public record PersonDto(
     Sex Sex, string? Notes,
     PartialDate? Birth, PartialDate? Death,
     string? BirthPlace, string? DeathPlace,
-    DateTime CreatedAt, DateTime UpdatedAt);
+    string? CauseOfDeath,
+    DateTime CreatedAt, DateTime UpdatedAt,
+    string? AvatarUrl = null);
