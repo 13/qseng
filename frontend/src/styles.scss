@@ -687,6 +687,7 @@ label {
     flex: 1;
     overflow-y: auto;
     padding: .4rem .5rem;
+    margin: 0;
   }
 
   &__add-btn {
@@ -707,6 +708,7 @@ label {
   transition: background .1s;
 
   &:hover { background: var(--c-surface); }
+  &:focus-visible { outline: 2px solid var(--c-accent); outline-offset: -2px; }
   &.active { background: var(--c-accent-sub); }
 
   &__name {

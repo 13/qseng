@@ -13,7 +13,7 @@ const T: Record<Lang, Record<string, string>> = {
     // Common
     'save': 'Save', 'cancel': 'Cancel', 'delete': 'Delete', 'back': 'Back',
     'saving': 'Saving…', 'loading': 'Loading…', 'add': 'Add', 'remove': 'Remove',
-    'optional': 'optional', 'edit': 'Edit', 'search': 'Search',
+    'optional': 'optional', 'edit': 'Edit', 'search': 'Search', 'retry': 'Try again',
     'err.save': 'Save failed.', 'err.delete': 'Delete failed.', 'err.load': 'Failed to load.',
 
     // Sex
@@ -83,6 +83,13 @@ const T: Record<Lang, Record<string, string>> = {
     'tree.relFromPlaceholder': 'Search person…', 'tree.relToPlaceholder': 'Search person…',
     'tree.relErr': 'Failed to add relationship',
     'tree.layoutTree': 'Tree', 'tree.layoutAuto': 'Auto',
+    'tree.layoutToggle': 'Switch layout', 'tree.resetLayout': 'Reset layout',
+    'tree.fit': 'Fit to screen', 'tree.zoomIn': 'Zoom in', 'tree.zoomOut': 'Zoom out',
+    'tree.export': 'Download as PNG',
+    'tree.graphLabel': 'Family tree graph. Use the people list to navigate. Press + / − to zoom, 0 to fit, Escape to deselect.',
+    'tree.peopleList': 'People in this tree',
+    'tree.emptyTitle': 'This tree has no people yet.',
+    'tree.openProfile': 'Open profile', 'tree.clearSelection': 'Clear',
 
     // Login / Register
     'login.tagline': 'Your family history, beautifully preserved',
@@ -187,7 +194,7 @@ const T: Record<Lang, Record<string, string>> = {
     // Common
     'save': 'Speichern', 'cancel': 'Abbrechen', 'delete': 'Löschen', 'back': 'Zurück',
     'saving': 'Wird gespeichert…', 'loading': 'Lädt…', 'add': 'Hinzufügen', 'remove': 'Entfernen',
-    'optional': 'optional', 'edit': 'Bearbeiten', 'search': 'Suchen',
+    'optional': 'optional', 'edit': 'Bearbeiten', 'search': 'Suchen', 'retry': 'Erneut versuchen',
     'err.save': 'Speichern fehlgeschlagen.', 'err.delete': 'Löschen fehlgeschlagen.', 'err.load': 'Laden fehlgeschlagen.',
 
     // Sex
@@ -257,6 +264,13 @@ const T: Record<Lang, Record<string, string>> = {
     'tree.relFromPlaceholder': 'Person suchen…', 'tree.relToPlaceholder': 'Person suchen…',
     'tree.relErr': 'Fehler beim Hinzufügen',
     'tree.layoutTree': 'Baum', 'tree.layoutAuto': 'Auto',
+    'tree.layoutToggle': 'Layout wechseln', 'tree.resetLayout': 'Layout zurücksetzen',
+    'tree.fit': 'Einpassen', 'tree.zoomIn': 'Vergrößern', 'tree.zoomOut': 'Verkleinern',
+    'tree.export': 'Als PNG herunterladen',
+    'tree.graphLabel': 'Stammbaum-Grafik. Nutze die Personenliste zur Navigation. + / − zum Zoomen, 0 zum Einpassen, Escape zum Abwählen.',
+    'tree.peopleList': 'Personen in diesem Stammbaum',
+    'tree.emptyTitle': 'Dieser Stammbaum enthält noch keine Personen.',
+    'tree.openProfile': 'Profil öffnen', 'tree.clearSelection': 'Auswahl aufheben',
 
     // Login / Register
     'login.tagline': 'Deine Familiengeschichte, wunderschön bewahrt',

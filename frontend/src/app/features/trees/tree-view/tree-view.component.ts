@@ -1,14 +1,22 @@
-import { Component, OnInit, OnDestroy, ElementRef, ViewChild, signal, computed, inject } from '@angular/core';
+import {
+  ChangeDetectionStrategy, Component, DestroyRef, ElementRef, OnInit,
+  computed, inject, signal, viewChild
+} from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { NgClass } from '@angular/common';
-import { ApiClient, Person, Relationship, RELATIONSHIP_TYPES, RelationshipType, Sex } from '../../../core/api/api-client.service';
-
-type UiRelType = RelationshipType | 'Child';
-const UI_REL_TYPES: UiRelType[] = ['Parent', 'Child', 'Spouse', 'Adoptive'];
+import { Subject, catchError, debounceTime, forkJoin, of } from 'rxjs';
+import {
+  ApiClient, Person, RelationshipType, Sex
+} from '../../../core/api/api-client.service';
 import { TreeGraphService } from './tree-graph.service';
 import { I18nService } from '../../../core/i18n/i18n.service';
 import { TranslatePipe } from '../../../core/i18n/translate.pipe';
+import { PartialDatePipe } from '../../../shared/pipes/partial-date.pipe';
+
+type UiRelType = RelationshipType | 'Child';
+const UI_REL_TYPES: UiRelType[] = ['Parent', 'Child', 'Spouse', 'Adoptive'];
 
 function initials(p: Person): string {
   return ((p.firstName?.[0] ?? '') + (p.lastName?.[0] ?? '')).toUpperCase();
@@ -18,7 +26,9 @@ function sexCls(sex: Sex): string { return sex.toLowerCase(); }
 @Component({
   selector: 'qs-tree-view',
   standalone: true,
-  imports: [RouterLink, FormsModule, NgClass, TranslatePipe],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  providers: [TreeGraphService],
+  imports: [RouterLink, FormsModule, NgClass, TranslatePipe, PartialDatePipe],
   template: `
     <header class="page-header">
       <a class="back-link" routerLink="/trees">{{ 'tree.back' | translate }}</a>
@@ -34,26 +44,33 @@ function sexCls(sex: Sex): string { return sex.toLowerCase(); }
       <!-- Sidebar -->
       <div class="person-sidebar">
         <div class="person-sidebar__search">
-          <input [(ngModel)]="searchTerm" (ngModelChange)="onSearch($event)"
-                 [placeholder]="'tree.filter' | translate">
+          <input type="search" [ngModel]="searchTerm()" (ngModelChange)="onSearch($event)"
+                 [placeholder]="'tree.filter' | translate"
+                 [attr.aria-label]="'tree.filter' | translate">
         </div>
 
-        <div class="person-sidebar__list">
+        <ul class="person-sidebar__list" role="listbox" [attr.aria-label]="'tree.peopleList' | translate">
           @for (p of filteredPersons(); track p.id) {
-            <div class="person-row" [class.active]="selectedId() === p.id" (click)="select(p.id)">
-              @if (p.avatarUrl) {
-                <img class="avatar-photo sm" [src]="p.avatarUrl" [alt]="initials(p)">
-              } @else {
-                <span class="avatar sm" [ngClass]="sexCls(p.sex)">{{ initials(p) }}</span>
-              }
-              <span class="person-row__name">{{ p.lastName }}, {{ p.firstName }}</span>
-              @if (p.birth?.year) { <span class="person-row__year">{{ p.birth!.year }}</span> }
-            </div>
+            <li>
+              <button type="button" class="person-row"
+                      role="option"
+                      [attr.aria-selected]="graph.selectedId() === p.id"
+                      [class.active]="graph.selectedId() === p.id"
+                      (click)="select(p.id)"
+                      (dblclick)="open(p.id)">
+                @if (p.avatarUrl) {
+                  <img class="avatar-photo sm" [src]="p.avatarUrl" alt="" loading="lazy">
+                } @else {
+                  <span class="avatar sm" [ngClass]="sexCls(p.sex)" aria-hidden="true">{{ initials(p) }}</span>
+                }
+                <span class="person-row__name">{{ p.lastName }}, {{ p.firstName }}</span>
+                @if (p.birth?.year) { <span class="person-row__year">{{ p.birth!.year }}</span> }
+              </button>
+            </li>
+          } @empty {
+            <li class="person-sidebar__empty">{{ 'tree.noResults' | translate }}</li>
           }
-          @if (filteredPersons().length === 0) {
-            <p style="padding:.75rem;font-size:.82rem;color:var(--c-text-3)">{{ 'tree.noResults' | translate }}</p>
-          }
-        </div>
+        </ul>
 
         <div class="person-sidebar__add-btn">
           <button class="btn ghost sm" style="width:100%;justify-content:center"
@@ -62,237 +79,398 @@ function sexCls(sex: Sex): string { return sex.toLowerCase(); }
           </button>
         </div>
 
-        <!-- Add Relationship panel -->
-        <div class="rel-panel">
-          <p class="rel-panel__title">{{ 'tree.addRel' | translate }}</p>
+        <!-- Add Relationship -->
+        @if (persons().length >= 2) {
+          <div class="rel-panel">
+            <p class="rel-panel__title">{{ 'tree.addRel' | translate }}</p>
 
-          <label class="field-lbl" style="font-size:.72rem;margin-bottom:.4rem">
-            {{ 'tree.relType' | translate }}
-            <select [(ngModel)]="newRel.type" style="font-size:.82rem;padding:.3rem .45rem">
-              @for (t of uiRelTypes; track t) {
-                <option [value]="t">{{ i18n.t('rel.' + t.toLowerCase()) }}</option>
-              }
-            </select>
-          </label>
+            <label class="field-lbl" style="font-size:.72rem;margin-bottom:.4rem">
+              {{ 'tree.relType' | translate }}
+              <select [ngModel]="relType()" (ngModelChange)="relType.set($event)"
+                      style="font-size:.82rem;padding:.3rem .45rem">
+                @for (t of uiRelTypes; track t) {
+                  <option [value]="t">{{ i18n.t('rel.' + t.toLowerCase()) }}</option>
+                }
+              </select>
+            </label>
 
-          <!-- From search -->
-          <div class="rel-search-field">
-            <label class="field-lbl" style="font-size:.72rem">{{ 'tree.relFrom' | translate }}</label>
-            <div class="rel-search-input-wrap">
-              <input [ngModel]="fromSearch()" (ngModelChange)="fromSearch.set($event); onFromSearch($event)"
-                     [placeholder]="'tree.relFromPlaceholder' | translate"
-                     autocomplete="off" style="font-size:.82rem;padding:.3rem .45rem">
-              @if (fromFiltered().length > 0 && !selectedFrom()) {
-                <div class="rel-suggestions">
-                  @for (p of fromFiltered(); track p.id) {
-                    <div class="rel-suggestions__item" (click)="pickFrom(p)">
-                      {{ p.firstName }} {{ p.lastName }}
-                      @if (p.birth?.year) { <span style="font-size:.7rem;color:var(--c-text-4);margin-left:auto">{{ p.birth!.year }}</span> }
-                    </div>
-                  }
-                </div>
-              }
+            <div class="rel-search-field">
+              <label class="field-lbl" style="font-size:.72rem" for="rel-from">{{ 'tree.relFrom' | translate }}</label>
+              <div class="rel-search-input-wrap">
+                <input id="rel-from" [ngModel]="fromSearch()" (ngModelChange)="onFromSearch($event)"
+                       [placeholder]="'tree.relFromPlaceholder' | translate"
+                       autocomplete="off" style="font-size:.82rem;padding:.3rem .45rem">
+                @if (fromFiltered().length) {
+                  <div class="rel-suggestions">
+                    @for (p of fromFiltered(); track p.id) {
+                      <button type="button" class="rel-suggestions__item" (click)="pickFrom(p)">
+                        {{ p.firstName }} {{ p.lastName }}
+                        @if (p.birth?.year) { <span class="rel-suggestions__year">{{ p.birth!.year }}</span> }
+                      </button>
+                    }
+                  </div>
+                }
+              </div>
             </div>
-          </div>
 
-          <!-- To search -->
-          <div class="rel-search-field">
-            <label class="field-lbl" style="font-size:.72rem">{{ 'tree.relTo' | translate }}</label>
-            <div class="rel-search-input-wrap">
-              <input [ngModel]="toSearch()" (ngModelChange)="toSearch.set($event); onToSearch($event)"
-                     [placeholder]="'tree.relToPlaceholder' | translate"
-                     autocomplete="off" style="font-size:.82rem;padding:.3rem .45rem">
-              @if (toFiltered().length > 0 && !selectedTo()) {
-                <div class="rel-suggestions">
-                  @for (p of toFiltered(); track p.id) {
-                    <div class="rel-suggestions__item" (click)="pickTo(p)">
-                      {{ p.firstName }} {{ p.lastName }}
-                      @if (p.birth?.year) { <span style="font-size:.7rem;color:var(--c-text-4);margin-left:auto">{{ p.birth!.year }}</span> }
-                    </div>
-                  }
-                </div>
-              }
+            <div class="rel-search-field">
+              <label class="field-lbl" style="font-size:.72rem" for="rel-to">{{ 'tree.relTo' | translate }}</label>
+              <div class="rel-search-input-wrap">
+                <input id="rel-to" [ngModel]="toSearch()" (ngModelChange)="onToSearch($event)"
+                       [placeholder]="'tree.relToPlaceholder' | translate"
+                       autocomplete="off" style="font-size:.82rem;padding:.3rem .45rem">
+                @if (toFiltered().length) {
+                  <div class="rel-suggestions">
+                    @for (p of toFiltered(); track p.id) {
+                      <button type="button" class="rel-suggestions__item" (click)="pickTo(p)">
+                        {{ p.firstName }} {{ p.lastName }}
+                        @if (p.birth?.year) { <span class="rel-suggestions__year">{{ p.birth!.year }}</span> }
+                      </button>
+                    }
+                  </div>
+                }
+              </div>
             </div>
-          </div>
 
-          <div class="rel-panel-row">
-            <button class="btn primary sm"
-                    [disabled]="!selectedFrom() || !selectedTo() || selectedFrom()!.id === selectedTo()!.id"
-                    (click)="addRelationship()">
-              {{ 'tree.relAdd' | translate }}
-            </button>
+            <div class="rel-panel-row">
+              <button class="btn primary sm" [disabled]="!canAddRel() || savingRel()" (click)="addRelationship()">
+                {{ savingRel() ? ('saving' | translate) : ('tree.relAdd' | translate) }}
+              </button>
+            </div>
+            @if (relError()) {
+              <p class="error-msg" role="alert" style="margin-top:.35rem;font-size:.78rem">{{ relError() }}</p>
+            }
           </div>
-          @if (relError()) { <p class="error-msg" style="margin-top:.35rem;font-size:.78rem">{{ relError() }}</p> }
-        </div>
+        }
       </div>
 
       <!-- Graph canvas -->
       <div class="cy-wrap">
+        @if (loadError()) {
+          <div class="cy-overlay">
+            <div class="empty-state">
+              <span class="empty-icon">⚠️</span>
+              <p>{{ loadError() }}</p>
+              <button class="btn sm" (click)="load()">{{ 'retry' | translate }}</button>
+            </div>
+          </div>
+        } @else if (loading() || graph.loading()) {
+          <div class="cy-overlay">
+            <div class="graph-skeleton" role="status" [attr.aria-label]="'loading' | translate">
+              <div class="graph-spinner"></div>
+              <p class="muted">{{ 'loading' | translate }}</p>
+            </div>
+          </div>
+        } @else if (persons().length === 0) {
+          <div class="cy-overlay">
+            <div class="empty-state">
+              <span class="empty-icon">🌱</span>
+              <p>{{ 'tree.emptyTitle' | translate }}</p>
+              <div style="display:flex;gap:.5rem;margin-top:.75rem">
+                <button class="btn primary sm" [routerLink]="['/trees', treeId, 'persons', 'new']">
+                  {{ 'tree.addPerson' | translate }}
+                </button>
+                <button class="btn sm" [routerLink]="['/trees', treeId, 'import']">
+                  {{ 'tree.import' | translate }}
+                </button>
+              </div>
+            </div>
+          </div>
+        }
+
         <div class="cy-controls">
-          <button (click)="graph.fit()" title="Fit all">⊡</button>
-          <button (click)="graph.zoomIn()" title="Zoom in">+</button>
-          <button (click)="graph.zoomOut()" title="Zoom out">−</button>
-          <button (click)="graph.toggleLayout()"
-                  [title]="graph.layoutMode() === 'auto' ? ('tree.layoutTree' | translate) : ('tree.layoutAuto' | translate)"
-                  style="font-size:.72rem;padding:.15rem .35rem">
+          <button (click)="graph.fit()" [title]="'tree.fit' | translate" [attr.aria-label]="'tree.fit' | translate">⊡</button>
+          <button (click)="graph.zoomIn()" [title]="'tree.zoomIn' | translate" [attr.aria-label]="'tree.zoomIn' | translate">+</button>
+          <button (click)="graph.zoomOut()" [title]="'tree.zoomOut' | translate" [attr.aria-label]="'tree.zoomOut' | translate">−</button>
+          <button (click)="graph.toggleLayout()" class="cy-controls__wide"
+                  [title]="'tree.layoutToggle' | translate">
             {{ graph.layoutMode() === 'auto' ? ('tree.layoutTree' | translate) : ('tree.layoutAuto' | translate) }}
           </button>
+          @if (graph.hasCustomLayout()) {
+            <button (click)="graph.resetLayout()" [title]="'tree.resetLayout' | translate"
+                    [attr.aria-label]="'tree.resetLayout' | translate">↺</button>
+          }
+          <button (click)="exportPng()" [title]="'tree.export' | translate" [attr.aria-label]="'tree.export' | translate">⭳</button>
         </div>
-        <div class="cy-host" #cyHost></div>
+
+        <div class="cy-host" #cyHost
+             tabindex="0"
+             role="application"
+             [attr.aria-label]="'tree.graphLabel' | translate"
+             (keydown)="onGraphKey($event)"></div>
+
+        <!-- Selection preview: inspect without leaving the graph -->
+        @if (selectedPerson(); as p) {
+          <div class="cy-preview" role="dialog" [attr.aria-label]="p.firstName + ' ' + p.lastName">
+            @if (p.avatarUrl) {
+              <img class="avatar-photo lg" [src]="p.avatarUrl" alt="">
+            } @else {
+              <div class="avatar lg" [ngClass]="sexCls(p.sex)" aria-hidden="true">{{ initials(p) }}</div>
+            }
+            <div class="cy-preview__info">
+              <h3>{{ p.firstName }} {{ p.lastName }}</h3>
+              @if (p.maidenName) { <p class="muted">{{ 'pe.maidenName' | translate }}: {{ p.maidenName }}</p> }
+              <p class="muted">
+                @if (p.birth) { * {{ p.birth | partialDate }} }
+                @if (p.birth && p.death) { · }
+                @if (p.death) { † {{ p.death | partialDate }} }
+              </p>
+              <div class="cy-preview__actions">
+                <a class="btn primary sm" [routerLink]="['/persons', p.id]">{{ 'tree.openProfile' | translate }}</a>
+                <button class="btn sm ghost" (click)="graph.select(null)">{{ 'tree.clearSelection' | translate }}</button>
+              </div>
+            </div>
+          </div>
+        }
       </div>
     </div>
   `,
   styles: [`
     .cy-wrap { position: relative; overflow: hidden; }
-    .cy-host { width: 100%; height: 100%; }
+    .cy-host { width: 100%; height: 100%; outline: none; }
+    .cy-host:focus-visible { box-shadow: inset 0 0 0 2px var(--c-accent); }
+
+    .cy-overlay {
+      position: absolute; inset: 0; z-index: 20;
+      display: flex; align-items: center; justify-content: center;
+      background: var(--c-bg);
+    }
+
+    .graph-skeleton { display: flex; flex-direction: column; align-items: center; gap: .75rem; }
+    .graph-spinner {
+      width: 34px; height: 34px; border-radius: 50%;
+      border: 3px solid var(--c-border);
+      border-top-color: var(--c-accent);
+      animation: spin .7s linear infinite;
+    }
+
+    .cy-controls__wide { width: auto !important; padding: .15rem .4rem !important; font-size: .72rem !important; }
+
+    .cy-preview {
+      position: absolute; left: .875rem; bottom: .875rem; z-index: 15;
+      display: flex; gap: .875rem; align-items: center;
+      max-width: 340px; padding: .875rem 1rem;
+      background: var(--c-bg);
+      border: 1px solid var(--c-border);
+      border-radius: var(--r-lg);
+      box-shadow: 0 8px 32px rgba(0,0,0,.14);
+      animation: preview-in 160ms ease-out;
+    }
+    .cy-preview__info { min-width: 0; }
+    .cy-preview__info h3 { font-size: .95rem; margin: 0 0 .1rem; }
+    .cy-preview__info p { margin: 0; font-size: .78rem; }
+    .cy-preview__actions { display: flex; gap: .4rem; margin-top: .6rem; }
+
+    @keyframes preview-in { from { opacity: 0; transform: translateY(6px); } }
+
+    .person-sidebar__list { list-style: none; margin: 0; }
+    .person-sidebar__empty { padding: .75rem; font-size: .82rem; color: var(--c-text-3); }
+    .person-row { width: 100%; border: none; background: transparent; text-align: left; font: inherit; }
+
     .rel-search-field { margin-bottom: .4rem; }
     .rel-search-input-wrap { position: relative; }
     .rel-suggestions {
-      position: absolute;
-      top: 100%;
-      left: 0; right: 0;
-      z-index: 50;
+      position: absolute; top: 100%; left: 0; right: 0; z-index: 50;
       background: var(--c-bg);
       border: 1px solid var(--c-border);
       border-radius: var(--r-md);
       box-shadow: 0 4px 16px rgba(0,0,0,.1);
-      max-height: 160px;
-      overflow-y: auto;
+      max-height: 160px; overflow-y: auto;
     }
     .rel-suggestions__item {
-      display: flex;
-      align-items: center;
-      gap: .4rem;
-      padding: .4rem .6rem;
-      font-size: .82rem;
+      display: flex; align-items: center; gap: .4rem; width: 100%;
+      padding: .4rem .6rem; font-size: .82rem; text-align: left;
+      background: transparent; border: none; border-radius: 0; font: inherit;
       cursor: pointer;
-      &:hover { background: var(--c-accent-sub); }
+      &:hover, &:focus-visible { background: var(--c-accent-sub); }
+    }
+    .rel-suggestions__year { font-size: .7rem; color: var(--c-text-4); margin-left: auto; }
+
+    @media (prefers-reduced-motion: reduce) {
+      .graph-spinner { animation: none; }
+      .cy-preview { animation: none; }
     }
   `]
 })
-export class TreeViewComponent implements OnInit, OnDestroy {
-  @ViewChild('cyHost', { static: true }) cyHost!: ElementRef;
+export class TreeViewComponent implements OnInit {
+  private readonly cyHost = viewChild.required<ElementRef<HTMLElement>>('cyHost');
 
-  private route = inject(ActivatedRoute);
-  private router = inject(Router);
-  private api = inject(ApiClient);
+  private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
+  private readonly api = inject(ApiClient);
+  private readonly destroyRef = inject(DestroyRef);
   readonly graph = inject(TreeGraphService);
   readonly i18n = inject(I18nService);
 
-  treeId = '';
-  treeName = signal('');
-  persons = signal<Person[]>([]);
-  filteredPersons = signal<Person[]>([]);
-  selectedId = signal<string | null>(null);
-  relError = signal('');
-  searchTerm = '';
+  readonly treeId = this.route.snapshot.paramMap.get('treeId')!;
 
-  fromSearch = signal('');
-  toSearch = signal('');
-  selectedFrom = signal<Person | null>(null);
-  selectedTo   = signal<Person | null>(null);
+  readonly treeName = signal('');
+  readonly persons = signal<Person[]>([]);
+  readonly loading = signal(true);
+  readonly loadError = signal('');
+  readonly searchTerm = signal('');
 
-  fromFiltered = computed(() => {
-    const s = this.fromSearch().toLowerCase().trim();
-    if (!s || this.selectedFrom()) return [];
-    return this.persons()
-      .filter(p => p.firstName.toLowerCase().includes(s) || p.lastName.toLowerCase().includes(s))
-      .slice(0, 8);
-  });
+  readonly relType = signal<UiRelType>('Parent');
+  readonly fromSearch = signal('');
+  readonly toSearch = signal('');
+  readonly selectedFrom = signal<Person | null>(null);
+  readonly selectedTo = signal<Person | null>(null);
+  readonly relError = signal('');
+  readonly savingRel = signal(false);
 
-  toFiltered = computed(() => {
-    const s = this.toSearch().toLowerCase().trim();
-    if (!s || this.selectedTo()) return [];
-    return this.persons()
-      .filter(p => p.firstName.toLowerCase().includes(s) || p.lastName.toLowerCase().includes(s))
-      .slice(0, 8);
-  });
-
-  uiRelTypes = UI_REL_TYPES;
-  newRel: { type: UiRelType } = { type: 'Parent' };
-
+  readonly uiRelTypes = UI_REL_TYPES;
   readonly initials = initials;
   readonly sexCls = sexCls;
 
+  private readonly searchInput$ = new Subject<string>();
+
+  readonly filteredPersons = computed(() => {
+    const t = this.searchTerm().trim().toLowerCase();
+    if (!t) return this.persons();
+    return this.persons().filter(p =>
+      p.firstName.toLowerCase().includes(t) ||
+      p.lastName.toLowerCase().includes(t) ||
+      (p.maidenName?.toLowerCase().includes(t) ?? false)
+    );
+  });
+
+  readonly selectedPerson = computed(() => {
+    const id = this.graph.selectedId();
+    return id ? this.persons().find(p => p.id === id) ?? null : null;
+  });
+
+  readonly canAddRel = computed(() => {
+    const from = this.selectedFrom();
+    const to = this.selectedTo();
+    return !!from && !!to && from.id !== to.id;
+  });
+
+  readonly fromFiltered = computed(() => this.matchPersons(this.fromSearch(), this.selectedFrom()));
+  readonly toFiltered = computed(() => this.matchPersons(this.toSearch(), this.selectedTo()));
+
+  constructor() {
+    // Sidebar filters instantly; graph dimming is debounced so large trees
+    // don't restyle on every keystroke.
+    this.searchInput$
+      .pipe(debounceTime(150), takeUntilDestroyed())
+      .subscribe(term => this.graph.searchTerm.set(term));
+  }
+
   ngOnInit() {
-    this.treeId = this.route.snapshot.paramMap.get('treeId')!;
     this.api.getTrees().subscribe(trees => {
       const t = trees.find(x => x.id === this.treeId);
       if (t) this.treeName.set(t.name);
     });
-    this.loadGraph();
+    this.load();
   }
 
-  ngOnDestroy() { this.graph.destroy(); }
+  load() {
+    this.loading.set(true);
+    this.loadError.set('');
 
-  loadGraph() {
-    this.api.getPersonsByTree(this.treeId).subscribe(persons => {
-      const sorted = [...persons].sort((a, b) => (a.birth?.year ?? 9999) - (b.birth?.year ?? 9999));
-      this.persons.set(sorted);
-      this.filteredPersons.set(sorted);
-      this.api.getRelationships(this.treeId).subscribe(rels => {
-        this.graph.build(this.cyHost.nativeElement, sorted, rels, id => this.select(id));
+    forkJoin({
+      persons: this.api.getPersonsByTree(this.treeId),
+      rels: this.api.getRelationships(this.treeId)
+    })
+      .pipe(
+        catchError((e: { error?: { error?: string } }) => {
+          this.loadError.set(e.error?.error ?? this.i18n.t('err.load'));
+          this.loading.set(false);
+          return of(null);
+        }),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe(res => {
+        if (!res) return;
+        const sorted = [...res.persons].sort(
+          (a, b) => (a.birth?.year ?? 9999) - (b.birth?.year ?? 9999)
+        );
+        this.persons.set(sorted);
+        this.loading.set(false);
+        if (sorted.length === 0) { this.graph.loading.set(false); return; }
+        void this.graph.build(this.cyHost().nativeElement, sorted, res.rels, {
+          onSelect: id => this.graph.select(id),
+          onOpen: id => this.open(id)
+        });
       });
-    });
   }
 
   onSearch(term: string) {
-    const t = term.toLowerCase();
-    this.filteredPersons.set(
-      t ? this.persons().filter(p =>
-        p.firstName.toLowerCase().includes(t) || p.lastName.toLowerCase().includes(t))
-      : this.persons()
-    );
+    this.searchTerm.set(term);
+    this.searchInput$.next(term);
   }
 
-  select(id: string) {
-    this.selectedId.set(id);
-    this.graph.highlight(id);
-    this.router.navigate(['/persons', id]);
+  select(id: string) { this.graph.select(id); }
+  open(id: string) { this.router.navigate(['/persons', id]); }
+
+  exportPng() {
+    this.graph.exportPng(`${this.treeName() || 'family-tree'}.png`);
+  }
+
+  onGraphKey(e: KeyboardEvent) {
+    switch (e.key) {
+      case '+': case '=': this.graph.zoomIn(); break;
+      case '-': this.graph.zoomOut(); break;
+      case '0': this.graph.fit(); break;
+      case 'Escape': this.graph.select(null); break;
+      default: return;
+    }
+    e.preventDefault();
+  }
+
+  // ── Relationship panel ──────────────────────────────────────────────────────
+
+  private matchPersons(term: string, alreadyPicked: Person | null): Person[] {
+    const s = term.toLowerCase().trim();
+    if (!s || alreadyPicked) return [];
+    return this.persons()
+      .filter(p => p.firstName.toLowerCase().includes(s) || p.lastName.toLowerCase().includes(s))
+      .slice(0, 8);
   }
 
   onFromSearch(term: string) {
-    if (this.selectedFrom() && `${this.selectedFrom()!.firstName} ${this.selectedFrom()!.lastName}` !== term) {
-      this.selectedFrom.set(null);
-    }
+    this.fromSearch.set(term);
+    const sel = this.selectedFrom();
+    if (sel && `${sel.firstName} ${sel.lastName}` !== term) this.selectedFrom.set(null);
   }
 
   onToSearch(term: string) {
-    if (this.selectedTo() && `${this.selectedTo()!.firstName} ${this.selectedTo()!.lastName}` !== term) {
-      this.selectedTo.set(null);
-    }
+    this.toSearch.set(term);
+    const sel = this.selectedTo();
+    if (sel && `${sel.firstName} ${sel.lastName}` !== term) this.selectedTo.set(null);
   }
 
-  pickFrom(p: Person) {
-    this.selectedFrom.set(p);
-    this.fromSearch.set(`${p.firstName} ${p.lastName}`);
-  }
-
-  pickTo(p: Person) {
-    this.selectedTo.set(p);
-    this.toSearch.set(`${p.firstName} ${p.lastName}`);
-  }
+  pickFrom(p: Person) { this.selectedFrom.set(p); this.fromSearch.set(`${p.firstName} ${p.lastName}`); }
+  pickTo(p: Person)   { this.selectedTo.set(p);   this.toSearch.set(`${p.firstName} ${p.lastName}`); }
 
   addRelationship() {
     const from = this.selectedFrom();
-    const to   = this.selectedTo();
+    const to = this.selectedTo();
     if (!from || !to) return;
+
     this.relError.set('');
-    // 'Child' means From is a child of To → swap ids and use Parent type
-    const isChild = this.newRel.type === 'Child';
-    const apiType: RelationshipType = isChild ? 'Parent' : (this.newRel.type as RelationshipType);
+    this.savingRel.set(true);
+
+    // 'Child' means the picked "from" person is the child → swap so the API
+    // always receives Parent as from → to.
+    const isChild = this.relType() === 'Child';
+    const apiType: RelationshipType = isChild ? 'Parent' : (this.relType() as RelationshipType);
+
     this.api.createRelationship(this.treeId, {
       type: apiType,
-      fromPersonId: isChild ? to.id   : from.id,
-      toPersonId:   isChild ? from.id : to.id
+      fromPersonId: isChild ? to.id : from.id,
+      toPersonId: isChild ? from.id : to.id
     }).subscribe({
       next: () => {
         this.selectedFrom.set(null); this.selectedTo.set(null);
         this.fromSearch.set(''); this.toSearch.set('');
-        this.loadGraph();
+        this.savingRel.set(false);
+        this.load();
       },
-      error: (e: { error?: { error?: string } }) =>
-        this.relError.set(e.error?.error ?? this.i18n.t('tree.relErr'))
+      error: (e: { error?: { error?: string } }) => {
+        this.relError.set(e.error?.error ?? this.i18n.t('tree.relErr'));
+        this.savingRel.set(false);
+      }
     });
   }
 }

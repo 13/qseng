@@ -54,6 +54,10 @@
             ],
             "styles": [
               "src/styles.scss"
+            ],
+            "allowedCommonJsDependencies": [
+              "cytoscape-dagre",
+              "dagre"
             ]
           },
           "configurations": {
