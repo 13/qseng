@@ -41,7 +41,9 @@ import { TranslatePipe } from '../../core/i18n/translate.pipe';
               }
               <div class="media-overlay__actions">
                 @if (isImage(item) && !isFirstPhoto(item)) {
-                  <button class="media-action-btn" (click)="setAsAvatar(item)" title="Als Profilfoto setzen">★</button>
+                  <button class="media-action-btn" (click)="setAsAvatar(item)"
+                          [title]="'media.setAvatar' | translate"
+                          [attr.aria-label]="'media.setAvatar' | translate">★</button>
                 }
                 <button class="media-action-btn danger" (click)="deleteItem(item)" [title]="'delete' | translate">✕</button>
               </div>

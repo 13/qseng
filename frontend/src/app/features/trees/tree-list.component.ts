@@ -74,7 +74,10 @@ import { TranslatePipe } from '../../core/i18n/translate.pipe';
                 @if (tree.description) {
                   <p class="tree-card__desc">{{ tree.description }}</p>
                 }
-                <p class="tree-card__meta">{{ 'trees.created' | translate }} {{ formatDate(tree.createdAt) }}</p>
+                <p class="tree-card__meta">
+                  👤 {{ tree.personCount }} {{ 'trees.persons' | translate }}
+                  · {{ 'trees.created' | translate }} {{ formatDate(tree.createdAt) }}
+                </p>
                 @if (deleteErr()[tree.id]) {
                   <p class="error-msg" style="font-size:.75rem">{{ deleteErr()[tree.id] }}</p>
                 }

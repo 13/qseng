@@ -333,13 +333,16 @@ export class TreeGraphService {
     }
 
     const mode = this.layoutMode();
+    // Note: the 'tight-tree' ranker crashes on the zero-length marriage
+    // edges ("Not possible to find intersection inside of the rectangle"),
+    // so both modes use network-simplex and differ only in spacing.
     const ly = this.cy.layout({
       name: 'dagre',
       rankDir: 'TB',
       nodeSep: mode === 'tree' ? 30 : 50,
       rankSep: mode === 'tree' ? 110 : 130,
       edgeSep: 5,
-      ranker: mode === 'tree' ? 'tight-tree' : 'network-simplex',
+      ranker: 'network-simplex',
       minLen: (e: cytoscape.EdgeSingular) => e.data('ek') === 'marriage' ? 0 : 1,
       animate: false
     } as any);
@@ -350,7 +353,16 @@ export class TreeGraphService {
       this._savePositions();
       this.cy?.fit(undefined, 60);
     });
-    ly.run();
+
+    try {
+      ly.run();
+    } catch {
+      // dagre failed — fall back to the built-in hierarchical layout so the
+      // graph is never left unrendered.
+      const fallback = this.cy.layout({ name: 'breadthfirst', directed: true, spacingFactor: 1.3 });
+      fallback.on('layoutstop', () => { this._savePositions(); this.cy?.fit(undefined, 60); });
+      fallback.run();
+    }
   }
 
   /**

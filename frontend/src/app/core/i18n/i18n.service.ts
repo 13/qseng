@@ -73,7 +73,7 @@ const T: Record<Lang, Record<string, string>> = {
     // Media
     'media.title': 'Photos & Documents', 'media.add': '+ Add',
     'media.uploading': 'Uploading…', 'media.empty': 'No files uploaded yet.',
-    'media.deleteConfirm': 'Delete file?',
+    'media.deleteConfirm': 'Delete file?', 'media.setAvatar': 'Set as profile photo',
 
     // Tree view
     'tree.back': '← Trees', 'tree.search': '🔍 Search', 'tree.import': '↑ Import',
@@ -152,6 +152,7 @@ const T: Record<Lang, Record<string, string>> = {
     'trees.empty': 'No trees yet. Create your first family tree above.',
     'trees.open': 'Open', 'trees.edit': '✏️ Edit', 'trees.delete': 'Delete',
     'trees.created': 'Created', 'trees.save': 'Save', 'trees.editCancel': 'Cancel',
+    'trees.persons': 'people',
     'trees.delete.confirm': 'Delete this tree and all its data permanently?',
     'trees.err.load': 'Failed to load trees.', 'trees.err.create': 'Failed to create tree.',
     'trees.err.save': 'Failed to save changes.', 'trees.err.delete': 'Failed to delete tree.',
@@ -165,6 +166,7 @@ const T: Record<Lang, Record<string, string>> = {
 
     // Date picker
     'date.pick': 'Open date picker', 'date.clear': 'Clear', 'date.hint': 'DD.MM.YYYY',
+    'date.unknown': 'unknown',
 
     // Import
     'import.title': 'Import Genealogy Text', 'import.back': '← Tree',
@@ -245,7 +247,7 @@ const T: Record<Lang, Record<string, string>> = {
     // Media
     'media.title': 'Fotos & Dokumente', 'media.add': '+ Hinzufügen',
     'media.uploading': 'Lädt…', 'media.empty': 'Noch keine Dateien hochgeladen.',
-    'media.deleteConfirm': 'Datei löschen?',
+    'media.deleteConfirm': 'Datei löschen?', 'media.setAvatar': 'Als Profilfoto setzen',
 
     // Tree view
     'tree.back': '← Stammbäume', 'tree.search': '🔍 Suchen', 'tree.import': '↑ Import',
@@ -324,6 +326,7 @@ const T: Record<Lang, Record<string, string>> = {
     'trees.empty': 'Noch keine Stammbäume. Erstelle oben deinen ersten.',
     'trees.open': 'Öffnen', 'trees.edit': '✏️ Bearbeiten', 'trees.delete': 'Löschen',
     'trees.created': 'Erstellt', 'trees.save': 'Speichern', 'trees.editCancel': 'Abbrechen',
+    'trees.persons': 'Personen',
     'trees.delete.confirm': 'Diesen Stammbaum und alle Daten unwiderruflich löschen?',
     'trees.err.load': 'Stammbäume konnten nicht geladen werden.', 'trees.err.create': 'Stammbaum konnte nicht erstellt werden.',
     'trees.err.save': 'Änderungen konnten nicht gespeichert werden.', 'trees.err.delete': 'Stammbaum konnte nicht gelöscht werden.',
@@ -337,6 +340,7 @@ const T: Record<Lang, Record<string, string>> = {
 
     // Date picker
     'date.pick': 'Datumsauswahl öffnen', 'date.clear': 'Leeren', 'date.hint': 'TT.MM.JJJJ',
+    'date.unknown': 'unbekannt',
 
     // Import
     'import.title': 'Genealogie-Text importieren', 'import.back': '← Stammbaum',

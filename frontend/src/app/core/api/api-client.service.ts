@@ -4,7 +4,7 @@ import { environment } from '../../../environments/environment';
 
 export interface PartialDate { year?: number; month?: number; day?: number; approx?: boolean; }
 
-export interface Tree { id: string; name: string; description?: string; createdAt: string; }
+export interface Tree { id: string; name: string; description?: string; createdAt: string; personCount: number; }
 
 export interface Person {
   id: string; treeId: string;
@@ -99,17 +99,6 @@ export type TimelineEventType = 'Birth' | 'Death' | 'Marriage' | 'Move' | 'Occup
 export const SEX_OPTIONS: Sex[] = ['Male', 'Female'];
 export const RELATIONSHIP_TYPES: RelationshipType[] = ['Parent', 'Spouse', 'Adoptive'];
 export const TIMELINE_EVENT_TYPES: TimelineEventType[] = ['Birth', 'Death', 'Marriage', 'Move', 'Occupation', 'Education', 'Custom'];
-
-export const SEX_LABELS: Record<Sex, string> = {
-  Male: 'Männlich', Female: 'Weiblich'
-};
-export const REL_TYPE_LABELS: Record<RelationshipType, string> = {
-  Parent: 'Elternteil', Spouse: 'Ehegatte/in', Adoptive: 'Adoptiv'
-};
-export const EVENT_TYPE_LABELS: Record<TimelineEventType, string> = {
-  Birth: 'Geburt', Death: 'Ableben', Marriage: 'Hochzeit', Move: 'Umzug',
-  Occupation: 'Beruf', Education: 'Bildung', Custom: 'Ereignis'
-};
 
 @Injectable({ providedIn: 'root' })
 export class ApiClient {

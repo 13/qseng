@@ -2,11 +2,19 @@ import { Injectable, signal } from '@angular/core';
 
 @Injectable({ providedIn: 'root' })
 export class ThemeService {
-  private readonly _dark = signal(localStorage.getItem('theme') === 'dark');
+  private readonly _dark = signal(ThemeService.initialDark());
   readonly dark = this._dark.asReadonly();
 
   constructor() {
     this.apply(this._dark());
+  }
+
+  /** Stored choice wins; otherwise follow the OS preference. */
+  private static initialDark(): boolean {
+    const stored = localStorage.getItem('theme');
+    if (stored === 'dark') return true;
+    if (stored === 'light') return false;
+    return window.matchMedia?.('(prefers-color-scheme: dark)').matches ?? false;
   }
 
   toggle() {

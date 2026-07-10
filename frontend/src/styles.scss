@@ -164,13 +164,18 @@ a {
     &:hover { background: var(--c-nav-hover); color: var(--c-nav-text); }
   }
 
+  &__user-wrap { position: relative; }
+
   &__user-menu {
-    position: relative;
     display: flex;
     align-items: center;
     gap: .45rem;
     cursor: pointer;
     padding: .3rem .5rem;
+    border: none;
+    background: transparent;
+    font: inherit;
+    color: inherit;
     border-radius: var(--r-md);
     transition: background .1s;
     &:hover { background: var(--c-nav-hover); }
@@ -1807,4 +1812,49 @@ label {
   .person-aside          { border-right: none; border-bottom: 1px solid var(--c-border); }
   .tree-view-layout      { grid-template-columns: 1fr; height: auto; }
   .import-layout         { grid-template-columns: 1fr; }
+}
+
+/* ================================================
+   Dark-mode overrides for hardcoded light styles
+   ================================================ */
+[data-theme="dark"] {
+  .auth-page {
+    background: linear-gradient(150deg, #1e1b4b 0%, #0f172a 60%, #052e16 100%);
+  }
+
+  .demo-hint code { background: #312e81; color: #e0e7ff; }
+
+  .settings-section.danger-zone {
+    background: rgba(220, 38, 38, .08);
+    border-color: #7f1d1d;
+  }
+
+  .import-report.preview   { background: rgba(59, 130, 246, .1);  border-color: #1e40af; }
+  .import-report.committed { border-color: #14532d; }
+
+  .badge, .avatar {
+    &.male    { background: #172554; color: #93c5fd; }
+    &.female  { background: #500724; color: #f9a8d4; }
+    &.other   { background: #2e1065; color: #c4b5fd; }
+  }
+
+  .sex-btn {
+    &.sex-male.active   { background: #172554; color: #93c5fd; border-color: #1d4ed8; }
+    &.sex-female.active { background: #500724; color: #f9a8d4; border-color: #be185d; }
+    &.sex-other.active  { background: #2e1065; color: #c4b5fd; border-color: #6d28d9; }
+  }
+
+  .status-badge.active { background: #052e16; color: #86efac; }
+  .role-badge.admin    { background: #451a03; color: #fcd34d; }
+
+  .event-type-badge {
+    &[data-type="Birth"]      { background: #052e16; color: #86efac; }
+    &[data-type="Death"]      { background: #1e293b; color: #cbd5e1; }
+    &[data-type="Marriage"]   { background: #4c0519; color: #fda4af; }
+    &[data-type="Move"]       { background: #082f49; color: #7dd3fc; }
+    &[data-type="Occupation"] { background: #451a03; color: #fcd34d; }
+    &[data-type="Education"]  { background: #2e1065; color: #c4b5fd; }
+  }
+
+  .btn.danger:hover, button.danger:hover { border-color: #7f1d1d; }
 }

@@ -19,14 +19,18 @@ import { TranslatePipe } from './core/i18n/translate.pipe';
         <span class="app-nav__spacer"></span>
 
         <button class="app-nav__theme-btn" (click)="theme.toggle()"
-                [title]="(theme.dark() ? 'nav.theme.dark' : 'nav.theme.light') | translate">
+                [title]="(theme.dark() ? 'nav.theme.dark' : 'nav.theme.light') | translate"
+                [attr.aria-label]="(theme.dark() ? 'nav.theme.dark' : 'nav.theme.light') | translate">
           {{ theme.dark() ? '☀' : '🌙' }}
         </button>
 
-        <div class="app-nav__user-menu" (click)="toggleMenu($event)">
-          <div class="user-avatar-nav">{{ initials() }}</div>
-          <span class="app-nav__username">{{ auth.displayName() }}</span>
-          <span class="dropdown-caret">▾</span>
+        <div class="app-nav__user-wrap" (keydown.escape)="menuOpen.set(false)">
+          <button type="button" class="app-nav__user-menu" (click)="toggleMenu($event)"
+                  aria-haspopup="menu" [attr.aria-expanded]="menuOpen()">
+            <span class="user-avatar-nav" aria-hidden="true">{{ initials() }}</span>
+            <span class="app-nav__username">{{ auth.displayName() }}</span>
+            <span class="dropdown-caret" aria-hidden="true">▾</span>
+          </button>
 
           @if (menuOpen()) {
             <div class="user-dropdown" (click)="$event.stopPropagation()">
