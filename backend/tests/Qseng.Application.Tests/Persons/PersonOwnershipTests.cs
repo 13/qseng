@@ -37,7 +37,7 @@ public class PersonOwnershipTests
     {
         var (db, person, ownerId) = await SetupAsync();
         var handler = new UpdatePersonHandler(db, FakeUser(ownerId));
-        var cmd = new UpdatePersonCommand(person.Id, "New", "Name", null, Sex.Male, null, null, null, null, null);
+        var cmd = new UpdatePersonCommand(person.Id, "New", "Name", null, Sex.Male, null, null, null, null, null, null);
 
         var result = await handler.Handle(cmd, CancellationToken.None);
 
@@ -50,7 +50,7 @@ public class PersonOwnershipTests
     {
         var (db, person, _) = await SetupAsync();
         var handler = new UpdatePersonHandler(db, FakeUser(Guid.NewGuid()));
-        var cmd = new UpdatePersonCommand(person.Id, "X", "Y", null, Sex.Unknown, null, null, null, null, null);
+        var cmd = new UpdatePersonCommand(person.Id, "X", "Y", null, Sex.Male, null, null, null, null, null, null);
 
         var result = await handler.Handle(cmd, CancellationToken.None);
 
@@ -63,7 +63,7 @@ public class PersonOwnershipTests
     {
         var db = TestDb.Create();
         var handler = new UpdatePersonHandler(db, FakeUser(Guid.NewGuid()));
-        var cmd = new UpdatePersonCommand(Guid.NewGuid(), "X", "Y", null, Sex.Unknown, null, null, null, null, null);
+        var cmd = new UpdatePersonCommand(Guid.NewGuid(), "X", "Y", null, Sex.Male, null, null, null, null, null, null);
 
         var result = await handler.Handle(cmd, CancellationToken.None);
 

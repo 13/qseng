@@ -8,7 +8,7 @@ namespace Qseng.Application.Trees.CreateTree;
 
 public record CreateTreeCommand(string Name, string? Description) : IRequest<Result<TreeDto>>;
 
-public record TreeDto(Guid Id, string Name, string? Description, DateTime CreatedAt);
+public record TreeDto(Guid Id, string Name, string? Description, DateTime CreatedAt, int PersonCount = 0);
 
 public class CreateTreeValidator : AbstractValidator<CreateTreeCommand>
 {

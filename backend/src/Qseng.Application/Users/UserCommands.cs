@@ -24,8 +24,8 @@ public class ChangePasswordHandler : IRequestHandler<ChangePasswordCommand, Resu
         if (user is null) return Result<bool>.NotFound("User not found.");
         if (!_hasher.Verify(cmd.CurrentPassword, user.PasswordHash))
             return Result<bool>.Fail("Current password is incorrect.");
-        if (cmd.NewPassword.Length < 5)
-            return Result<bool>.Fail("New password must be at least 5 characters.");
+        if (cmd.NewPassword.Length < 8)
+            return Result<bool>.Fail("New password must be at least 8 characters.");
         user.PasswordHash = _hasher.Hash(cmd.NewPassword);
         await _db.SaveChangesAsync(ct);
         return Result<bool>.Ok(true);

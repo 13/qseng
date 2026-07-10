@@ -2,6 +2,7 @@ using FluentAssertions;
 using NSubstitute;
 using Xunit;
 using Qseng.Application.Abstractions;
+using Qseng.Application.Timeline.AddTimelineEvent;
 using Qseng.Application.Timeline.DeleteTimelineEvent;
 using Qseng.Application.Timeline.UpdateTimelineEvent;
 using Qseng.Domain.Entities;
@@ -30,6 +31,35 @@ public class TimelineOwnershipTests
         db.TimelineEvents.Add(ev);
         await db.SaveChangesAsync();
         return (db, ev, ownerId);
+    }
+
+    // --- AddTimelineEvent ---
+
+    [Fact]
+    public async Task AddTimelineEvent_owner_succeeds()
+    {
+        var (db, ev, ownerId) = await SetupAsync();
+        var handler = new AddTimelineEventHandler(db, FakeUser(ownerId));
+        var cmd = new AddTimelineEventCommand(
+            ev.PersonId, TimelineEventType.Move, "New event", null, null, null, null, null);
+
+        var result = await handler.Handle(cmd, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task AddTimelineEvent_non_owner_gets_403()
+    {
+        var (db, ev, _) = await SetupAsync();
+        var handler = new AddTimelineEventHandler(db, FakeUser(Guid.NewGuid()));
+        var cmd = new AddTimelineEventCommand(
+            ev.PersonId, TimelineEventType.Move, "New event", null, null, null, null, null);
+
+        var result = await handler.Handle(cmd, CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.StatusCode.Should().Be(403);
     }
 
     // --- UpdateTimelineEvent ---

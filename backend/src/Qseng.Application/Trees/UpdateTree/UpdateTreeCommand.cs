@@ -1,5 +1,6 @@
 using FluentValidation;
 using MediatR;
+using Microsoft.EntityFrameworkCore;
 using Qseng.Application.Abstractions;
 using Qseng.Application.Common;
 using Qseng.Application.Trees.CreateTree;
@@ -34,6 +35,7 @@ public class UpdateTreeHandler : IRequestHandler<UpdateTreeCommand, Result<TreeD
         tree.Name = cmd.Name;
         tree.Description = cmd.Description;
         await _db.SaveChangesAsync(ct);
-        return Result<TreeDto>.Ok(new TreeDto(tree.Id, tree.Name, tree.Description, tree.CreatedAt));
+        var personCount = await _db.Persons.CountAsync(p => p.TreeId == tree.Id, ct);
+        return Result<TreeDto>.Ok(new TreeDto(tree.Id, tree.Name, tree.Description, tree.CreatedAt, personCount));
     }
 }

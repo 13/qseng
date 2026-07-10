@@ -21,7 +21,8 @@ public class GetTreesHandler : IRequestHandler<GetTreesQuery, Result<IReadOnlyLi
         var trees = await _db.Trees
             .Where(t => t.OwnerId == _currentUser.UserId)
             .OrderBy(t => t.Name)
-            .Select(t => new TreeDto(t.Id, t.Name, t.Description, t.CreatedAt))
+            .Select(t => new TreeDto(t.Id, t.Name, t.Description, t.CreatedAt,
+                _db.Persons.Count(p => p.TreeId == t.Id)))
             .ToListAsync(ct);
         return Result<IReadOnlyList<TreeDto>>.Ok(trees);
     }

@@ -29,10 +29,23 @@ public class CreateRelationshipValidator : AbstractValidator<CreateRelationshipC
 public class CreateRelationshipHandler : IRequestHandler<CreateRelationshipCommand, Result<RelationshipDto>>
 {
     private readonly IQsengDbContext _db;
-    public CreateRelationshipHandler(IQsengDbContext db) => _db = db;
+    private readonly ICurrentUser _currentUser;
+
+    public CreateRelationshipHandler(IQsengDbContext db, ICurrentUser currentUser)
+    { _db = db; _currentUser = currentUser; }
 
     public async Task<Result<RelationshipDto>> Handle(CreateRelationshipCommand cmd, CancellationToken ct)
     {
+        var tree = await _db.Trees.FindAsync([cmd.TreeId], ct);
+        if (tree is null) return Result<RelationshipDto>.NotFound("Tree not found.");
+        if (tree.OwnerId != _currentUser.UserId) return Result<RelationshipDto>.Fail("Forbidden.", 403);
+
+        var personIds = new[] { cmd.FromPersonId, cmd.ToPersonId };
+        var personsInTree = await _db.Persons
+            .CountAsync(p => p.TreeId == cmd.TreeId && personIds.Contains(p.Id), ct);
+        if (personsInTree != 2)
+            return Result<RelationshipDto>.NotFound("Person not found in this tree.");
+
         var duplicate = await _db.Relationships.AnyAsync(r =>
             r.TreeId == cmd.TreeId &&
             r.FromPersonId == cmd.FromPersonId &&

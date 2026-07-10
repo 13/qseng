@@ -10,15 +10,21 @@ namespace Qseng.Application.Tests.Relationships;
 
 public class CreateRelationshipHandlerTests
 {
-    private static CreateRelationshipHandler MakeHandler(IQsengDbContext db) =>
-        new(db);
+    private static readonly Guid OwnerId = Guid.NewGuid();
+
+    private static CreateRelationshipHandler MakeHandler(IQsengDbContext db, Guid? userId = null)
+    {
+        var cu = Substitute.For<ICurrentUser>();
+        cu.UserId.Returns(userId ?? OwnerId);
+        return new(db, cu);
+    }
 
     // Creates a tree owned by a fixed user and adds persons to it.
     private static async Task<(IQsengDbContext db, Guid treeId, Person[] persons)>
         SetupTreeAsync(int personCount = 3)
     {
         var db = TestDb.Create();
-        var tree = new Tree { OwnerId = Guid.NewGuid(), Name = "Test" };
+        var tree = new Tree { OwnerId = OwnerId, Name = "Test" };
         db.Trees.Add(tree);
 
         var persons = Enumerable.Range(0, personCount)
@@ -137,5 +143,41 @@ public class CreateRelationshipHandlerTests
 
         result.IsSuccess.Should().BeFalse();
         result.StatusCode.Should().Be(409);
+    }
+
+    [Fact]
+    public async Task Non_owner_gets_403()
+    {
+        var (db, treeId, persons) = await SetupTreeAsync(2);
+        var handler = MakeHandler(db, Guid.NewGuid());
+        var cmd = new CreateRelationshipCommand(
+            treeId, persons[0].Id, persons[1].Id, RelationshipType.Parent,
+            null, null, null, null, null, null, null);
+
+        var result = await handler.Handle(cmd, CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.StatusCode.Should().Be(403);
+    }
+
+    [Fact]
+    public async Task Person_from_another_tree_is_rejected()
+    {
+        var (db, treeId, persons) = await SetupTreeAsync(1);
+        var otherTree = new Tree { OwnerId = OwnerId, Name = "Other" };
+        db.Trees.Add(otherTree);
+        var outsider = new Person { TreeId = otherTree.Id, FirstName = "X", LastName = "Y" };
+        db.Persons.Add(outsider);
+        await db.SaveChangesAsync();
+
+        var handler = MakeHandler(db);
+        var cmd = new CreateRelationshipCommand(
+            treeId, persons[0].Id, outsider.Id, RelationshipType.Parent,
+            null, null, null, null, null, null, null);
+
+        var result = await handler.Handle(cmd, CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.StatusCode.Should().Be(404);
     }
 }

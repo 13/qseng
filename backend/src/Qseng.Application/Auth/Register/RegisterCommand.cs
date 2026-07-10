@@ -10,7 +10,9 @@ namespace Qseng.Application.Auth.Register;
 public record RegisterCommand(string Username, string Password, string? DisplayName, string? Email)
     : IRequest<Result<AuthResponse>>;
 
-public record AuthResponse(string AccessToken, Guid UserId, string DisplayName, string Username, bool IsAdmin);
+public record AuthResponse(
+    string? AccessToken, Guid UserId, string DisplayName, string Username, bool IsAdmin,
+    bool PendingActivation = false);
 
 public class RegisterValidator : AbstractValidator<RegisterCommand>
 {
@@ -18,7 +20,7 @@ public class RegisterValidator : AbstractValidator<RegisterCommand>
     {
         RuleFor(x => x.Username).NotEmpty().MinimumLength(3).MaximumLength(50)
             .Matches("^[a-zA-Z0-9_.-]+$").WithMessage("Username may only contain letters, digits, _, ., and -.");
-        RuleFor(x => x.Password).NotEmpty().MinimumLength(5).MaximumLength(128);
+        RuleFor(x => x.Password).NotEmpty().MinimumLength(8).MaximumLength(128);
         RuleFor(x => x.Email).EmailAddress().When(x => !string.IsNullOrWhiteSpace(x.Email));
     }
 }
@@ -65,6 +67,12 @@ public class RegisterHandler : IRequestHandler<RegisterCommand, Result<AuthRespo
         };
         _db.Users.Add(user);
         await _db.SaveChangesAsync(ct);
+
+        // Inactive accounts must not receive a token — they'd bypass the
+        // activation gate that LoginHandler enforces.
+        if (!user.IsActive)
+            return Result<AuthResponse>.Ok(new AuthResponse(
+                null, user.Id, user.DisplayName, user.Username, user.IsAdmin, PendingActivation: true));
 
         return Result<AuthResponse>.Ok(new AuthResponse(
             _jwt.GenerateAccessToken(user), user.Id, user.DisplayName, user.Username, user.IsAdmin));
