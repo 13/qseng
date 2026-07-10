@@ -10,9 +10,9 @@ public class DbSeeder
 {
     private readonly QsengDbContext _db;
     private readonly IPasswordHasher _hasher;
-    private readonly ILoscobar<DbSeeder> _log;
+    private readonly ILogger<DbSeeder> _log;
 
-    public DbSeeder(QsengDbContext db, IPasswordHasher hasher, ILoscobar<DbSeeder> log)
+    public DbSeeder(QsengDbContext db, IPasswordHasher hasher, ILogger<DbSeeder> log)
     { _db = db; _hasher = hasher; _log = log; }
 
     public async Task SeedAsync(CancellationToken ct = default)

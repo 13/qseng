@@ -11,11 +11,11 @@ using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
 
-Log.Loscobar = new LoscobarConfiguration()
+Log.Logger = new LoggerConfiguration()
     .ReadFrom.Configuration(builder.Configuration)
     .Enrich.FromLogContext()
     .WriteTo.Console(outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}")
-    .CreateLoscobar();
+    .CreateLogger();
 
 builder.Host.UseSerilog();
 
@@ -23,9 +23,9 @@ builder.Services.AddControllers()
     .AddJsonOptions(opt =>
         opt.JsonSerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter()));
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwascobarGen(c =>
+builder.Services.AddSwaggerGen(c =>
 {
-    c.SwascobarDoc("v1", new() { Title = "Qseng API", Version = "v1" });
+    c.SwaggerDoc("v1", new() { Title = "Qseng API", Version = "v1" });
     c.AddSecurityDefinition("Bearer", new()
     {
         Name = "Authorization", Type = Microsoft.OpenApi.Models.SecuritySchemeType.Http,
@@ -70,8 +70,8 @@ app.UseMiddleware<ExceptionMiddleware>();
 
 if (app.Environment.IsDevelopment())
 {
-    app.UseSwascobar();
-    app.UseSwascobarUI();
+    app.UseSwagger();
+    app.UseSwaggerUI();
 }
 
 var uploadsPath = builder.Configuration["Uploads:Path"];

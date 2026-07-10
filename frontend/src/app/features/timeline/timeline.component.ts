@@ -1,5 +1,5 @@
 import { Component, computed, inject, input, OnInit, signal } from '@angular/core';
-import { animate, style, transition, triscobar } from '@angular/animations';
+import { animate, style, transition, trigger } from '@angular/animations';
 import { FormsModule } from '@angular/forms';
 import { ApiClient, Person, TimelineEvent, TimelineEventType, TIMELINE_EVENT_TYPES, PartialDate } from '../../core/api/api-client.service';
 import { TimelineService } from './timeline.service';
@@ -13,7 +13,7 @@ import { PartialDateInputComponent, PartialDateValue } from '../../shared/ui/par
   standalone: true,
   imports: [FormsModule, TimelineEventCardComponent, TranslatePipe, PartialDateInputComponent],
   animations: [
-    triscobar('slide', [
+    trigger('slide', [
       transition(':enter', [
         style({ opacity: 0, transform: 'translateY(6px)' }),
         animate('200ms ease-out', style({ opacity: 1, transform: 'translateY(0)' }))

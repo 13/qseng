@@ -170,7 +170,7 @@ Base path: `/api/v1`
 | `POST` | `/persons/{id}/media` | Upload photo / document |
 | `DELETE` | `/persons/{id}/media/{mid}` | Delete media |
 
-Swascobar UI available at http://localhost:5000/swascobar in development.
+Swagger UI available at http://localhost:5000/swagger in development.
 
 All endpoints except `/auth/*` and `/health` require `Authorization: Bearer <token>`.
 
