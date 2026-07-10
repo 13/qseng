@@ -148,7 +148,7 @@ Base path: `/api/v1`
 | Method | Path | Description |
 |---|---|---|
 | `GET` | `/health` | Health check |
-| `POST` | `/auth/register` | Create account |
+| `POST` | `/auth/register` | Create account (pending admin activation unless first user) |
 | `POST` | `/auth/login` | Login → JWT |
 | `GET` | `/trees` | List your trees |
 | `POST` | `/trees` | Create tree |
@@ -173,6 +173,10 @@ Base path: `/api/v1`
 Swagger UI available at http://localhost:5000/swagger in development.
 
 All endpoints except `/auth/*` and `/health` require `Authorization: Bearer <token>`.
+
+- New registrations start **inactive** (`pendingActivation: true`, no token) until an admin activates them; the very first account becomes an active admin automatically.
+- Passwords require a minimum of 8 characters.
+- All tree, person, relationship, timeline, and media operations are scoped to the owning user (403 otherwise).
 
 ---
 
