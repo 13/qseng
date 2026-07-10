@@ -35,7 +35,7 @@ import { TranslatePipe } from '../../core/i18n/translate.pipe';
               </label>
               <label>
                 {{ 'settings.password.new' | translate }}
-                <input type="password" [(ngModel)]="pw.next" name="pwNext" required minlength="5"
+                <input type="password" [(ngModel)]="pw.next" name="pwNext" required minlength="8"
                        placeholder="••••••••" autocomplete="new-password">
               </label>
             </div>

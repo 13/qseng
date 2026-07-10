@@ -18,6 +18,13 @@ import { TranslatePipe } from '../../core/i18n/translate.pipe';
           <p>{{ 'register.tagline' | translate }}</p>
         </div>
 
+        @if (pending()) {
+          <div class="pending-note" role="status">
+            <p><strong>{{ 'register.pendingTitle' | translate }}</strong></p>
+            <p>{{ 'register.pendingHint' | translate }}</p>
+            <a routerLink="/login" class="btn primary" style="margin-top:.75rem">{{ 'register.login' | translate }}</a>
+          </div>
+        } @else {
         <form (ngSubmit)="submit()">
           <label>
             {{ 'register.username' | translate }} <span class="required">*</span>
@@ -50,6 +57,7 @@ import { TranslatePipe } from '../../core/i18n/translate.pipe';
             {{ loading() ? ('register.submitting' | translate) : ('register.submit' | translate) }}
           </button>
         </form>
+        }
 
         <div class="auth-footer">
           {{ 'register.haveAccount' | translate }} <a routerLink="/login">{{ 'register.login' | translate }}</a>
@@ -60,6 +68,16 @@ import { TranslatePipe } from '../../core/i18n/translate.pipe';
   styles: [`
     .required { color: var(--c-error); }
     .field-optional { font-weight: 400; color: var(--c-text-4); font-size: .7rem; }
+    .pending-note {
+      background: var(--c-success-bg);
+      border: 1px solid var(--c-success);
+      border-radius: var(--r-md);
+      padding: 1rem 1.25rem;
+      font-size: .875rem;
+      color: var(--c-text-2);
+      text-align: center;
+      p { margin: 0 0 .35rem; }
+    }
   `]
 })
 export class RegisterComponent {
@@ -73,14 +91,22 @@ export class RegisterComponent {
   password = '';
   loading = signal(false);
   error = signal('');
+  pending = signal(false);
 
   submit() {
     this.loading.set(true);
     this.error.set('');
     this.auth.register(this.username, this.password, this.displayName || undefined, this.email || undefined)
       .subscribe({
-        next: () => this.router.navigate(['/trees']),
-        error: e => { this.error.set(e.error?.error ?? this.i18n.t('register.error')); this.loading.set(false); }
+        next: r => {
+          if (r.pendingActivation) { this.pending.set(true); this.loading.set(false); }
+          else this.router.navigate(['/trees']);
+        },
+        error: e => {
+          const resp = e.error as { error?: string; errors?: { errorMessage: string }[] } | undefined;
+          this.error.set(resp?.error ?? resp?.errors?.[0]?.errorMessage ?? this.i18n.t('register.error'));
+          this.loading.set(false);
+        }
       });
   }
 }

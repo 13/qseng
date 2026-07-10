@@ -4,11 +4,12 @@ import { tap } from 'rxjs/operators';
 import { environment } from '../../../environments/environment';
 
 export interface AuthResponse {
-  accessToken: string;
+  accessToken: string | null;
   userId: string;
   displayName: string;
   username: string;
   isAdmin: boolean;
+  pendingActivation?: boolean;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -53,6 +54,7 @@ export class AuthService {
   }
 
   private store(r: AuthResponse) {
+    if (!r.accessToken) return; // pending activation — no session to persist
     this._token.set(r.accessToken);
     this._userId.set(r.userId);
     this._displayName.set(r.displayName);

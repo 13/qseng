@@ -69,6 +69,11 @@ import { PartialDateInputComponent, PartialDateValue } from '../../shared/ui/par
             <input type="text" [(ngModel)]="form.lastName" name="ln"
                    [placeholder]="'pe.lastName' | translate">
           </label>
+          <label class="field-lbl">
+            {{ 'pe.maidenName' | translate }} <span class="pe-optional">({{ 'pe.optional' | translate }})</span>
+            <input type="text" [(ngModel)]="form.maidenName" name="mn"
+                   [placeholder]="'pe.maidenName' | translate">
+          </label>
         </div>
 
         <div class="field-lbl" style="margin-top:1.1rem">
@@ -168,6 +173,7 @@ export class PersonEditComponent implements OnInit {
         next: p => {
           this.form.firstName    = p.firstName;
           this.form.lastName     = p.lastName;
+          this.form.maidenName   = p.maidenName;
           this.form.sex          = p.sex;
           this.form.notes        = p.notes;
           this.form.birthPlace   = p.birthPlace;

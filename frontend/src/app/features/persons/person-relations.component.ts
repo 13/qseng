@@ -170,12 +170,13 @@ export class PersonRelationsComponent implements OnInit {
     const other = this.selectedPerson();
     if (!other) return;
     this.error.set('');
-    // 'Child' = selected person is a parent of this person → swap
-    const isChild = this.newType === 'Child';
-    const apiType: RelationshipType = isChild ? 'Parent' : (this.newType as RelationshipType);
+    // The type names the selected person's role: 'Parent' = they are the parent
+    // of this person (from=parent, to=child); 'Child' = they are the child.
+    const isParent = this.newType === 'Parent';
+    const apiType: RelationshipType = this.newType === 'Child' ? 'Parent' : (this.newType as RelationshipType);
     this.api.createRelationship(this.treeId(), {
-      fromPersonId: isChild ? other.id          : this.personId(),
-      toPersonId:   isChild ? this.personId()   : other.id,
+      fromPersonId: isParent ? other.id        : this.personId(),
+      toPersonId:   isParent ? this.personId() : other.id,
       type: apiType,
       startYear:  this.startDate.year,
       startMonth: this.startDate.month,

@@ -66,8 +66,8 @@ const T: Record<Lang, Record<string, string>> = {
     'fam.parents': 'Parents', 'fam.children': 'Children',
     'fam.spouses': 'Spouses', 'fam.adoptive': 'Adoptive',
     'fam.spouse.hint': '💡 A wedding event is created automatically.',
-    'fam.parent.hint': '💡 Select the child of this person.',
-    'fam.child.hint':  '💡 Select the parent of this person.',
+    'fam.parent.hint': '💡 Select the parent of this person.',
+    'fam.child.hint':  '💡 Select the child of this person.',
     'fam.removeConfirm': 'Remove relationship with __NAME__?',
 
     // Media
@@ -94,15 +94,17 @@ const T: Record<Lang, Record<string, string>> = {
     'register.title': 'Create account', 'register.tagline': 'Start your family tree today',
     'register.username': 'Username', 'register.displayName': 'Display name',
     'register.email': 'E-mail', 'register.password': 'Password',
-    'register.passwordHint': 'min. 5 characters',
+    'register.passwordHint': 'min. 8 characters',
     'register.submit': 'Create account', 'register.submitting': 'Creating account…',
     'register.error': 'Registration failed', 'register.haveAccount': 'Already registered?',
     'register.login': 'Sign in',
+    'register.pendingTitle': 'Account created ✓',
+    'register.pendingHint': 'An administrator needs to activate your account before you can sign in.',
 
     // Settings
     'settings.title': 'Settings', 'settings.loading': 'Loading profile…',
     'settings.password.title': 'Change password',
-    'settings.password.current': 'Current password', 'settings.password.new': 'New password (min. 5 chars)',
+    'settings.password.current': 'Current password', 'settings.password.new': 'New password (min. 8 chars)',
     'settings.password.save': 'Save password', 'settings.password.saving': 'Saving…',
     'settings.password.ok': 'Password changed.',
     'settings.lang.title': 'Language', 'settings.lang.hint': 'Choose your preferred display language.',
@@ -236,8 +238,8 @@ const T: Record<Lang, Record<string, string>> = {
     'fam.parents': 'Eltern', 'fam.children': 'Kinder',
     'fam.spouses': 'Ehepartner', 'fam.adoptive': 'Adoptiv',
     'fam.spouse.hint': '💡 Hochzeits-Ereignis wird automatisch erstellt.',
-    'fam.parent.hint': '💡 Wähle das Kind dieser Person.',
-    'fam.child.hint':  '💡 Wähle den Elternteil dieser Person.',
+    'fam.parent.hint': '💡 Wähle den Elternteil dieser Person.',
+    'fam.child.hint':  '💡 Wähle das Kind dieser Person.',
     'fam.removeConfirm': 'Beziehung mit __NAME__ entfernen?',
 
     // Media
@@ -264,15 +266,17 @@ const T: Record<Lang, Record<string, string>> = {
     'register.title': 'Konto erstellen', 'register.tagline': 'Starte deinen Stammbaum noch heute',
     'register.username': 'Benutzername', 'register.displayName': 'Anzeigename',
     'register.email': 'E-Mail', 'register.password': 'Passwort',
-    'register.passwordHint': 'mind. 5 Zeichen',
+    'register.passwordHint': 'mind. 8 Zeichen',
     'register.submit': 'Konto erstellen', 'register.submitting': 'Konto wird erstellt…',
     'register.error': 'Registrierung fehlgeschlagen', 'register.haveAccount': 'Bereits registriert?',
     'register.login': 'Anmelden',
+    'register.pendingTitle': 'Konto erstellt ✓',
+    'register.pendingHint': 'Ein Administrator muss dein Konto freischalten, bevor du dich anmelden kannst.',
 
     // Settings
     'settings.title': 'Einstellungen', 'settings.loading': 'Profil wird geladen…',
     'settings.password.title': 'Passwort ändern',
-    'settings.password.current': 'Aktuelles Passwort', 'settings.password.new': 'Neues Passwort (mind. 5 Zeichen)',
+    'settings.password.current': 'Aktuelles Passwort', 'settings.password.new': 'Neues Passwort (mind. 8 Zeichen)',
     'settings.password.save': 'Passwort speichern', 'settings.password.saving': 'Wird gespeichert…',
     'settings.password.ok': 'Passwort geändert.',
     'settings.lang.title': 'Sprache', 'settings.lang.hint': 'Wähle deine bevorzugte Anzeigesprache.',
