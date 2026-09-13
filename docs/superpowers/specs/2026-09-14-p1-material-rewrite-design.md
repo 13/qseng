@@ -1,0 +1,334 @@
+# P1: Frontend rewrite on Angular Material 21 — design
+
+Date: 2026-09-14
+Status: approved (brainstorm), awaiting implementation plan
+Roadmap: `2026-09-14-improvement-roadmap.md`
+
+## 1. Scope
+
+Big-bang rewrite of `frontend/src/app` on Angular Material 21 (Material 3) with a
+warm-heritage visual identity, responsive first-class, typed Reactive Forms, a
+generated OpenAPI client and RFC 7807 error handling. Feature parity with the
+current app is mandatory; no user-facing capability is dropped.
+
+Backend changes are limited to: OpenAPI spec export, ProblemDetails error
+contract, response-type annotations, test updates for the new error shape.
+
+Out of scope (P2/P3): undo, command palette, import wizard beyond a preview
+table, minimap, e2e suite, CI, rate limiting.
+
+### Current state (for reference)
+
+- Angular 21.2, standalone components, signals, custom `I18nService` (306 keys DE/EN).
+- One 1862-line global `styles.scss`, emoji as icons, seven native `confirm()` calls,
+  no toast, `[(ngModel)]` everywhere, hand-written `ApiClient` with 30 methods.
+- Tree view: Cytoscape + dagre, nodes 130×62 with 11px labels (unreadable at fit
+  zoom on the 42-person demo tree), sidebar with inline add-relationship form.
+- Toolbar renders on login page when a token exists.
+- Backend: ASP.NET Core 10, MediatR CQRS, FluentValidation, Swashbuckle 8 already
+  configured, errors returned as `{ error: string }`.
+
+## 2. Design system
+
+### Color
+
+Material 3 theme via `mat.theme()`; palettes generated with
+`ng generate @angular/material:theme-color` from seeds:
+
+| Role | Seed | Used for |
+|---|---|---|
+| Primary | `#2F5D50` forest green | buttons, links, active states, graph selection |
+| Tertiary | `#A6713C` ochre | timeline accents, badges, marriage edges |
+| Neutral | `#8A8177` warm stone | surfaces: `#FAF7F2` light, `#1C1A17` dark |
+| Error | M3 default | |
+
+Person sex hues (avatars, graph node stripe): male `#5B7A99`, female `#B5636F`,
+unknown neutral stone. Color is never the sole carrier: initials and symbol
+always present.
+
+### Typography
+
+Self-hosted, no external font CDN:
+
+- `@fontsource-variable/fraunces` — display/headline: person names, tree titles, page headings.
+- `@fontsource-variable/inter` — title/body/label.
+- Base body 15px. M3 type scale mapped accordingly.
+
+### Shape, density, elevation
+
+- Cards 12px radius, inputs 8px, chips full round.
+- Density 0 default; -2 in people list and tables.
+- Cards flat with hairline warm border. Elevation only on overlays, menus, bottom sheets.
+
+### Icons
+
+`mat-icon` with self-hosted Material Symbols Rounded (`material-symbols` npm
+package). Emoji removed everywhere, including flags in the language switcher
+(use "DE" / "EN").
+
+### Dark mode
+
+`mat.theme(theme-type: color-scheme)`. `ThemeService` sets `color-scheme` on
+`<html>`: `light | dark | auto` (auto = system). Persisted in `localStorage`.
+Cytoscape stylesheet reads CSS custom properties at build time and is rebuilt on
+theme change.
+
+### Motion
+
+M3 defaults; `prefers-reduced-motion` honored. No route transition animations.
+Skeleton placeholders for loading states, spinners only inside buttons.
+
+### Files
+
+```
+frontend/src/styles/
+  _theme.scss       mat.theme() + palettes
+  _tokens.scss      custom properties (sex hues, graph colors, spacing)
+  _typography.scss  font imports, M3 type overrides
+  _base.scss        reset, body, focus ring, skip link
+  _cytoscape.scss   canvas container only
+frontend/src/styles.scss   entry, @use of the above
+```
+
+All other styling is component-scoped. The legacy `styles.scss` is deleted.
+
+## 3. App shell, navigation, responsive
+
+### Shell
+
+- `mat-toolbar` 64px desktop / 56px handset: wordmark "Qseng" (Fraunces) with
+  small tree glyph, breadcrumb (`Trees › <tree> › <person>`, truncates on narrow),
+  spacer, theme toggle, user `mat-menu` (Settings, Users when admin, language
+  DE/EN radio, Logout).
+- `mat-progress-bar` under the toolbar while router navigates or HTTP requests are
+  pending (counter in an interceptor).
+- Auth pages (login, register) render without the toolbar. Layout decided by route
+  data `{ layout: 'auth' | 'app' }`, not by token presence.
+- Skip-to-content link; `h1` receives focus after navigation.
+
+### Breakpoints
+
+CDK `BreakpointObserver` wrapped in `LayoutService` exposing signals:
+`handset` (< 600), `tablet` (600–1023), `desktop` (≥ 1024).
+
+### Page container
+
+`max-width: 1200px`, centered, 24px gutter (16px handset). Tree view is full-bleed.
+
+### Tree view layout
+
+| Breakpoint | People list | Detail panel | Add relationship |
+|---|---|---|---|
+| Desktop | left `mat-sidenav`, side mode, 300px, collapsible | right panel 320px on selection, closable | dialog |
+| Tablet | sidenav over mode | overlay panel | dialog |
+| Handset | `MatBottomSheet` from FAB | bottom sheet on node tap, "Open profile" action | dialog |
+
+### Cross-cutting UI services (`core/ui/`)
+
+- `ToastService` wrapping `MatSnackBar`: `success | error | info (message, { action?, onAction? })`.
+- `ConfirmDialogService.confirm({ title, message, confirmLabel, destructive, requirePassword? })`
+  returning `Promise<boolean | string>` (string = entered password when required).
+  Replaces every native `confirm()`.
+- `ErrorInterceptor` (functional): see §6.
+
+## 4. Screens
+
+Feature parity checklist. Each item must be ticked before P1 is done.
+
+### Login / Register
+- [ ] Centered `mat-card`, outlined fields, password visibility toggle, inline validation.
+- [ ] Demo credentials as subtle chip row.
+- [ ] Register keeps pending-activation result state.
+- [ ] Language toggle visible on auth pages.
+
+### Trees
+- [ ] "New tree" opens a dialog (name, description).
+- [ ] Card: Fraunces title, description, people-count chip, created date; body click opens.
+- [ ] Kebab menu: Rename (dialog), Delete (confirm).
+- [ ] Empty state with "Create first tree" and "Import from text".
+
+### Tree view
+- [ ] Layout per §3; canvas per §5.
+- [ ] People list: `cdk-virtual-scroll`, filter with clear, sort by name / birth year,
+      rows with avatar or initials, name, lifespan; click selects, double-click opens.
+- [ ] Canvas controls as mini-FAB cluster: fit, zoom in/out, layout toggle, reset
+      custom layout (only when custom positions exist), export PNG.
+- [ ] Add relationship dialog: type select, two `mat-autocomplete` person pickers,
+      start date/place where applicable, adoptive hint; pre-fillable with a person.
+- [ ] Selection panel: avatar, name, maiden name, lifespan, birth/death place,
+      Parents / Spouses / Children chips (click selects that node), Open profile, Edit.
+- [ ] Search route `/trees/:id/search` redirects into tree view with `?q=`; the
+      filter also matches places and notes.
+
+### Person detail
+- [ ] Two columns desktop, stacked handset.
+- [ ] Left card: large avatar, name, maiden name, lifespan, birth/death + place,
+      cause of death, notes.
+- [ ] Family: Parents / Spouses (with year) / Children chips, remove via X + confirm,
+      Add relation opens the shared dialog.
+- [ ] Right `mat-tab-group`: Timeline | Photos & documents.
+- [ ] Timeline: grouped by decade, type chip, place, description, auto badge for
+      derived events, edit/delete icon buttons, Add event dialog (type, title, date,
+      place, description, spouse picker for marriage).
+- [ ] Media: thumbnail grid, drop zone + button upload (images, pdf, audio),
+      set-avatar / delete via hover menu, lightbox on click, avatar badge.
+
+### Person edit
+- [ ] Sectioned cards: Avatar, Basics (first, last, maiden, sex button-toggle),
+      Life (birth/death partial dates + places, cause of death), Notes.
+- [ ] Typed Reactive Form, required validation, server errors mapped to fields.
+- [ ] Dirty guard (`canDeactivate`) with confirm.
+- [ ] Sticky bottom Save/Cancel on handset; Delete in header kebab (existing persons).
+- [ ] Avatar upload on new person deferred until created (existing behaviour).
+
+### Partial date input
+- [ ] Rewritten as `ControlValueAccessor`: day, month, year, approximate toggle.
+
+### Import
+- [ ] Step 1 paste textarea with collapsible format guide.
+- [ ] Step 2 preview: `mat-table` of persons and relationships.
+- [ ] Commit → summary (persons, relationships created) + "Open tree".
+
+### Settings
+- [ ] Cards: Profile (display name, email read-only), Language, Appearance
+      (light/dark/auto), Password, Data (export JSON, delete all data), Danger zone
+      (delete account). Destructive actions via confirm dialog requiring password.
+
+### Admin users
+- [ ] `mat-table` with sort; status and role chips; row kebab: activate/deactivate,
+      grant/revoke admin, set password (dialog), delete (confirm); "me" row protected.
+- [ ] Registration enabled `mat-slide-toggle` in header.
+- [ ] Create user dialog.
+- [ ] Handset: card list instead of table.
+
+## 5. Graph
+
+### Kept
+
+Cytoscape + dagre, `tree-graph.model.ts` (pure, tested), couple nodes, saved
+custom positions, lineage emphasis on select, keyboard navigation, PNG export,
+auto/tree layout toggle.
+
+### Node design
+
+- Size 180×72. Rendered as an SVG data-URI `background-image` generated per person
+  by a pure `renderNodeSvg(person, theme)` function (unit tested): warm surface,
+  hairline sex-hued left stripe, 36px avatar circle (photo or initials), name in
+  Fraunces 14px, lifespan in Inter 11px muted.
+- Regenerated when the person, avatar or theme changes.
+- Below zoom 0.45 a compact variant (avatar + surname) is used.
+- Selected: primary 2px border + soft glow. Lineage: full opacity, others 0.15.
+
+### Edges
+
+Marriage: tertiary ochre 1.5px, couple node 8px ochre dot. Descent: neutral
+outline 1.5px, rounded taxi routing. Adoptive: dashed. Colors read from CSS
+custom properties; stylesheet rebuilt on theme change.
+
+### Zoom and input
+
+Fit with 40px padding on load; `minZoom` 0.2, `maxZoom` 2.5; wheel and pinch
+zoom; touch pan.
+
+### Interactions
+
+| Input | Result |
+|---|---|
+| Tap | select → detail panel / bottom sheet |
+| Double-tap | open profile |
+| Right-click / long-press | context `mat-menu`: Open, Edit, Add parent, Add child, Add spouse (dialog pre-filled), Focus lineage, Remove |
+| Drag | saves custom layout, shows Reset |
+| Arrows | move selection between neighbours |
+| Enter / Esc | open / clear selection |
+| `+` `-` `0` | zoom in / out / fit |
+
+### Overlays
+
+Loading: skeleton of faint node placeholders. Empty: illustration + "Add first
+person" + "Import". Error: message + Retry.
+
+## 6. Data layer
+
+### Backend
+
+- Export `contracts/openapi.json` via `dotnet swagger tofile` (build script), committed.
+- `AddProblemDetails()`; `ResultExtensions` maps `Result` failures to `ProblemDetails`
+  (`status`, `title`, `detail`); FluentValidation failures become
+  `ValidationProblemDetails` with `errors: { field: string[] }`.
+- Controllers annotated with `ProducesResponseType` for all outcomes.
+- Existing tests updated for the new error shape; one test per controller for
+  validation → 400 ProblemDetails.
+
+### Generated client
+
+- `ng-openapi-gen` (pure Node, no JVM), output `frontend/src/app/core/api/generated/`
+  (gitignored), run by `npm run gen:api` and as `prebuild`/`pretest` hook.
+- Hand-written `ApiClient` deleted. Features inject generated services
+  (`TreesService`, `PersonsService`, `RelationshipsService`, `TimelineService`,
+  `MediaService`, `AuthService`, `UsersService`, `AdminService`, `ImportService`).
+- Domain types come from generated models. `core/models/` holds view helpers
+  only (`fullName`, `lifespan`, `initials`), unit tested.
+
+### State
+
+Signals only, no NgRx. `resource()` / `toSignal` for reads. Route-scoped stores:
+
+- `TreeStore` (tree-view route): persons, relationships, selected id, filter,
+  sort; mutations update locally.
+- `PersonStore` (person-detail route): person, relations, timeline, media,
+  avatar url; shared by tabs and dialogs.
+
+### Forms
+
+- `FormBuilder.nonNullable` typed forms everywhere; no `ngModel`.
+- `FormErrorsPipe` maps validation errors to i18n keys.
+- `setServerErrors(form, problem)` applies `ValidationProblemDetails` to controls.
+- Submit disabled while pending; progress bar in dialogs.
+
+### i18n
+
+Custom `I18nService` and `translate` pipe retained (runtime switching required).
+Dictionaries move to `assets/i18n/de.json` and `en.json`, loaded at bootstrap;
+a `TranslationKey` union type is generated from the JSON so keys are checked at
+compile time.
+
+### Error handling (`ErrorInterceptor`)
+
+| Status | Action |
+|---|---|
+| 401 | attempt refresh once; on failure logout and redirect to login with `returnUrl` |
+| 403 | toast "no access" |
+| 404 (route resource) | not-found view |
+| 400 / 422 validation | rethrown for form mapping |
+| 5xx / network | toast with Retry action |
+
+## 7. Testing and done criteria
+
+### Unit (Vitest)
+
+Keep `tree-graph.model.spec.ts`, `auth.service.spec.ts`. Add specs for
+`ToastService`, `ConfirmDialogService`, `ErrorInterceptor`, `setServerErrors`,
+model helpers, `renderNodeSvg`, `PartialDateInput` CVA, `TreeStore`, and a
+component smoke test per screen (renders with mocked services, submits, shows
+validation). Target roughly 60% lines on `core/` and `shared/`.
+
+### Backend
+
+`dotnet test backend/Qseng.slnx` green with updated error-shape assertions.
+
+### Visual verification
+
+Before claiming done: every screen at 1400px and 400px, light and dark, via
+Playwright, screenshots saved to `docs/superpowers/specs/assets/p1/`.
+
+### Done criteria
+
+- `ng build --configuration production` clean; initial bundle ≤ 600 kB gzipped
+  (Cytoscape stays a lazy chunk).
+- `npm test --prefix frontend` and `dotnet test backend/Qseng.slnx` green.
+- `angular-eslint` added; `ng lint` clean.
+- Grep gates: no emoji in `src/app`, no `confirm(`/`alert(`, no `ngModel`,
+  no legacy global class names.
+- All checklist items in §4 ticked.
+- Lighthouse accessibility ≥ 95 on trees, tree view, person detail.
+- Demo tree readable at fit zoom on 1400px and 400px widths.
