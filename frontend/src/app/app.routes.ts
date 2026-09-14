@@ -16,8 +16,10 @@ export const routes: Routes = [
     loadComponent: () => import('./features/persons/person-edit.component').then(m => m.PersonEditComponent) },
   { path: 'trees/:treeId/import', canActivate: [authGuard],
     loadComponent: () => import('./features/import/import-text.component').then(m => m.ImportTextComponent) },
-  { path: 'trees/:treeId/search', canActivate: [authGuard],
-    loadComponent: () => import('./features/trees/tree-search.component').then(m => m.TreeSearchComponent) },
+  { path: 'trees/:treeId/search', redirectTo: ({ params, queryParams }) => {
+      const q = queryParams['q'];
+      return `/trees/${params['treeId']}${q ? `?q=${encodeURIComponent(q)}` : ''}`;
+    } },
   { path: 'persons/:id', canActivate: [authGuard], providers: [PersonStore],
     loadComponent: () => import('./features/persons/person-detail.component').then(m => m.PersonDetailComponent) },
   { path: 'persons/:id/edit', canActivate: [authGuard], canDeactivate: [unsavedChangesGuard], providers: [PersonStore],

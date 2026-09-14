@@ -1,465 +1,310 @@
 import {
-  ChangeDetectionStrategy, Component, DestroyRef, ElementRef, OnInit,
-  computed, inject, signal, viewChild
+  Component, ElementRef, Injector, OnInit,
+  afterNextRender, computed, effect, inject, input, signal, viewChild
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { FormsModule } from '@angular/forms';
-import { NgClass } from '@angular/common';
-import { Subject, catchError, debounceTime, forkJoin, of } from 'rxjs';
-import { ApiClient, Person, Sex } from '../../../core/api/api-client.service';
-import { TreeGraphService } from './tree-graph.service';
-import { UI_REL_TYPES, UiRelType, toApiRelationship } from './tree-graph.model';
+import { Router, RouterLink } from '@angular/router';
+import { Subject, debounceTime, firstValueFrom } from 'rxjs';
+import { MatSidenavModule } from '@angular/material/sidenav';
+import { MatButtonModule } from '@angular/material/button';
+import { MatIconModule } from '@angular/material/icon';
+import { MatMenuModule, MatMenuTrigger } from '@angular/material/menu';
+import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatProgressBarModule } from '@angular/material/progress-bar';
+import { MatDialog } from '@angular/material/dialog';
+import { MatBottomSheet, MatBottomSheetRef } from '@angular/material/bottom-sheet';
+import { PersonDto, PersonsApi, RelationshipDto } from '../../../core/api/generated';
 import { I18nService } from '../../../core/i18n/i18n.service';
 import { TranslatePipe } from '../../../core/i18n/translate.pipe';
-import { PartialDatePipe } from '../../../shared/pipes/partial-date.pipe';
+import { BreadcrumbService } from '../../../core/ui/breadcrumb.service';
+import { ConfirmDialogService } from '../../../core/ui/confirm-dialog.service';
+import { ToastService } from '../../../core/ui/toast.service';
+import { LayoutService } from '../../../core/ui/layout.service';
+import { fullName } from '../../../core/models/person-helpers';
+import { RelationshipDialogComponent, RelationshipDialogData } from '../../persons/relationship-dialog.component';
+import { TreeStore } from './tree.store';
+import { TreeGraphService } from './tree-graph.service';
+import { UiRelType } from './tree-graph.model';
+import { TreePeopleListComponent } from './tree-people-list.component';
+import { TreeSelectionPanelComponent } from './tree-selection-panel.component';
 
-function initials(p: Person): string {
-  return ((p.firstName?.[0] ?? '') + (p.lastName?.[0] ?? '')).toUpperCase();
+interface CtxState { id: string; x: number; y: number; }
+
+/** Opened in a MatBottomSheet on handset; dismisses itself on pick/open. */
+@Component({
+  selector: 'qs-tree-people-sheet',
+  imports: [TreePeopleListComponent],
+  template: `<qs-tree-people-list (picked)="ref.dismiss({ id: $event, open: false })" (open)="ref.dismiss({ id: $event, open: true })" />`
+})
+class TreePeopleSheetComponent {
+  readonly ref = inject(MatBottomSheetRef<TreePeopleSheetComponent, { id: string; open: boolean }>);
 }
-function sexCls(sex: Sex): string { return sex.toLowerCase(); }
+
+/** Opened in a MatBottomSheet on handset once a node is selected. */
+@Component({
+  selector: 'qs-tree-selection-sheet',
+  imports: [TreeSelectionPanelComponent],
+  template: `
+    @if (store.selectedPerson(); as p) {
+      <qs-tree-selection-panel [person]="p"
+        (closed)="ref.dismiss({ action: 'closed' })"
+        (navigate)="ref.dismiss({ action: 'navigate', id: $event })"
+        (addRelation)="ref.dismiss({ action: 'addRelation', person: $event })" />
+    }
+  `
+})
+class TreeSelectionSheetComponent {
+  readonly store = inject(TreeStore);
+  readonly ref = inject(MatBottomSheetRef<TreeSelectionSheetComponent, { action: 'closed' } | { action: 'navigate'; id: string } | { action: 'addRelation'; person: PersonDto }>);
+}
 
 @Component({
   selector: 'qs-tree-view',
-  standalone: true,
-  changeDetection: ChangeDetectionStrategy.OnPush,
   providers: [TreeGraphService],
-  imports: [RouterLink, FormsModule, NgClass, TranslatePipe, PartialDatePipe],
+  imports: [RouterLink, MatSidenavModule, MatButtonModule, MatIconModule, MatMenuModule, MatTooltipModule, MatProgressBarModule,
+            TranslatePipe, TreePeopleListComponent, TreeSelectionPanelComponent],
   template: `
-    <header class="page-header">
-      <a class="back-link" routerLink="/trees">{{ 'tree.back' | translate }}</a>
-      <h1>{{ treeName() }}</h1>
-      <div class="header-actions">
-        <button class="btn ghost sm" [routerLink]="['/trees', treeId, 'search']">{{ 'tree.search' | translate }}</button>
-        <button class="btn ghost sm" [routerLink]="['/trees', treeId, 'import']">{{ 'tree.import' | translate }}</button>
-        <button class="btn primary sm" [routerLink]="['/trees', treeId, 'persons', 'new']">{{ 'tree.addPerson' | translate }}</button>
-      </div>
-    </header>
+    <div class="qs-tv">
+      <header class="qs-tv__header">
+        @if (!layout.handset()) {
+          <button matIconButton (click)="sidenavOpen.set(!sidenavOpen())" [attr.aria-label]="'tree.showPeople' | translate"><mat-icon>{{ sidenavOpen() ? 'left_panel_close' : 'left_panel_open' }}</mat-icon></button>
+        }
+        <h1 tabindex="-1" class="qs-display qs-tv__title">{{ store.tree()?.name ?? '…' }}</h1>
+        <span class="qs-tv__spacer"></span>
+        <a matButton [routerLink]="['/trees', treeId(), 'import']"><mat-icon>upload_file</mat-icon><span class="qs-tv__label">{{ 'tree.import' | translate }}</span></a>
+        <a matButton="filled" [routerLink]="['/trees', treeId(), 'persons', 'new']"><mat-icon>person_add</mat-icon><span class="qs-tv__label">{{ 'tree.addPerson' | translate }}</span></a>
+      </header>
 
-    <div class="tree-view-layout">
-      <!-- Sidebar -->
-      <div class="person-sidebar">
-        <div class="person-sidebar__search">
-          <input type="search" [ngModel]="searchTerm()" (ngModelChange)="onSearch($event)"
-                 [placeholder]="'tree.filter' | translate"
-                 [attr.aria-label]="'tree.filter' | translate">
-        </div>
+      <mat-sidenav-container class="qs-tv__body" [hasBackdrop]="layout.tablet()">
+        @if (!layout.handset()) {
+          <mat-sidenav [mode]="layout.tablet() ? 'over' : 'side'" [opened]="sidenavOpen()" (closedStart)="sidenavOpen.set(false)" class="qs-tv__people">
+            <qs-tree-people-list (open)="open($event)" (picked)="onSelected($event)" />
+          </mat-sidenav>
+        }
+        <mat-sidenav-content class="qs-tv__content">
+          <div class="qs-tv__canvas-wrap">
+            <div #cyHost class="qs-tv__canvas" tabindex="0" role="application" [attr.aria-label]="'tree.graphLabel' | translate" (keydown)="onKey($event)"></div>
 
-        <ul class="person-sidebar__list" role="listbox" [attr.aria-label]="'tree.peopleList' | translate">
-          @for (p of filteredPersons(); track p.id) {
-            <li>
-              <button type="button" class="person-row"
-                      role="option"
-                      [attr.aria-selected]="graph.selectedId() === p.id"
-                      [class.active]="graph.selectedId() === p.id"
-                      (click)="select(p.id)"
-                      (dblclick)="open(p.id)">
-                @if (p.avatarUrl) {
-                  <img class="avatar-photo sm" [src]="p.avatarUrl" alt="" loading="lazy">
-                } @else {
-                  <span class="avatar sm" [ngClass]="sexCls(p.sex)" aria-hidden="true">{{ initials(p) }}</span>
-                }
-                <span class="person-row__name">{{ p.lastName }}, {{ p.firstName }}</span>
-                @if (p.birth?.year) { <span class="person-row__year">{{ p.birth!.year }}</span> }
-              </button>
-            </li>
-          } @empty {
-            <li class="person-sidebar__empty">{{ 'tree.noResults' | translate }}</li>
-          }
-        </ul>
-
-        <div class="person-sidebar__add-btn">
-          <button class="btn ghost sm" style="width:100%;justify-content:center"
-                  [routerLink]="['/trees', treeId, 'persons', 'new']">
-            {{ 'tree.addPerson' | translate }}
-          </button>
-        </div>
-
-        <!-- Add Relationship -->
-        @if (persons().length >= 2) {
-          <div class="rel-panel">
-            <p class="rel-panel__title">{{ 'tree.addRel' | translate }}</p>
-
-            <label class="field-lbl" style="font-size:.72rem;margin-bottom:.4rem">
-              {{ 'tree.relType' | translate }}
-              <select [ngModel]="relType()" (ngModelChange)="relType.set($event)"
-                      style="font-size:.82rem;padding:.3rem .45rem">
-                @for (t of uiRelTypes; track t) {
-                  <option [value]="t">{{ i18n.dynamic('rel.' + t.toLowerCase()) }}</option>
-                }
-              </select>
-            </label>
-
-            <div class="rel-search-field">
-              <label class="field-lbl" style="font-size:.72rem" for="rel-from">{{ 'tree.relFrom' | translate }}</label>
-              <div class="rel-search-input-wrap">
-                <input id="rel-from" [ngModel]="fromSearch()" (ngModelChange)="onFromSearch($event)"
-                       [placeholder]="'tree.relFromPlaceholder' | translate"
-                       autocomplete="off" style="font-size:.82rem;padding:.3rem .45rem">
-                @if (fromFiltered().length) {
-                  <div class="rel-suggestions">
-                    @for (p of fromFiltered(); track p.id) {
-                      <button type="button" class="rel-suggestions__item" (click)="pickFrom(p)">
-                        {{ p.firstName }} {{ p.lastName }}
-                        @if (p.birth?.year) { <span class="rel-suggestions__year">{{ p.birth!.year }}</span> }
-                      </button>
-                    }
-                  </div>
-                }
+            @if (store.error()) {
+              <div class="qs-tv__overlay qs-empty" role="alert">
+                <mat-icon class="qs-empty__icon" aria-hidden="true">error</mat-icon>
+                <p>{{ store.error() }}</p>
+                <button matButton="outlined" (click)="store.reload()">{{ 'retry' | translate }}</button>
               </div>
-            </div>
-
-            <div class="rel-search-field">
-              <label class="field-lbl" style="font-size:.72rem" for="rel-to">{{ 'tree.relTo' | translate }}</label>
-              <div class="rel-search-input-wrap">
-                <input id="rel-to" [ngModel]="toSearch()" (ngModelChange)="onToSearch($event)"
-                       [placeholder]="'tree.relToPlaceholder' | translate"
-                       autocomplete="off" style="font-size:.82rem;padding:.3rem .45rem">
-                @if (toFiltered().length) {
-                  <div class="rel-suggestions">
-                    @for (p of toFiltered(); track p.id) {
-                      <button type="button" class="rel-suggestions__item" (click)="pickTo(p)">
-                        {{ p.firstName }} {{ p.lastName }}
-                        @if (p.birth?.year) { <span class="rel-suggestions__year">{{ p.birth!.year }}</span> }
-                      </button>
-                    }
-                  </div>
-                }
+            } @else if (store.loading() || graph.loading()) {
+              <div class="qs-tv__overlay" role="status" [attr.aria-label]="'loading' | translate">
+                <div class="qs-tv__skeleton">
+                  @for (row of skeletonRows; track row) { <div class="qs-tv__skeleton-row"></div> }
+                </div>
               </div>
-            </div>
-
-            <div class="rel-panel-row">
-              <button class="btn primary sm" [disabled]="!canAddRel() || savingRel()" (click)="addRelationship()">
-                {{ savingRel() ? ('saving' | translate) : ('tree.relAdd' | translate) }}
-              </button>
-            </div>
-            @if (relError()) {
-              <p class="error-msg" role="alert" style="margin-top:.35rem;font-size:.78rem">{{ relError() }}</p>
+            } @else if (!store.persons().length) {
+              <div class="qs-tv__overlay qs-empty">
+                <mat-icon class="qs-empty__icon" aria-hidden="true">park</mat-icon>
+                <p>{{ 'tree.emptyTitle' | translate }}</p>
+                <div class="qs-empty__actions">
+                  <a matButton="filled" [routerLink]="['/trees', treeId(), 'persons', 'new']"><mat-icon>person_add</mat-icon>{{ 'tree.addPerson' | translate }}</a>
+                  <a matButton [routerLink]="['/trees', treeId(), 'import']"><mat-icon>upload_file</mat-icon>{{ 'tree.import' | translate }}</a>
+                </div>
+              </div>
             }
-          </div>
-        }
-      </div>
 
-      <!-- Graph canvas -->
-      <div class="cy-wrap">
-        @if (loadError()) {
-          <div class="cy-overlay">
-            <div class="empty-state">
-              <span class="empty-icon">⚠️</span>
-              <p>{{ loadError() }}</p>
-              <button class="btn sm" (click)="load()">{{ 'retry' | translate }}</button>
+            <div class="qs-tv__fabs">
+              <button matMiniFab (click)="graph.fit()" [matTooltip]="'tree.fit' | translate" [attr.aria-label]="'tree.fit' | translate"><mat-icon>fit_screen</mat-icon></button>
+              <button matMiniFab (click)="graph.zoomIn()" [matTooltip]="'tree.zoomIn' | translate" [attr.aria-label]="'tree.zoomIn' | translate"><mat-icon>add</mat-icon></button>
+              <button matMiniFab (click)="graph.zoomOut()" [matTooltip]="'tree.zoomOut' | translate" [attr.aria-label]="'tree.zoomOut' | translate"><mat-icon>remove</mat-icon></button>
+              <button matMiniFab (click)="graph.toggleLayout()" [matTooltip]="'tree.layoutToggle' | translate" [attr.aria-label]="'tree.layoutToggle' | translate">
+                <mat-icon>{{ graph.layoutMode() === 'tree' ? 'account_tree' : 'auto_awesome_motion' }}</mat-icon>
+              </button>
+              @if (graph.hasCustomLayout()) {
+                <button matMiniFab (click)="graph.resetLayout()" [matTooltip]="'tree.resetLayout' | translate" [attr.aria-label]="'tree.resetLayout' | translate"><mat-icon>restart_alt</mat-icon></button>
+              }
+              <button matMiniFab (click)="exportPng()" [matTooltip]="'tree.export' | translate" [attr.aria-label]="'tree.export' | translate"><mat-icon>download</mat-icon></button>
             </div>
-          </div>
-        } @else if (loading() || graph.loading()) {
-          <div class="cy-overlay">
-            <div class="graph-skeleton" role="status" [attr.aria-label]="'loading' | translate">
-              <div class="graph-spinner"></div>
-              <p class="muted">{{ 'loading' | translate }}</p>
-            </div>
-          </div>
-        } @else if (persons().length === 0) {
-          <div class="cy-overlay">
-            <div class="empty-state">
-              <span class="empty-icon">🌱</span>
-              <p>{{ 'tree.emptyTitle' | translate }}</p>
-              <div style="display:flex;gap:.5rem;margin-top:.75rem">
-                <button class="btn primary sm" [routerLink]="['/trees', treeId, 'persons', 'new']">
-                  {{ 'tree.addPerson' | translate }}
-                </button>
-                <button class="btn sm" [routerLink]="['/trees', treeId, 'import']">
-                  {{ 'tree.import' | translate }}
-                </button>
-              </div>
-            </div>
-          </div>
-        }
 
-        <div class="cy-controls">
-          <button (click)="graph.fit()" [title]="'tree.fit' | translate" [attr.aria-label]="'tree.fit' | translate">⊡</button>
-          <button (click)="graph.zoomIn()" [title]="'tree.zoomIn' | translate" [attr.aria-label]="'tree.zoomIn' | translate">+</button>
-          <button (click)="graph.zoomOut()" [title]="'tree.zoomOut' | translate" [attr.aria-label]="'tree.zoomOut' | translate">−</button>
-          <button (click)="graph.toggleLayout()" class="cy-controls__wide"
-                  [title]="'tree.layoutToggle' | translate">
-            {{ graph.layoutMode() === 'auto' ? ('tree.layoutTree' | translate) : ('tree.layoutAuto' | translate) }}
-          </button>
-          @if (graph.hasCustomLayout()) {
-            <button (click)="graph.resetLayout()" [title]="'tree.resetLayout' | translate"
-                    [attr.aria-label]="'tree.resetLayout' | translate">↺</button>
+            <div class="qs-tv__ctx" [style.left.px]="ctx()?.x ?? 0" [style.top.px]="ctx()?.y ?? 0" [matMenuTriggerFor]="ctxMenu"></div>
+            <mat-menu #ctxMenu="matMenu">
+              @if (ctxPerson(); as p) {
+                <button mat-menu-item (click)="open(p.id!)"><mat-icon>open_in_new</mat-icon>{{ 'tree.openProfile' | translate }}</button>
+                <a mat-menu-item [routerLink]="['/persons', p.id, 'edit']"><mat-icon>edit</mat-icon>{{ 'tree.edit' | translate }}</a>
+                <button mat-menu-item (click)="addRelationFor(p, 'Parent')"><mat-icon>arrow_upward</mat-icon>{{ 'tree.ctx.addParent' | translate }}</button>
+                <button mat-menu-item (click)="addRelationFor(p, 'Child')"><mat-icon>arrow_downward</mat-icon>{{ 'tree.ctx.addChild' | translate }}</button>
+                <button mat-menu-item (click)="addRelationFor(p, 'Spouse')"><mat-icon>favorite</mat-icon>{{ 'tree.ctx.addSpouse' | translate }}</button>
+                <button mat-menu-item (click)="store.select(p.id!)"><mat-icon>center_focus_strong</mat-icon>{{ 'tree.ctx.focus' | translate }}</button>
+                <button mat-menu-item (click)="deletePerson(p)"><mat-icon>delete</mat-icon>{{ 'tree.ctx.remove' | translate }}</button>
+              }
+            </mat-menu>
+
+            @if (layout.handset()) { <button matFab class="qs-tv__fab" (click)="openPeopleSheet()" [attr.aria-label]="'tree.showPeople' | translate"><mat-icon>group</mat-icon></button> }
+          </div>
+          @if (!layout.handset() && store.selectedPerson(); as p) {
+            <aside class="qs-tv__panel"><qs-tree-selection-panel [person]="p" (closed)="onSelected(null)" (navigate)="onSelected($event)" (addRelation)="addRelationFor($event)" /></aside>
           }
-          <button (click)="exportPng()" [title]="'tree.export' | translate" [attr.aria-label]="'tree.export' | translate">⭳</button>
-        </div>
-
-        <div class="cy-host" #cyHost
-             tabindex="0"
-             role="application"
-             [attr.aria-label]="'tree.graphLabel' | translate"
-             (keydown)="onGraphKey($event)"></div>
-
-        <!-- Selection preview: inspect without leaving the graph -->
-        @if (selectedPerson(); as p) {
-          <div class="cy-preview" role="dialog" [attr.aria-label]="p.firstName + ' ' + p.lastName">
-            @if (p.avatarUrl) {
-              <img class="avatar-photo lg" [src]="p.avatarUrl" alt="">
-            } @else {
-              <div class="avatar lg" [ngClass]="sexCls(p.sex)" aria-hidden="true">{{ initials(p) }}</div>
-            }
-            <div class="cy-preview__info">
-              <h3>{{ p.firstName }} {{ p.lastName }}</h3>
-              @if (p.maidenName) { <p class="muted">{{ 'pe.maidenName' | translate }}: {{ p.maidenName }}</p> }
-              <p class="muted">
-                @if (p.birth) { * {{ p.birth | partialDate }} }
-                @if (p.birth && p.death) { · }
-                @if (p.death) { † {{ p.death | partialDate }} }
-              </p>
-              <div class="cy-preview__actions">
-                <a class="btn primary sm" [routerLink]="['/persons', p.id]">{{ 'tree.openProfile' | translate }}</a>
-                <button class="btn sm ghost" (click)="graph.select(null)">{{ 'tree.clearSelection' | translate }}</button>
-              </div>
-            </div>
-          </div>
-        }
-      </div>
+        </mat-sidenav-content>
+      </mat-sidenav-container>
     </div>
   `,
   styles: [`
-    .cy-wrap { position: relative; overflow: hidden; }
-    .cy-host { width: 100%; height: 100%; outline: none; }
-    .cy-host:focus-visible { box-shadow: inset 0 0 0 2px var(--c-accent); }
-
-    .cy-overlay {
-      position: absolute; inset: 0; z-index: 20;
-      display: flex; align-items: center; justify-content: center;
-      background: var(--c-bg);
-    }
-
-    .graph-skeleton { display: flex; flex-direction: column; align-items: center; gap: .75rem; }
-    .graph-spinner {
-      width: 34px; height: 34px; border-radius: 50%;
-      border: 3px solid var(--c-border);
-      border-top-color: var(--c-accent);
-      animation: spin .7s linear infinite;
-    }
-
-    .cy-controls__wide { width: auto !important; padding: .15rem .4rem !important; font-size: .72rem !important; }
-
-    .cy-preview {
-      position: absolute; left: .875rem; bottom: .875rem; z-index: 15;
-      display: flex; gap: .875rem; align-items: center;
-      max-width: 340px; padding: .875rem 1rem;
-      background: var(--c-bg);
-      border: 1px solid var(--c-border);
-      border-radius: var(--r-lg);
-      box-shadow: 0 8px 32px rgba(0,0,0,.14);
-      animation: preview-in 160ms ease-out;
-    }
-    .cy-preview__info { min-width: 0; }
-    .cy-preview__info h3 { font-size: .95rem; margin: 0 0 .1rem; }
-    .cy-preview__info p { margin: 0; font-size: .78rem; }
-    .cy-preview__actions { display: flex; gap: .4rem; margin-top: .6rem; }
-
-    @keyframes preview-in { from { opacity: 0; transform: translateY(6px); } }
-
-    .person-sidebar__list { list-style: none; margin: 0; }
-    .person-sidebar__empty { padding: .75rem; font-size: .82rem; color: var(--c-text-3); }
-    .person-row { width: 100%; border: none; background: transparent; text-align: left; font: inherit; }
-
-    .rel-search-field { margin-bottom: .4rem; }
-    .rel-search-input-wrap { position: relative; }
-    .rel-suggestions {
-      position: absolute; top: 100%; left: 0; right: 0; z-index: 50;
-      background: var(--c-bg);
-      border: 1px solid var(--c-border);
-      border-radius: var(--r-md);
-      box-shadow: 0 4px 16px rgba(0,0,0,.1);
-      max-height: 160px; overflow-y: auto;
-    }
-    .rel-suggestions__item {
-      display: flex; align-items: center; gap: .4rem; width: 100%;
-      padding: .4rem .6rem; font-size: .82rem; text-align: left;
-      background: transparent; border: none; border-radius: 0; font: inherit;
-      cursor: pointer;
-      &:hover, &:focus-visible { background: var(--c-accent-sub); }
-    }
-    .rel-suggestions__year { font-size: .7rem; color: var(--c-text-4); margin-left: auto; }
-
-    @media (prefers-reduced-motion: reduce) {
-      .graph-spinner { animation: none; }
-      .cy-preview { animation: none; }
-    }
+    .qs-tv { height: calc(100dvh - var(--qs-toolbar-h)); display: flex; flex-direction: column; }
+    .qs-tv__header { display: flex; align-items: center; gap: 8px; padding: 8px 16px; border-bottom: 1px solid var(--mat-sys-outline-variant); }
+    .qs-tv__title { margin: 0; }
+    .qs-tv__spacer { flex: 1; }
+    .qs-tv__body { flex: 1; min-height: 0; }
+    .qs-tv__people { width: 300px; }
+    .qs-tv__content { display: flex; }
+    .qs-tv__canvas-wrap { position: relative; flex: 1; min-width: 0; overflow: hidden; }
+    .qs-tv__canvas { width: 100%; height: 100%; outline: none; }
+    .qs-tv__canvas:focus-visible { box-shadow: inset 0 0 0 2px var(--mat-sys-primary); }
+    .qs-tv__overlay { position: absolute; inset: 0; z-index: 5; display: flex; align-items: center; justify-content: center; background: var(--mat-sys-surface); }
+    .qs-tv__skeleton { display: grid; grid-template-columns: repeat(3, 140px); gap: 16px; }
+    .qs-tv__skeleton-row { width: 140px; height: 64px; border-radius: var(--mat-sys-corner-medium); background: var(--mat-sys-surface-container-highest); opacity: .5; }
+    .qs-tv__fabs { position: absolute; top: 16px; right: 16px; z-index: 10; display: flex; flex-direction: column; gap: 8px; }
+    .qs-tv__ctx { position: absolute; width: 0; height: 0; }
+    .qs-tv__fab { position: absolute; right: 16px; bottom: 16px; z-index: 10; }
+    .qs-tv__panel { width: 320px; border-left: 1px solid var(--mat-sys-outline-variant); overflow: auto; }
+    @media (max-width: 599.98px) { .qs-tv__label { display: none; } }
   `]
 })
 export class TreeViewComponent implements OnInit {
-  private readonly cyHost = viewChild.required<ElementRef<HTMLElement>>('cyHost');
+  private readonly cyHost = viewChild<ElementRef<HTMLElement>>('cyHost');
+  private readonly ctxTrigger = viewChild(MatMenuTrigger);
 
-  private readonly route = inject(ActivatedRoute);
-  private readonly router = inject(Router);
-  private readonly api = inject(ApiClient);
-  private readonly destroyRef = inject(DestroyRef);
+  readonly treeId = input.required<string>();
+  readonly q = input<string>();
+
+  readonly store = inject(TreeStore);
   readonly graph = inject(TreeGraphService);
-  readonly i18n = inject(I18nService);
+  readonly layout = inject(LayoutService);
+  private readonly router = inject(Router);
+  private readonly dialog = inject(MatDialog);
+  private readonly sheet = inject(MatBottomSheet);
+  private readonly personsApi = inject(PersonsApi);
+  private readonly confirmDialog = inject(ConfirmDialogService);
+  private readonly toast = inject(ToastService);
+  private readonly crumbs = inject(BreadcrumbService);
+  private readonly i18n = inject(I18nService);
+  private readonly injector = inject(Injector);
 
-  readonly treeId = this.route.snapshot.paramMap.get('treeId')!;
+  readonly sidenavOpen = signal(true);
+  readonly skeletonRows = [0, 1, 2, 3, 4, 5];
 
-  readonly treeName = signal('');
-  readonly persons = signal<Person[]>([]);
-  readonly loading = signal(true);
-  readonly loadError = signal('');
-  readonly searchTerm = signal('');
+  readonly ctx = signal<CtxState | null>(null);
+  readonly ctxPerson = computed(() => { const c = this.ctx(); return c ? this.store.personById(c.id) ?? null : null; });
 
-  readonly relType = signal<UiRelType>('Parent');
-  readonly fromSearch = signal('');
-  readonly toSearch = signal('');
-  readonly selectedFrom = signal<Person | null>(null);
-  readonly selectedTo = signal<Person | null>(null);
-  readonly relError = signal('');
-  readonly savingRel = signal(false);
-
-  readonly uiRelTypes = UI_REL_TYPES;
-  readonly initials = initials;
-  readonly sexCls = sexCls;
-
-  private readonly searchInput$ = new Subject<string>();
-
-  readonly filteredPersons = computed(() => {
-    const t = this.searchTerm().trim().toLowerCase();
-    if (!t) return this.persons();
-    return this.persons().filter(p =>
-      p.firstName.toLowerCase().includes(t) ||
-      p.lastName.toLowerCase().includes(t) ||
-      (p.maidenName?.toLowerCase().includes(t) ?? false)
-    );
-  });
-
-  readonly selectedPerson = computed(() => {
-    const id = this.graph.selectedId();
-    return id ? this.persons().find(p => p.id === id) ?? null : null;
-  });
-
-  readonly canAddRel = computed(() => {
-    const from = this.selectedFrom();
-    const to = this.selectedTo();
-    return !!from && !!to && from.id !== to.id;
-  });
-
-  readonly fromFiltered = computed(() => this.matchPersons(this.fromSearch(), this.selectedFrom()));
-  readonly toFiltered = computed(() => this.matchPersons(this.toSearch(), this.selectedTo()));
+  private readonly filter$ = new Subject<string>();
 
   constructor() {
-    // Sidebar filters instantly; graph dimming is debounced so large trees
-    // don't restyle on every keystroke.
-    this.searchInput$
-      .pipe(debounceTime(150), takeUntilDestroyed())
-      .subscribe(term => this.graph.searchTerm.set(term));
-  }
-
-  ngOnInit() {
-    this.api.getTrees().subscribe(trees => {
-      const t = trees.find(x => x.id === this.treeId);
-      if (t) this.treeName.set(t.name);
+    effect(() => {
+      const persons = this.store.persons(); const rels = this.store.relationships();
+      const host = this.cyHost()?.nativeElement;
+      if (!host || !persons.length) { this.graph.loading.set(false); return; }
+      void this.graph.build(host, persons, rels, {
+        onSelect: id => this.onSelected(id), onOpen: id => this.open(id), onContext: (id, x, y) => this.onContext(id, x, y)
+      }).then(() => { const sel = this.store.selectedId(); if (sel) this.graph.select(sel); });
     });
-    this.load();
+    effect(() => { const id = this.graph.selectedId(); if (id !== this.store.selectedId()) this.store.select(id); });
+    this.filter$.pipe(debounceTime(150), takeUntilDestroyed()).subscribe(t => this.graph.searchTerm.set(t));
+    effect(() => this.filter$.next(this.store.filter()));
+
+    effect(() => {
+      const tree = this.store.tree();
+      if (!tree) return;
+      this.crumbs.set([{ label: this.i18n.t('trees.title'), link: ['/trees'] }, { label: tree.name ?? '…' }]);
+    });
   }
 
-  load() {
-    this.loading.set(true);
-    this.loadError.set('');
+  ngOnInit(): void {
+    this.store.load(this.treeId());
+    const q = this.q();
+    if (q) this.store.setFilter(q);
+  }
 
-    forkJoin({
-      persons: this.api.getPersonsByTree(this.treeId),
-      rels: this.api.getRelationships(this.treeId)
-    })
-      .pipe(
-        catchError((e: { error?: { error?: string } }) => {
-          this.loadError.set(e.error?.error ?? this.i18n.t('err.load'));
-          this.loading.set(false);
-          return of(null);
-        }),
-        takeUntilDestroyed(this.destroyRef)
-      )
-      .subscribe(res => {
-        if (!res) return;
-        const sorted = [...res.persons].sort(
-          (a, b) => (a.birth?.year ?? 9999) - (b.birth?.year ?? 9999)
-        );
-        this.persons.set(sorted);
-        this.loading.set(false);
-        if (sorted.length === 0) { this.graph.loading.set(false); return; }
-        void this.graph.build(this.cyHost().nativeElement, sorted, res.rels, {
-          onSelect: id => this.graph.select(id),
-          onOpen: id => this.open(id),
-          onContext: () => undefined
-        });
+  onSelected(id: string | null): void {
+    this.store.select(id);
+    this.graph.select(id);
+    if (id && this.layout.handset()) {
+      const ref = this.sheet.open(TreeSelectionSheetComponent, { injector: this.injector, panelClass: 'qs-sheet' });
+      ref.afterDismissed().subscribe(result => {
+        if (!result) return;
+        if (result.action === 'closed') this.onSelected(null);
+        else if (result.action === 'navigate') this.onSelected(result.id);
+        else void this.addRelationFor(result.person);
       });
+    }
   }
 
-  onSearch(term: string) {
-    this.searchTerm.set(term);
-    this.searchInput$.next(term);
+  open(id: string): void {
+    void this.router.navigate(['/persons', id]);
   }
 
-  select(id: string) { this.graph.select(id); }
-  open(id: string) { this.router.navigate(['/persons', id]); }
-
-  exportPng() {
-    this.graph.exportPng(`${this.treeName() || 'family-tree'}.png`);
+  openPeopleSheet(): void {
+    const ref = this.sheet.open(TreePeopleSheetComponent, { injector: this.injector, panelClass: 'qs-sheet' });
+    ref.afterDismissed().subscribe(result => {
+      if (!result) return;
+      if (result.open) this.open(result.id);
+      else this.onSelected(result.id);
+    });
   }
 
-  onGraphKey(e: KeyboardEvent) {
+  onContext(id: string, x: number, y: number): void {
+    this.ctx.set({ id, x, y });
+    afterNextRender(() => this.ctxTrigger()?.openMenu(), { injector: this.injector });
+  }
+
+  async addRelationFor(person: PersonDto, presetType?: UiRelType): Promise<void> {
+    await this.openRelationshipDialog({ treeId: this.treeId(), persons: this.store.persons(), anchor: person, presetType });
+  }
+
+  async addRelationFree(): Promise<void> {
+    await this.openRelationshipDialog({ treeId: this.treeId(), persons: this.store.persons() });
+  }
+
+  private async openRelationshipDialog(data: RelationshipDialogData): Promise<void> {
+    const ref = this.dialog.open<RelationshipDialogComponent, RelationshipDialogData, RelationshipDto | undefined>(
+      RelationshipDialogComponent, { data, width: '520px', maxWidth: '95vw' }
+    );
+    const result = await firstValueFrom(ref.afterClosed());
+    if (!result) return;
+    this.toast.success(this.i18n.t('rel.added.toast'));
+    this.store.reload();
+  }
+
+  async deletePerson(person: PersonDto): Promise<void> {
+    if (!person.id) return;
+    const name = fullName({ firstName: person.firstName ?? '', lastName: person.lastName ?? '' });
+    const ok = await this.confirmDialog.confirm({
+      title: this.i18n.t('pe.deleteTitle'), message: this.i18n.t('pe.deleteConfirm').replace('__NAME__', name),
+      confirmLabel: this.i18n.t('delete'), destructive: true
+    });
+    if (ok !== true) return;
+    this.personsApi.personsDelete({ id: person.id }).subscribe({
+      next: () => { this.toast.success(this.i18n.t('tree.deleted.toast')); this.store.reload(); },
+      error: e => this.toast.errorFrom(e, this.i18n.t('err.delete'))
+    });
+  }
+
+  onKey(e: KeyboardEvent): void {
     switch (e.key) {
       case '+': case '=': this.graph.zoomIn(); break;
       case '-': this.graph.zoomOut(); break;
       case '0': this.graph.fit(); break;
-      case 'Escape': this.graph.select(null); break;
+      case 'Escape': this.onSelected(null); break;
+      case 'ArrowUp': this.moveSelection('parents'); break;
+      case 'ArrowDown': this.moveSelection('children'); break;
+      case 'ArrowLeft': case 'ArrowRight': this.moveSelection('spouses'); break;
+      case 'Enter': { const id = this.store.selectedId(); if (id) this.open(id); break; }
       default: return;
     }
     e.preventDefault();
   }
 
-  // ── Relationship panel ──────────────────────────────────────────────────────
-
-  private matchPersons(term: string, alreadyPicked: Person | null): Person[] {
-    const s = term.toLowerCase().trim();
-    if (!s || alreadyPicked) return [];
-    return this.persons()
-      .filter(p => p.firstName.toLowerCase().includes(s) || p.lastName.toLowerCase().includes(s))
-      .slice(0, 8);
+  exportPng(): void {
+    this.graph.exportPng(`${this.store.tree()?.name || 'family-tree'}.png`);
   }
 
-  onFromSearch(term: string) {
-    this.fromSearch.set(term);
-    const sel = this.selectedFrom();
-    if (sel && `${sel.firstName} ${sel.lastName}` !== term) this.selectedFrom.set(null);
-  }
-
-  onToSearch(term: string) {
-    this.toSearch.set(term);
-    const sel = this.selectedTo();
-    if (sel && `${sel.firstName} ${sel.lastName}` !== term) this.selectedTo.set(null);
-  }
-
-  pickFrom(p: Person) { this.selectedFrom.set(p); this.fromSearch.set(`${p.firstName} ${p.lastName}`); }
-  pickTo(p: Person)   { this.selectedTo.set(p);   this.toSearch.set(`${p.firstName} ${p.lastName}`); }
-
-  addRelationship() {
-    const from = this.selectedFrom();
-    const to = this.selectedTo();
-    if (!from || !to) return;
-
-    this.relError.set('');
-    this.savingRel.set(true);
-
-    // The type describes the "From" person's role: Parent means From is the parent of To.
-    this.api.createRelationship(this.treeId, toApiRelationship(this.relType(), from.id, to.id)).subscribe({
-      next: () => {
-        this.selectedFrom.set(null); this.selectedTo.set(null);
-        this.fromSearch.set(''); this.toSearch.set('');
-        this.savingRel.set(false);
-        this.load();
-      },
-      error: (e: { error?: { error?: string } }) => {
-        this.relError.set(e.error?.error ?? this.i18n.t('tree.relErr'));
-        this.savingRel.set(false);
-      }
-    });
+  private moveSelection(kind: 'parents' | 'children' | 'spouses'): void {
+    const id = this.store.selectedId();
+    if (!id) return;
+    const target = this.store.relativesOf(id)[kind][0];
+    if (target?.id) this.onSelected(target.id);
   }
 }
