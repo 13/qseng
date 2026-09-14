@@ -17,7 +17,10 @@ export class ThemeService {
 
   constructor() {
     this.apply(this._mode());
-    window.matchMedia?.('(prefers-color-scheme: dark)').addEventListener?.('change', e => this.systemDark.set(e.matches));
+    window.matchMedia?.('(prefers-color-scheme: dark)').addEventListener?.('change', e => {
+      this.systemDark.set(e.matches);
+      this.apply(this._mode());
+    });
   }
 
   private static stored(): ThemeMode {
