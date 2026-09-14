@@ -178,7 +178,7 @@
   "register.password": "Passwort",
   "register.passwordHint": "mind. 8 Zeichen",
   "register.pendingHint": "Ein Administrator muss dein Konto freischalten, bevor du dich anmelden kannst.",
-  "register.pendingTitle": "Konto erstellt ✓",
+  "register.pendingTitle": "Konto erstellt",
   "register.submit": "Konto erstellen",
   "register.submitting": "Konto wird erstellt…",
   "register.tagline": "Starte deinen Stammbaum noch heute",

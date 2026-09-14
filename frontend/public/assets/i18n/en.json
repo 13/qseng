@@ -178,7 +178,7 @@
   "register.password": "Password",
   "register.passwordHint": "min. 8 characters",
   "register.pendingHint": "An administrator needs to activate your account before you can sign in.",
-  "register.pendingTitle": "Account created ✓",
+  "register.pendingTitle": "Account created",
   "register.submit": "Create account",
   "register.submitting": "Creating account…",
   "register.tagline": "Start your family tree today",
