@@ -98,6 +98,19 @@ describe('TreeViewComponent', () => {
     expect(store.select).toHaveBeenCalledWith('a');
   });
 
+  it('a destroyed component still restores on undo, but skips the reload/re-select follow-up', async () => {
+    const { cmp, fixture, persons, store, sheet, toast } = setup(true);
+    await cmp.deletePerson(people[0]);
+    const onUndo = toast.undoable.mock.calls[0][1];
+    const reloadCallsBeforeUndo = store.reload.mock.calls.length;
+    fixture.destroy();
+    await onUndo();
+    expect(persons.personsRestore).toHaveBeenCalledWith({ id: 'a' });
+    expect(store.reload).toHaveBeenCalledTimes(reloadCallsBeforeUndo);
+    expect(store.select).not.toHaveBeenCalledWith('a');
+    expect(sheet.open).not.toHaveBeenCalled();
+  });
+
   it('reloads the store when the route treeId changes', () => {
     const { fixture, store } = setup();
     expect(store.load).toHaveBeenCalledWith('t1');

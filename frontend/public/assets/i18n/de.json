@@ -208,6 +208,7 @@
   "rel.dialog.to": "In Beziehung zu",
   "rel.dialog.type": "Beziehung",
   "rel.mode.existing": "Vorhandene Person",
+  "rel.mode.label": "Wie die Person hinzugefügt wird",
   "rel.mode.new": "Neue Person",
   "rel.new.birthPlace": "Geburtsort",
   "rel.new.firstName": "Vorname",

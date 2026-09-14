@@ -208,6 +208,7 @@
   "rel.dialog.to": "Related to",
   "rel.dialog.type": "Relationship",
   "rel.mode.existing": "Existing person",
+  "rel.mode.label": "How to add the person",
   "rel.mode.new": "New person",
   "rel.new.birthPlace": "Birth place",
   "rel.new.firstName": "First name",

@@ -320,6 +320,9 @@ export class TreeViewComponent {
         if (this.destroyed) return;
         this.store.reload();
         this.toast.undoable(this.i18n.t('tree.deleted.undo').replace('__NAME__', name), () => firstValueFrom(this.personsApi.personsRestore({ id: person.id! })).then(() => {
+          // The restore call itself must still complete even if the component was destroyed
+          // (e.g. the toast outlives navigation); only the now-pointless UI follow-up is guarded.
+          if (this.destroyed) return;
           this.store.reload();
           this.onSelected(person.id!);
         }));

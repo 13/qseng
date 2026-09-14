@@ -23,6 +23,7 @@ export class TreeStore {
   private readonly i18n = inject(I18nService);
   private readonly destroyRef = inject(DestroyRef);
   private treeId = '';
+  private loadSeq = 0;
 
   private readonly _tree = signal<TreeDto | null>(null);
   private readonly _persons = signal<PersonDto[]>([]);
@@ -55,12 +56,14 @@ export class TreeStore {
     this.treeId = treeId;
     this._loading.set(true);
     this._error.set('');
+    const requestId = ++this.loadSeq;
     forkJoin({
       trees: this.treesApi.treesGetAll().pipe(catchError(() => of([] as TreeDto[]))),
       persons: this.personsApi.personsGetByTree({ treeId }),
       rels: this.relsApi.relationshipsGetByTree({ treeId }).pipe(catchError(() => of([] as RelationshipDto[])))
     }).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: r => {
+        if (requestId !== this.loadSeq) return;
         this._tree.set(r.trees.find(t => t.id === treeId) ?? null);
         this._persons.set([...r.persons].sort(byBirth));
         this._relationships.set(r.rels);
@@ -69,7 +72,11 @@ export class TreeStore {
         if (this._selectedId() && !r.persons.some(p => p.id === this._selectedId())) this._selectedId.set(null);
         this._loading.set(false);
       },
-      error: e => { this._error.set(problemMessage(e, this.i18n.t('err.load'))); this._loading.set(false); }
+      error: e => {
+        if (requestId !== this.loadSeq) return;
+        this._error.set(problemMessage(e, this.i18n.t('err.load')));
+        this._loading.set(false);
+      }
     });
   }
   reload() { if (this.treeId) this.load(this.treeId); }

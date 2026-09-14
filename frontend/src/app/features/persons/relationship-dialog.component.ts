@@ -59,7 +59,7 @@ function matches(p: PersonDto, term: string): boolean {
         </mat-form-field>
 
         @if (data.anchor) {
-          <mat-button-toggle-group hideSingleSelectionIndicator [value]="mode()" (change)="setMode($event.value)" [attr.aria-label]="'rel.mode.new' | translate">
+          <mat-button-toggle-group hideSingleSelectionIndicator [value]="mode()" (change)="setMode($event.value)" [attr.aria-label]="'rel.mode.label' | translate">
             <mat-button-toggle value="existing">{{ 'rel.mode.existing' | translate }}</mat-button-toggle>
             <mat-button-toggle value="new">{{ 'rel.mode.new' | translate }}</mat-button-toggle>
           </mat-button-toggle-group>
@@ -89,10 +89,12 @@ function matches(p: PersonDto, term: string): boolean {
           <div class="qs-new-person-block" [formGroup]="newForm">
             <mat-form-field><mat-label>{{ 'rel.new.firstName' | translate }}</mat-label><input matInput formControlName="firstName" maxlength="200" cdkFocusInitial><mat-error>{{ newForm.controls.firstName.errors | formErrors }}</mat-error></mat-form-field>
             <mat-form-field><mat-label>{{ 'rel.new.lastName' | translate }}</mat-label><input matInput formControlName="lastName" maxlength="200"><mat-error>{{ newForm.controls.lastName.errors | formErrors }}</mat-error></mat-form-field>
-            <mat-button-toggle-group formControlName="sex" [attr.aria-label]="'rel.new.sex' | translate">
+            <mat-button-toggle-group formControlName="sex" [attr.aria-label]="'rel.new.sex' | translate"
+              [attr.aria-describedby]="newForm.controls.sex.invalid && newForm.controls.sex.touched ? 'qs-rel-sex-error' : null"
+              [attr.aria-invalid]="newForm.controls.sex.invalid && newForm.controls.sex.touched">
               @for (s of sexes; track s) { <mat-button-toggle [value]="s">{{ i18n.sexLabel(s) }}</mat-button-toggle> }
             </mat-button-toggle-group>
-            @if (newForm.controls.sex.invalid && newForm.controls.sex.touched) { <p class="qs-form-error">{{ newForm.controls.sex.errors | formErrors }}</p> }
+            @if (newForm.controls.sex.invalid && newForm.controls.sex.touched) { <p class="qs-form-error" role="alert" id="qs-rel-sex-error">{{ newForm.controls.sex.errors | formErrors }}</p> }
             <qs-partial-date-input formControlName="birth" [label]="'pd.birth' | translate" />
             <mat-form-field><mat-label>{{ 'rel.new.birthPlace' | translate }}</mat-label><input matInput formControlName="birthPlace" maxlength="200"></mat-form-field>
           </div>
@@ -171,6 +173,12 @@ export class RelationshipDialogComponent {
     this.form.controls.from.valueChanges.pipe(takeUntilDestroyed()).subscribe(v => {
       const p = this.pickedFrom();
       if (typeof v === 'string' && p && v !== this.display(p)) this.pickedFrom.set(null);
+    });
+    // Keep the new-person surname following the chosen relation type, but only while the
+    // user hasn't typed one themselves — `setValue` below doesn't mark the control dirty.
+    this.form.controls.type.valueChanges.pipe(takeUntilDestroyed()).subscribe(type => {
+      if (!this.newForm.controls.lastName.pristine) return;
+      this.newForm.controls.lastName.setValue(type === 'Spouse' ? '' : (this.data.anchor?.lastName ?? ''));
     });
   }
 

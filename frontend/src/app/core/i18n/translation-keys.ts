@@ -209,6 +209,7 @@ export type TranslationKey =
   | 'rel.dialog.to'
   | 'rel.dialog.type'
   | 'rel.mode.existing'
+  | 'rel.mode.label'
   | 'rel.mode.new'
   | 'rel.new.birthPlace'
   | 'rel.new.firstName'
@@ -547,6 +548,7 @@ export const TRANSLATION_KEYS: readonly TranslationKey[] = [
   'rel.dialog.to',
   'rel.dialog.type',
   'rel.mode.existing',
+  'rel.mode.label',
   'rel.mode.new',
   'rel.new.birthPlace',
   'rel.new.firstName',

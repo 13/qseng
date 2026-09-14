@@ -130,6 +130,42 @@ describe('RelationshipDialogComponent', () => {
     expect(cmp.newForm.controls.firstName.touched).toBe(true);
   });
 
+  it('labels the existing/new mode toggle group with the dedicated aria-label key', () => {
+    const { fixture } = setup();
+    const el: HTMLElement = fixture.nativeElement;
+    expect(el.querySelector('mat-button-toggle-group[aria-label="rel.mode.label"]')).not.toBeNull();
+  });
+
+  it('wires the sex error to the sex toggle group via aria-describedby/aria-invalid once touched', () => {
+    const { cmp, fixture } = setup(false, { treeId: 't1', persons: [anchor, other], anchor, presetType: 'Child', mode: 'new' });
+    const el: HTMLElement = fixture.nativeElement;
+    const group = () => el.querySelector('.qs-new-person-block mat-button-toggle-group[formcontrolname="sex"]');
+    expect(group()?.getAttribute('aria-describedby')).toBeNull();
+    expect(group()?.getAttribute('aria-invalid')).toBe('false');
+    cmp.newForm.controls.sex.markAsTouched();
+    fixture.detectChanges();
+    const err = el.querySelector('#qs-rel-sex-error');
+    expect(err).not.toBeNull();
+    expect(err?.getAttribute('role')).toBe('alert');
+    expect(group()?.getAttribute('aria-describedby')).toBe('qs-rel-sex-error');
+    expect(group()?.getAttribute('aria-invalid')).toBe('true');
+  });
+
+  it('re-derives the new-person surname when the type changes while lastName is pristine, but leaves a typed one alone', () => {
+    const { cmp } = setup(false, { treeId: 't1', persons: [anchor, other], anchor, presetType: 'Parent', mode: 'new' });
+    expect(cmp.newForm.controls.lastName.value).toBe('Smith');
+    cmp.form.controls.type.setValue('Spouse');
+    expect(cmp.newForm.controls.lastName.value).toBe('');
+    cmp.form.controls.type.setValue('Child');
+    expect(cmp.newForm.controls.lastName.value).toBe('Smith');
+    // A real keystroke marks the control dirty (setValue() alone, as used above for the
+    // re-derivation itself, does not) — simulate that before checking the derivation stops.
+    cmp.newForm.controls.lastName.setValue('Custom');
+    cmp.newForm.controls.lastName.markAsDirty();
+    cmp.form.controls.type.setValue('Spouse');
+    expect(cmp.newForm.controls.lastName.value).toBe('Custom');
+  });
+
   it('falls back to existing mode when sessionStorage.getItem throws (private browsing etc.)', () => {
     const spy = vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => { throw new Error('denied'); });
     try {
