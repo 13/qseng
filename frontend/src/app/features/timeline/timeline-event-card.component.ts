@@ -54,12 +54,12 @@ import { TranslatePipe } from '../../core/i18n/translate.pipe';
         <p class="field-lbl" style="margin-bottom:.25rem;font-size:.78rem;font-weight:600;color:var(--c-text-2)">
           {{ 'tl.year' | translate }} / {{ 'tl.month' | translate }} / {{ 'tl.day' | translate }}
         </p>
-        <qs-partial-date-input prefix="ec_s" [value]="startDate" (valueChange)="startDate = $event" />
+        <qs-partial-date-input [value]="startDate" (valueChange)="startDate = $event ?? {}" />
 
         <p class="field-lbl" style="margin:.6rem 0 .25rem;font-size:.78rem;font-weight:600;color:var(--c-text-2)">
           {{ 'tl.endYear' | translate }}
         </p>
-        <qs-partial-date-input prefix="ec_e" [value]="endDate" (valueChange)="endDate = $event" />
+        <qs-partial-date-input [value]="endDate" (valueChange)="endDate = $event ?? {}" />
 
         <label class="field-lbl" style="margin-top:.5rem">
           {{ 'tl.place' | translate }} <input [(ngModel)]="draft.location" name="location">
@@ -120,10 +120,10 @@ export class TimelineEventCardComponent {
 
   submitEdit() {
     const start: PartialDate | undefined = this.startDate.year
-      ? { year: this.startDate.year, month: this.startDate.month, day: this.startDate.day }
+      ? { year: this.startDate.year, month: this.startDate.month ?? undefined, day: this.startDate.day ?? undefined }
       : undefined;
     const end: PartialDate | undefined = this.endDate.year
-      ? { year: this.endDate.year, month: this.endDate.month, day: this.endDate.day }
+      ? { year: this.endDate.year, month: this.endDate.month ?? undefined, day: this.endDate.day ?? undefined }
       : undefined;
     this.saved.emit({ ...this.draft, start, end });
     this.editing.set(false);

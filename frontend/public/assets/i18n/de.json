@@ -56,6 +56,7 @@
   "cancel": "Abbrechen",
   "date.clear": "Leeren",
   "date.hint": "TT.MM.JJJJ",
+  "date.invalid": "Format TT.MM.JJJJ, MM.JJJJ oder JJJJ (mit ~ für ungefähr).",
   "date.pick": "Datumsauswahl öffnen",
   "date.unknown": "unbekannt",
   "delete": "Löschen",

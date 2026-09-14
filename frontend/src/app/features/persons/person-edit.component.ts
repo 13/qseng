@@ -94,7 +94,7 @@ import { PartialDateInputComponent, PartialDateValue } from '../../shared/ui/par
       <!-- Birth -->
       <div class="pe-card">
         <p class="pe-card__title">{{ 'pe.birth' | translate }}</p>
-        <qs-partial-date-input prefix="birth" [value]="birth" (valueChange)="birth = $event" />
+        <qs-partial-date-input [value]="birth" (valueChange)="birth = $event ?? {}" />
         <label class="field-lbl" style="margin-top:.65rem">
           {{ 'pe.birthPlace' | translate }}
           <input type="text" [(ngModel)]="form.birthPlace" name="bp">
@@ -107,7 +107,7 @@ import { PartialDateInputComponent, PartialDateValue } from '../../shared/ui/par
           {{ 'pe.death' | translate }}
           <span class="pe-optional">({{ 'pe.optional' | translate }})</span>
         </p>
-        <qs-partial-date-input prefix="death" [value]="death" (valueChange)="death = $event" />
+        <qs-partial-date-input [value]="death" (valueChange)="death = $event ?? {}" />
         <label class="field-lbl" style="margin-top:.65rem">
           {{ 'pe.deathPlace' | translate }}
           <input type="text" [(ngModel)]="form.deathPlace" name="dp">
@@ -202,10 +202,10 @@ export class PersonEditComponent implements OnInit {
     this.error.set('');
 
     const birthVal = this.birth.year
-      ? { year: this.birth.year, month: this.birth.month, day: this.birth.day, approx: this.birth.approx || undefined }
+      ? { year: this.birth.year, month: this.birth.month ?? undefined, day: this.birth.day ?? undefined, approx: this.birth.approx || undefined }
       : undefined;
     const deathVal = this.death.year
-      ? { year: this.death.year, month: this.death.month, day: this.death.day, approx: this.death.approx || undefined }
+      ? { year: this.death.year, month: this.death.month ?? undefined, day: this.death.day ?? undefined, approx: this.death.approx || undefined }
       : undefined;
     const body = { ...this.form, birth: birthVal, death: deathVal };
 

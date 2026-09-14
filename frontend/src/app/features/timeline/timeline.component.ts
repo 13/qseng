@@ -70,7 +70,7 @@ import { PartialDateInputComponent, PartialDateValue } from '../../shared/ui/par
             </div>
           }
 
-          <qs-partial-date-input prefix="tl_new" [value]="newDate" (valueChange)="newDate = $event" />
+          <qs-partial-date-input [value]="newDate" (valueChange)="newDate = $event ?? {}" />
 
           <label class="field-lbl" style="margin-top:.5rem">
             {{ 'tl.place' | translate }}
@@ -213,7 +213,7 @@ export class TimelineComponent implements OnInit {
   addEvent() {
     if (!this.newTitle.trim()) return;
     const start: PartialDate | undefined = this.newDate.year
-      ? { year: this.newDate.year, month: this.newDate.month, day: this.newDate.day }
+      ? { year: this.newDate.year, month: this.newDate.month ?? undefined, day: this.newDate.day ?? undefined }
       : undefined;
     this.svc.add(this.personId(), {
       type: this.newType,

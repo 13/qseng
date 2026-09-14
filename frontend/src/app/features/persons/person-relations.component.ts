@@ -62,8 +62,8 @@ interface RelGroup { label: string; icon: string; relations: PersonRelation[]; }
           @if (newType === 'Spouse' || newType === 'Adoptive') {
             <label class="field-lbl">
               {{ 'fam.date' | translate }}
-              <qs-partial-date-input prefix="reldate"
-                [value]="startDate" (valueChange)="startDate = $event" />
+              <qs-partial-date-input
+                [value]="startDate" (valueChange)="startDate = $event ?? {}" />
             </label>
             <label class="field-lbl" style="margin-top:.4rem">
               {{ 'fam.place' | translate }}
@@ -175,9 +175,9 @@ export class PersonRelationsComponent implements OnInit {
     // The type names the selected person's role relative to this one.
     this.api.createRelationship(this.treeId(), {
       ...toApiRelationship(this.newType, other.id, this.personId()),
-      startYear:  this.startDate.year,
-      startMonth: this.startDate.month,
-      startDay:   this.startDate.day,
+      startYear:  this.startDate.year ?? undefined,
+      startMonth: this.startDate.month ?? undefined,
+      startDay:   this.startDate.day ?? undefined,
       notes:      this.startPlace || undefined
     }).subscribe({
       next: () => { this.load(); this.resetForm(); this.relAdded.emit(); },

@@ -57,6 +57,7 @@ export type TranslationKey =
   | 'cancel'
   | 'date.clear'
   | 'date.hint'
+  | 'date.invalid'
   | 'date.pick'
   | 'date.unknown'
   | 'delete'
@@ -388,6 +389,7 @@ export const TRANSLATION_KEYS: readonly TranslationKey[] = [
   'cancel',
   'date.clear',
   'date.hint',
+  'date.invalid',
   'date.pick',
   'date.unknown',
   'delete',

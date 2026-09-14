@@ -56,6 +56,7 @@
   "cancel": "Cancel",
   "date.clear": "Clear",
   "date.hint": "DD.MM.YYYY",
+  "date.invalid": "Use DD.MM.YYYY, MM.YYYY or YYYY (prefix ~ for approximate).",
   "date.pick": "Open date picker",
   "date.unknown": "unknown",
   "delete": "Delete",
