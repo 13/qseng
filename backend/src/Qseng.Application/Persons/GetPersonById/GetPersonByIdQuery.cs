@@ -1,4 +1,5 @@
 using MediatR;
+using Microsoft.EntityFrameworkCore;
 using Qseng.Application.Abstractions;
 using Qseng.Application.Common;
 using Qseng.Application.Persons.CreatePerson;
@@ -20,7 +21,7 @@ public class GetPersonByIdHandler : IRequestHandler<GetPersonByIdQuery, Result<P
 
     public async Task<Result<PersonDto>> Handle(GetPersonByIdQuery q, CancellationToken ct)
     {
-        var person = await _db.Persons.FindAsync([q.Id], ct);
+        var person = await _db.Persons.FirstOrDefaultAsync(p => p.Id == q.Id, ct);
         if (person is null) return Result<PersonDto>.NotFound("Person not found.");
 
         var tree = await _db.Trees.FindAsync([person.TreeId], ct);

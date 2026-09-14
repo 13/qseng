@@ -37,6 +37,16 @@ public abstract class QsengDbContext : DbContext, IQsengDbContext
             .IsUnique()
             .HasFilter(AvatarIndexFilter)
             .HasDatabaseName("ix_media_person_avatar");
+
+        // "At most one live edge of a given type between two people", enforced by
+        // the database. Filtered to DeletedAt IS NULL (a single string works on
+        // both providers, unlike the avatar filter above) so a relationship sitting
+        // in the trash never blocks re-creating the same live edge.
+        b.Entity<Relationship>()
+            .HasIndex(r => new { r.TreeId, r.FromPersonId, r.ToPersonId, r.Type })
+            .IsUnique()
+            .HasFilter("\"DeletedAt\" IS NULL")
+            .HasDatabaseName("ix_relationships_live_edge");
     }
 
     protected abstract string AvatarIndexFilter { get; }

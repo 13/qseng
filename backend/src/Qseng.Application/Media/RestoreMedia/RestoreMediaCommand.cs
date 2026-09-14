@@ -19,11 +19,16 @@ public class RestoreMediaHandler : IRequestHandler<RestoreMediaCommand, Result<M
             .FirstOrDefaultAsync(m => m.Id == cmd.MediaId && m.PersonId == cmd.PersonId && m.DeletedAt != null, ct);
         if (media is null) return Result<MediaDto>.NotFound("Media not found in the trash.");
 
-        var person = await _db.Persons.FirstOrDefaultAsync(p => p.Id == cmd.PersonId, ct);
-        if (person is null) return Result<MediaDto>.Conflict("Restore the person first.");
+        // The owner check must run before the "person is trashed" conflict: an
+        // outsider probing this endpoint should get 403, not learn the person's
+        // trash state via a 409.
+        var person = await _db.Persons.IgnoreQueryFilters().FirstOrDefaultAsync(p => p.Id == cmd.PersonId, ct);
+        if (person is null) return Result<MediaDto>.NotFound("Person not found.");
 
         var tree = await _db.Trees.FindAsync([person.TreeId], ct);
         if (tree is null || tree.OwnerId != _currentUser.UserId) return Result<MediaDto>.Fail("Forbidden.", 403);
+
+        if (person.DeletedAt is not null) return Result<MediaDto>.Conflict("Restore the person first.");
 
         // Restoring never steals the avatar back from whatever photo was promoted
         // while this row was in the trash.

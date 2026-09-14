@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Qseng.Infrastructure.Persistence;
@@ -11,9 +12,11 @@ using Qseng.Infrastructure.Persistence;
 namespace Qseng.Infrastructure.Persistence.Migrations.Postgres
 {
     [DbContext(typeof(PostgresQsengDbContext))]
-    partial class PostgresQsengDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260914162807_RelationshipLiveEdgeIndex")]
+    partial class RelationshipLiveEdgeIndex
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

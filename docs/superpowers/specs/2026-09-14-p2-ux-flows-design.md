@@ -62,8 +62,8 @@ Indexes: `DeletedAt` on each of the four tables (purge query).
 | `DeleteRelationshipHandler`, `DeleteTimelineEventHandler`, `DeleteMediaHandler` | remove row (+ file for media) | stamp the row; media file stays |
 
 Ownership and 404 semantics unchanged. `User_DeleteData` and `User_DeleteAccount` hard-delete
-including trash (they already remove the trees; the cascade takes trashed rows because
-`IgnoreQueryFilters` is used there explicitly).
+including trash: they delete the user's trees; the database FK cascade removes live and trashed
+rows alike (media files are not removed — pre-existing gap, P3).
 
 ### Restore endpoints (new)
 
@@ -79,7 +79,8 @@ owning tree is not the caller's; clear `DeletedAt`/`DeletionBatchId`; `Persons_R
 clears every row carrying the same `DeletionBatchId`. Restoring a relationship or event whose
 person is still deleted returns 409 (`Result.Conflict`, "Restore the person first."). All follow
 the ProblemDetails contract and are annotated for Swashbuckle like the existing actions
-(`ProducesResponseType` 200/403/404/409).
+(`ProducesResponseType` 200/403/404/409). Restoring a relationship also re-runs the duplicate
+and cycle checks (409). Person restore revives only relationships whose other endpoint is live.
 
 ### Purge
 
@@ -122,6 +123,8 @@ Delete call sites:
 
 Relationship deletes lose their confirm dialog; the existing `ConfirmDialogService` stays for
 person, tree and account actions.
+
+Release note: undoing the deletion of the avatar photo restores the file, not the avatar flag.
 
 ## 4. Add relative inline
 

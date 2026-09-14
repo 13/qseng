@@ -12,7 +12,7 @@ internal static class TrashFixtures
     public static async Task<(IQsengDbContext db, Guid owner, Person a, Person b, Relationship rel, TimelineEvent ev, Qseng.Domain.Entities.Media media)> SeedFamilyAsync()
     {
         var db = TestDb.Create();
-        var owner = Guid.NewGuid();
+        var owner = TestDb.AddOwner(db).Id;
         var tree = new Tree { OwnerId = owner, Name = "T" };
         db.Trees.Add(tree);
         var a = new Person { TreeId = tree.Id, FirstName = "A", LastName = "X" };

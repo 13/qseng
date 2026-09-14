@@ -20,7 +20,7 @@ public class DeleteTimelineEventHandler : IRequestHandler<DeleteTimelineEventCom
         var ev = await _db.TimelineEvents.FirstOrDefaultAsync(e => e.Id == cmd.Id, ct);
         if (ev is null) return Result<bool>.NotFound("Event not found.");
 
-        var person = await _db.Persons.FindAsync([ev.PersonId], ct);
+        var person = await _db.Persons.FirstOrDefaultAsync(p => p.Id == ev.PersonId, ct);
         var tree = person is null ? null : await _db.Trees.FindAsync([person.TreeId], ct);
         if (tree is null || tree.OwnerId != _currentUser.UserId) return Result<bool>.Fail("Forbidden.", 403);
 

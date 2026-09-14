@@ -1,5 +1,6 @@
 using FluentValidation;
 using MediatR;
+using Microsoft.EntityFrameworkCore;
 using Qseng.Application.Abstractions;
 using Qseng.Application.Common;
 using Qseng.Domain.Entities;
@@ -32,7 +33,7 @@ public class AddTimelineEventHandler : IRequestHandler<AddTimelineEventCommand, 
 
     public async Task<Result<TimelineEventDto>> Handle(AddTimelineEventCommand cmd, CancellationToken ct)
     {
-        var person = await _db.Persons.FindAsync([cmd.PersonId], ct);
+        var person = await _db.Persons.FirstOrDefaultAsync(p => p.Id == cmd.PersonId, ct);
         if (person is null) return Result<TimelineEventDto>.NotFound("Person not found.");
 
         var tree = await _db.Trees.FindAsync([person.TreeId], ct);

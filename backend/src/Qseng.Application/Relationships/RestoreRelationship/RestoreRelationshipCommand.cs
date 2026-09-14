@@ -4,6 +4,7 @@ using Qseng.Application.Abstractions;
 using Qseng.Application.Common;
 using Qseng.Application.Relationships.CreateRelationship;
 using Qseng.Domain.Common;
+using Qseng.Domain.Enums;
 
 namespace Qseng.Application.Relationships.RestoreRelationship;
 
@@ -28,11 +29,22 @@ public class RestoreRelationshipHandler : IRequestHandler<RestoreRelationshipCom
             !await _db.Persons.AnyAsync(p => p.Id == rel.ToPersonId, ct))
             return Result<RelationshipDto>.Conflict("Restore the person first.");
 
+        if (await _db.Relationships.AnyAsync(r =>
+                r.TreeId == rel.TreeId && r.FromPersonId == rel.FromPersonId &&
+                r.ToPersonId == rel.ToPersonId && r.Type == rel.Type, ct))
+            return Result<RelationshipDto>.Conflict("A relationship like this already exists.");
+
+        if (rel.Type == RelationshipType.Parent &&
+            await RelationshipRules.WouldCreateCycleAsync(_db, rel.TreeId, rel.FromPersonId, rel.ToPersonId, ct))
+            return Result<RelationshipDto>.Conflict("Adding this relationship would create a cycle in the family tree.");
+
         var batch = rel.DeletionBatchId;
         static void Revive(ISoftDeletable row) { row.DeletedAt = null; row.DeletionBatchId = null; }
         Revive(rel);
         if (batch is not null)
-            foreach (var e in await _db.TimelineEvents.IgnoreQueryFilters().Where(e => e.DeletionBatchId == batch).ToListAsync(ct)) Revive(e);
+            foreach (var e in await _db.TimelineEvents.IgnoreQueryFilters()
+                         .Where(e => e.DeletionBatchId == batch && e.SourceRelationshipId == rel.Id).ToListAsync(ct))
+                Revive(e);
 
         await _db.SaveChangesAsync(ct);
         return Result<RelationshipDto>.Ok(CreateRelationshipHandler.ToDto(rel));

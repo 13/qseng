@@ -255,7 +255,9 @@ namespace Qseng.Infrastructure.Persistence.Migrations.Sqlite
                     b.HasIndex("TreeId", "ToPersonId");
 
                     b.HasIndex("TreeId", "FromPersonId", "ToPersonId", "Type")
-                        .IsUnique();
+                        .IsUnique()
+                        .HasDatabaseName("ix_relationships_live_edge")
+                        .HasFilter("\"DeletedAt\" IS NULL");
 
                     b.ToTable("relationships", (string)null);
                 });

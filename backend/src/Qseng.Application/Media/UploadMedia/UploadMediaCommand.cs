@@ -20,7 +20,7 @@ public class UploadMediaHandler : IRequestHandler<UploadMediaCommand, Result<Med
 
     public async Task<Result<MediaDto>> Handle(UploadMediaCommand cmd, CancellationToken ct)
     {
-        var person = await _db.Persons.FindAsync([cmd.PersonId], ct);
+        var person = await _db.Persons.FirstOrDefaultAsync(p => p.Id == cmd.PersonId, ct);
         if (person is null) return Result<MediaDto>.NotFound("Person not found.");
 
         var tree = await _db.Trees.FindAsync([person.TreeId], ct);

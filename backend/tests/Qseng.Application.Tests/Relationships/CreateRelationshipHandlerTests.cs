@@ -1,4 +1,5 @@
 using FluentAssertions;
+using Microsoft.EntityFrameworkCore;
 using NSubstitute;
 using Xunit;
 using Qseng.Application.Abstractions;
@@ -24,6 +25,7 @@ public class CreateRelationshipHandlerTests
         SetupTreeAsync(int personCount = 3)
     {
         var db = TestDb.Create();
+        TestDb.AddOwner(db, OwnerId);
         var tree = new Tree { OwnerId = OwnerId, Name = "Test" };
         db.Trees.Add(tree);
 
@@ -143,6 +145,31 @@ public class CreateRelationshipHandlerTests
 
         result.IsSuccess.Should().BeFalse();
         result.StatusCode.Should().Be(409);
+    }
+
+    [Fact]
+    public async Task Re_creating_a_trashed_relationship_succeeds()
+    {
+        // C1 regression: the unique edge index must be filtered to live rows only,
+        // or SQLite rejects this the same as a genuine duplicate.
+        var (db, treeId, persons) = await SetupTreeAsync(2);
+        var (a, b) = (persons[0], persons[1]);
+        var handler = MakeHandler(db);
+        var cmd = new CreateRelationshipCommand(
+            treeId, a.Id, b.Id, RelationshipType.Spouse,
+            null, null, null, null, null, null, null);
+
+        var first = await handler.Handle(cmd, CancellationToken.None);
+        first.IsSuccess.Should().BeTrue();
+
+        var rel = await db.Relationships.SingleAsync(r => r.Id == first.Value!.Id);
+        rel.DeletedAt = DateTime.UtcNow;
+        rel.DeletionBatchId = Guid.NewGuid();
+        await db.SaveChangesAsync();
+
+        var second = await handler.Handle(cmd, CancellationToken.None);
+
+        second.IsSuccess.Should().BeTrue();
     }
 
     [Fact]

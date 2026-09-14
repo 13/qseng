@@ -23,7 +23,7 @@ public class ReadAndDeleteOwnershipTests
     private static async Task<(IQsengDbContext db, Tree tree, Person person, Relationship relationship, Guid ownerId)> SetupAsync()
     {
         var db = TestDb.Create();
-        var ownerId = Guid.NewGuid();
+        var ownerId = TestDb.AddOwner(db).Id;
         var tree = new Tree { OwnerId = ownerId, Name = "T" };
         db.Trees.Add(tree);
 

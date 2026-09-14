@@ -12,8 +12,11 @@ public class RelationshipConfiguration : IEntityTypeConfiguration<Relationship>
         e.HasKey(x => x.Id);
         e.HasIndex(x => new { x.TreeId, x.FromPersonId });
         e.HasIndex(x => new { x.TreeId, x.ToPersonId });
-        e.HasIndex(x => new { x.TreeId, x.FromPersonId, x.ToPersonId, x.Type }).IsUnique();
         e.HasIndex(x => x.DeletedAt);
+        // The live-only unique edge index (TreeId, FromPersonId, ToPersonId, Type)
+        // lives in QsengDbContext.OnModelCreating next to ix_media_person_avatar,
+        // filtered to DeletedAt IS NULL so a trashed relationship never blocks
+        // re-creating the same live edge.
 
         e.HasOne<Tree>()
             .WithMany()

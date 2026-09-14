@@ -37,7 +37,7 @@ public class UpdatePersonHandler : IRequestHandler<UpdatePersonCommand, Result<P
 
     public async Task<Result<PersonDto>> Handle(UpdatePersonCommand cmd, CancellationToken ct)
     {
-        var person = await _db.Persons.FindAsync([cmd.Id], ct);
+        var person = await _db.Persons.FirstOrDefaultAsync(p => p.Id == cmd.Id, ct);
         if (person is null) return Result<PersonDto>.NotFound("Person not found.");
 
         var tree = await _db.Trees.FindAsync([person.TreeId], ct);
