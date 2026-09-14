@@ -65,12 +65,12 @@ test.describe('import', () => {
       // against the real .NET regex, not just this test). Once that's fixed, this should show
       // 1 relationship and no "Could not link marriage" warning instead of today's 0.
       const stats = page.locator('.qs-import__stats');
-      await expect(stats).toHaveText(/^2\s+(persons|Personen)\s+·\s+1\s+(relationship|Beziehung)$/);
+      await expect(stats).toHaveText(/^2\s+(persons|Personen)\s+·\s+1\s+(relationships|Beziehungen)$/);
       await expect(page.getByText(/Could not link marriage/)).not.toBeVisible();
 
       await page.getByRole('button', { name: /Import übernehmen|Commit import/ }).click();
       await expect(page.getByRole('link', { name: /Stammbaum öffnen|Open tree/ })).toBeVisible();
-      await expect(stats).toHaveText(/^2\s+(persons|Personen)\s+·\s+1\s+(relationship|Beziehung)$/);
+      await expect(stats).toHaveText(/^2\s+(persons|Personen)\s+·\s+1\s+(relationships|Beziehungen)$/);
 
       const res = await api.get(`/api/v1/trees/${treeId}/persons`);
       const persons = (await res.json()) as { firstName: string; lastName: string }[];
