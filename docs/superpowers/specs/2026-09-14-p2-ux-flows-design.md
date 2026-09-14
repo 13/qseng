@@ -132,7 +132,7 @@ no anchor (free mode keeps the two pickers).
 
 "New person" fields (typed reactive form): first name (required), last name (required;
 prefilled with the anchor's last name when `presetType` is `Child` or `Parent`, empty for
-`Spouse`), sex (`mat-button-toggle-group`, default Unknown), birth (`PartialDateInputComponent`),
+`Spouse`), sex (`mat-button-toggle-group` Male / Female, required — the API has no Unknown), birth (`PartialDateInputComponent`),
 birth place. Type select and the Adoptive option stay as today.
 
 Save (new mode): `if (form.invalid) { markAllAsTouched(); return; }` → `personsCreate` →
