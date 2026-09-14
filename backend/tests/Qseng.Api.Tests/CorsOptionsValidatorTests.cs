@@ -25,9 +25,9 @@ public class CorsOptionsValidatorTests
     [Fact]
     public void Origins_must_be_absolute_urls_without_a_path()
     {
-        var o = new CorsOptions { AllowedOrigins = ["https://app.example.org", "not a url", "https://x.org/app"] };
+        var o = new CorsOptions { AllowedOrigins = ["https://app.example.org", "not a url", "https://x.org/app", "https://slash.org/"] };
         var result = new CorsOptionsValidator(isDevelopment: false).Validate(null, o);
         result.Failed.Should().BeTrue();
-        result.FailureMessage.Should().Contain("not a url").And.Contain("https://x.org/app");
+        result.FailureMessage.Should().Contain("not a url").And.Contain("https://x.org/app").And.Contain("https://slash.org/", "a trailing slash never matches the Origin header");
     }
 }
