@@ -114,12 +114,16 @@ export type TranslationKey =
   | 'import.err'
   | 'import.guide'
   | 'import.importing'
+  | 'import.openTree'
   | 'import.paste'
   | 'import.persons'
   | 'import.preview'
   | 'import.previewTitle'
   | 'import.rels'
+  | 'import.step1'
+  | 'import.step2'
   | 'import.title'
+  | 'import.warnings'
   | 'loading'
   | 'login.demo'
   | 'login.demoFill'
@@ -486,12 +490,16 @@ export const TRANSLATION_KEYS: readonly TranslationKey[] = [
   'import.err',
   'import.guide',
   'import.importing',
+  'import.openTree',
   'import.paste',
   'import.persons',
   'import.preview',
   'import.previewTitle',
   'import.rels',
+  'import.step1',
+  'import.step2',
   'import.title',
+  'import.warnings',
   'loading',
   'login.demo',
   'login.demoFill',
