@@ -182,15 +182,22 @@ export type TranslationKey =
   | 'pe.death'
   | 'pe.deathPlace'
   | 'pe.deleteConfirm'
+  | 'pe.deleteTitle'
+  | 'pe.deleted.toast'
+  | 'pe.discard'
   | 'pe.edit'
   | 'pe.firstName'
   | 'pe.lastName'
+  | 'pe.life'
   | 'pe.maidenName'
   | 'pe.new'
   | 'pe.notes'
   | 'pe.optional'
   | 'pe.required'
   | 'pe.save'
+  | 'pe.saved.toast'
+  | 'pe.unsavedMessage'
+  | 'pe.unsavedTitle'
   | 'pe.update'
   | 'register.displayName'
   | 'register.email'
@@ -547,15 +554,22 @@ export const TRANSLATION_KEYS: readonly TranslationKey[] = [
   'pe.death',
   'pe.deathPlace',
   'pe.deleteConfirm',
+  'pe.deleteTitle',
+  'pe.deleted.toast',
+  'pe.discard',
   'pe.edit',
   'pe.firstName',
   'pe.lastName',
+  'pe.life',
   'pe.maidenName',
   'pe.new',
   'pe.notes',
   'pe.optional',
   'pe.required',
   'pe.save',
+  'pe.saved.toast',
+  'pe.unsavedMessage',
+  'pe.unsavedTitle',
   'pe.update',
   'register.displayName',
   'register.email',

@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Input, Output, forwardRef, inject, signal } from '@angular/core';
+import { Component, Input, forwardRef, inject, signal } from '@angular/core';
 import { ControlValueAccessor, FormControl, NG_VALIDATORS, NG_VALUE_ACCESSOR, ReactiveFormsModule, ValidationErrors, Validator } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
@@ -6,9 +6,6 @@ import { MatCheckboxModule } from '@angular/material/checkbox';
 import { PartialDate } from '../../core/api/generated';
 import { I18nService } from '../../core/i18n/i18n.service';
 import { formatPartialDate, isEmptyPartialDate, parsePartialDate } from './partial-date';
-
-/** Legacy alias kept until P1c-B removes the last `[value]`/`(valueChange)` call sites. */
-export type PartialDateValue = PartialDate;
 
 /**
  * Text entry for genealogy dates: "1923", "06.1923", "12.06.1923", "~" for approximate.
@@ -47,10 +44,6 @@ export class PartialDateInputComponent implements ControlValueAccessor, Validato
   @Input() label = '';
   @Input() hint = '';
   @Input() required = false;
-
-  /** Legacy two-way API (P1c-B removes it). */
-  @Input() set value(v: PartialDate | null | undefined) { this.writeValue(v ?? null); }
-  @Output() valueChange = new EventEmitter<PartialDate | null>();
 
   readonly textCtrl = new FormControl('', { nonNullable: true, validators: [c => (parsePartialDate(c.value) === undefined ? { partialDate: true } : null)] });
   readonly approx = signal(false);
@@ -127,6 +120,5 @@ export class PartialDateInputComponent implements ControlValueAccessor, Validato
 
   private emit() {
     this.onChange(this.current);
-    this.valueChange.emit(this.current);
   }
 }
