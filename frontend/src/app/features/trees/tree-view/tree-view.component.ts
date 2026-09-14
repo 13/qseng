@@ -126,7 +126,7 @@ class TreeSelectionSheetComponent {
               <button matMiniFab (click)="exportPng()" [matTooltip]="'tree.export' | translate" [attr.aria-label]="'tree.export' | translate"><mat-icon>download</mat-icon></button>
             </div>
 
-            <div class="qs-tv__ctx" tabindex="-1" [style.left.px]="ctx()?.x ?? 0" [style.top.px]="ctx()?.y ?? 0" [matMenuTriggerFor]="ctxMenu" (menuClosed)="focusCanvas()"></div>
+            <div class="qs-tv__ctx" aria-hidden="true" [style.left.px]="ctx()?.x ?? 0" [style.top.px]="ctx()?.y ?? 0" [matMenuTriggerFor]="ctxMenu" (menuClosed)="focusCanvas()"></div>
             <mat-menu #ctxMenu="matMenu">
               @if (ctxPerson(); as p) {
                 <button mat-menu-item (click)="open(p.id!)"><mat-icon>open_in_new</mat-icon>{{ 'tree.openProfile' | translate }}</button>

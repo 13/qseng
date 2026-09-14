@@ -10,6 +10,7 @@ body {
 
 a { color: var(--mat-sys-primary); text-decoration: none; }
 a:hover { text-decoration: underline; }
+p > a { text-decoration: underline; text-underline-offset: 2px; }
 
 :focus-visible {
   outline: 2px solid var(--mat-sys-primary);

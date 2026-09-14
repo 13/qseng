@@ -48,7 +48,7 @@ import { UserApi } from './core/api/generated';
           <mat-icon>{{ themeIcon() }}</mat-icon>
         </button>
 
-        <button matButton [matMenuTriggerFor]="userMenu" class="qs-user" aria-haspopup="menu">
+        <button matButton [matMenuTriggerFor]="userMenu" class="qs-user" aria-haspopup="menu" [attr.aria-label]="auth.displayName()">
           <span class="qs-avatar qs-avatar--28 qs-avatar__initials qs-user__avatar" aria-hidden="true">{{ initials() }}</span>
           <span class="qs-user__name">{{ auth.displayName() }}</span>
           <mat-icon aria-hidden="true">expand_more</mat-icon>
