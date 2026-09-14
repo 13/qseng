@@ -30,7 +30,7 @@ Password: Demo123!
 
 The Escobar-Smith-Spath family tree (5 generations, 42 people) is seeded automatically on first boot.
 
-> **Re-seed demo data** (after updates): `rm backend/qseng.db` then restart — the database is recreated from scratch.
+> **Re-seed demo data** (after updates): `rm backend/src/Qseng.Api/qseng.db` then restart — the database is recreated from scratch.
 
 ---
 

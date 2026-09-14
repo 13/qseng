@@ -73,6 +73,7 @@ API_LOG="$SCRIPT_DIR/.api.log"
 info "Starting API on $API_URL …"
 (
     cd "$API_DIR"
+    ASPNETCORE_ENVIRONMENT="${ASPNETCORE_ENVIRONMENT:-Development}" \
     DB_PROVIDER=sqlite CONNECTION_STRING="Data Source=$API_DIR/qseng.db" \
         dotnet run --project src/Qseng.Api --no-launch-profile 2>&1
 ) > "$API_LOG" &
