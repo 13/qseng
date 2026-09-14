@@ -52,4 +52,13 @@ describe('ShortcutService', () => {
     key(document.getElementById('i')!, { key: 'k', ctrlKey: true });
     expect(h).toHaveBeenCalledTimes(1);
   });
+
+  it('blocks mod+s dispatched from inside a modal overlay', () => {
+    const svc = setup();
+    const h = vi.fn();
+    svc.register('mod+s', h, { allowInInputs: true });
+    document.body.innerHTML = '<div class="cdk-overlay-container"><button id="in-overlay"></button></div>';
+    key(document.getElementById('in-overlay')!, { key: 's', ctrlKey: true });
+    expect(h).not.toHaveBeenCalled();
+  });
 });

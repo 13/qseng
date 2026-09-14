@@ -7,7 +7,8 @@ import { I18nService, Lang } from '../../core/i18n/i18n.service';
 import { TranslationKey } from '../../core/i18n/translation-keys';
 import { ThemeService } from '../../core/theme/theme.service';
 import { PaletteService } from '../../core/ui/palette.service';
-import type { RelationshipDialogData } from '../persons/relationship-dialog.component';
+import { ToastService } from '../../core/ui/toast.service';
+import type { RelationshipDialogData, RelationshipDialogResult } from '../persons/relationship-dialog.component';
 
 export interface PaletteContext {
   treeId: string | null;
@@ -44,6 +45,7 @@ export interface PaletteActionDeps {
   setLang: (l: Lang) => void;
   personsApi: PersonsApi;
   paletteService: PaletteService;
+  toast: ToastService;
 }
 
 const withTree = (ctx: PaletteContext) => !!ctx.treeId;
@@ -62,9 +64,14 @@ export function paletteActions(deps: PaletteActionDeps): PaletteAction[] {
         const treeId = ctx.treeId;
         if (!treeId) return;
         const persons = await firstValueFrom(deps.personsApi.personsGetByTree({ treeId })).catch(() => []);
-        const { RelationshipDialogComponent } = await import('../persons/relationship-dialog.component');
+        const { RelationshipDialogComponent, relationshipAddedMessage } = await import('../persons/relationship-dialog.component');
         const data: RelationshipDialogData = { treeId, persons, mode: 'new' };
-        deps.dialog.open(RelationshipDialogComponent, { data, width: '520px', maxWidth: '95vw' });
+        const ref = deps.dialog.open<InstanceType<typeof RelationshipDialogComponent>, RelationshipDialogData, RelationshipDialogResult | undefined>(
+          RelationshipDialogComponent, { data, width: '520px', maxWidth: '95vw' }
+        );
+        const result = await firstValueFrom(ref.afterClosed());
+        if (!result) return;
+        deps.toast.success(relationshipAddedMessage(deps.i18n, result));
       }
     },
     {

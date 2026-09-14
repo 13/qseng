@@ -50,7 +50,7 @@ export class ShortcutService {
     const list = (this.entries.get(combo) ?? []).slice().reverse();  // last registered wins
     for (const e of list) {
       if (editable && !e.allowInInputs && !ALWAYS.has(combo)) continue;
-      if (inOverlay && !ALWAYS.has(combo) && combo !== 'mod+s') continue;
+      if (inOverlay && !ALWAYS.has(combo)) continue;
       ev.preventDefault();
       e.handler(ev);
       return;

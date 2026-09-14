@@ -108,6 +108,75 @@ describe('OnboardingDialogComponent', () => {
     expect(ref.close).toHaveBeenCalledWith({ treeId: 't1', personId: 'me' });
   });
 
+  it('step 3: finish() with both parents filled creates two persons and two Parent relationships, then closes', async () => {
+    const { cmp, persons, relationships, ref, fixture } = setup();
+    persons.personsCreate
+      .mockReturnValueOnce(of({ id: 'me' }))
+      .mockReturnValueOnce(of({ id: 'm1' }))
+      .mockReturnValueOnce(of({ id: 'f1' }));
+    toStep3(cmp);
+    cmp.parentsForm.controls.mother.patchValue({ firstName: 'Maria', lastName: 'Escobar' });
+    cmp.parentsForm.controls.father.patchValue({ firstName: 'Pablo', lastName: 'Escobar' });
+    cmp.finish();
+    await fixture.whenStable();
+    expect(persons.personsCreate).toHaveBeenCalledTimes(3);
+    expect(relationships.relationshipsCreate).toHaveBeenCalledTimes(2);
+    expect(relationships.relationshipsCreate).toHaveBeenNthCalledWith(1, { treeId: 't1', body: expect.objectContaining({ type: 'Parent', fromPersonId: 'm1', toPersonId: 'me' }) });
+    expect(relationships.relationshipsCreate).toHaveBeenNthCalledWith(2, { treeId: 't1', body: expect.objectContaining({ type: 'Parent', fromPersonId: 'f1', toPersonId: 'me' }) });
+    expect(ref.close).toHaveBeenCalledWith({ treeId: 't1', personId: 'me' });
+  });
+
+  it('step 3: finish() with a first name but no last name blocks with a required error and calls nothing further', () => {
+    const { cmp, persons, relationships, ref } = setup();
+    toStep3(cmp);
+    persons.personsCreate.mockClear();
+    cmp.parentsForm.controls.mother.patchValue({ firstName: 'Maria' });
+    cmp.finish();
+    expect(cmp.parentsForm.controls.mother.controls.lastName.errors).toEqual(expect.objectContaining({ required: true }));
+    expect(persons.personsCreate).not.toHaveBeenCalled();
+    expect(relationships.relationshipsCreate).not.toHaveBeenCalled();
+    expect(ref.close).not.toHaveBeenCalled();
+  });
+
+  it('step 3: retrying finish() after relationshipsCreate fails does not recreate the already-created parent', async () => {
+    const { cmp, persons, relationships, ref, toast, fixture } = setup();
+    toStep3(cmp);
+    persons.personsCreate.mockClear();
+    persons.personsCreate.mockReturnValueOnce(of({ id: 'm1' }));
+    relationships.relationshipsCreate.mockReturnValueOnce(
+      throwError(() => new HttpErrorResponse({ status: 500, error: { status: 500, title: 'Server error' } }))
+    );
+    cmp.parentsForm.controls.mother.patchValue({ firstName: 'Maria', lastName: 'Escobar' });
+
+    cmp.finish();
+    await fixture.whenStable();
+    expect(persons.personsCreate).toHaveBeenCalledTimes(1);
+    expect(relationships.relationshipsCreate).toHaveBeenCalledTimes(1);
+    expect(toast.errorFrom).toHaveBeenCalled();
+    expect(ref.close).not.toHaveBeenCalled();
+
+    cmp.finish();
+    await fixture.whenStable();
+    expect(persons.personsCreate).toHaveBeenCalledTimes(1);
+    expect(relationships.relationshipsCreate).toHaveBeenCalledTimes(2);
+    expect(ref.close).toHaveBeenCalledWith({ treeId: 't1', personId: 'me' });
+  });
+
+  it('close() on step 2 (before "you" exists) closes with no result', () => {
+    const { cmp, ref } = setup();
+    cmp.treeForm.controls.name.setValue('Escobar');
+    cmp.next();
+    cmp.close();
+    expect(ref.close).toHaveBeenCalledWith(undefined);
+  });
+
+  it('close() on step 3 closes with the tree and "you" already created', () => {
+    const { cmp, ref } = setup();
+    toStep3(cmp);
+    cmp.close();
+    expect(ref.close).toHaveBeenCalledWith({ treeId: 't1', personId: 'me' });
+  });
+
   it('a failing personsCreate (validation problem) keeps step 2 open and shows the server error on firstName', () => {
     const { cmp, persons, ref, toast } = setup({ personsFail: true });
     cmp.treeForm.controls.name.setValue('Escobar');

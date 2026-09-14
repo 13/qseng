@@ -98,9 +98,10 @@ describe('TreeListComponent', () => {
     expect(router.navigate).toHaveBeenCalledWith(['/trees', 't9'], { queryParams: { select: 'p9' } });
   });
 
-  it('startOnboarding does nothing further when the dialog closes without a result', async () => {
-    const { cmp, toast, router } = setup(trees, undefined);
+  it('startOnboarding reloads the list (a tree from step 1 may already exist) but does not toast or navigate when the dialog closes without a result', async () => {
+    const { cmp, api, toast, router } = setup(trees, undefined);
     await cmp.startOnboarding();
+    expect(api.treesGetAll).toHaveBeenCalledTimes(2);
     expect(toast.success).not.toHaveBeenCalled();
     expect(router.navigate).not.toHaveBeenCalled();
   });
@@ -126,5 +127,20 @@ describe('TreeListComponent', () => {
     const accepted = setup(trees, undefined, true);
     await accepted.cmp.remove(trees[0]);
     expect(accepted.api.treesDelete).toHaveBeenCalledWith({ id: 't1' });
+  });
+
+  it('clears the remembered qs.lastTree when the deleted tree is the one remembered', async () => {
+    sessionStorage.setItem('qs.lastTree', 't1');
+    const { cmp } = setup(trees, undefined, true);
+    await cmp.remove(trees[0]);
+    expect(sessionStorage.getItem('qs.lastTree')).toBeNull();
+  });
+
+  it('leaves qs.lastTree alone when a different tree is deleted', async () => {
+    sessionStorage.setItem('qs.lastTree', 't2');
+    const { cmp } = setup(trees, undefined, true);
+    await cmp.remove(trees[0]);
+    expect(sessionStorage.getItem('qs.lastTree')).toBe('t2');
+    sessionStorage.removeItem('qs.lastTree');
   });
 });

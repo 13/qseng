@@ -1,23 +1,26 @@
+import { of } from 'rxjs';
 import { describe, expect, it, vi } from 'vitest';
 import { PaletteAction, PaletteActionDeps, PaletteContext, paletteActions } from './palette-actions';
+import type { RelationshipDialogResult } from '../persons/relationship-dialog.component';
 
 function ctx(overrides: Partial<PaletteContext> = {}): PaletteContext {
   return { treeId: 't1', isAdmin: true, lang: 'en', theme: 'light', ...overrides };
 }
 
-function setup() {
+function setup(dialogResult?: RelationshipDialogResult) {
   const router = { navigate: vi.fn() };
   const theme = { setMode: vi.fn() };
   const i18n = { t: (k: string) => k, dynamic: (k: string) => k };
   const auth = { logout: vi.fn() };
-  const dialog = { open: vi.fn() };
+  const dialog = { open: vi.fn(() => ({ afterClosed: () => of(dialogResult) })) };
   const setLang = vi.fn();
-  const personsApi = { personsGetByTree: vi.fn() };
+  const personsApi = { personsGetByTree: vi.fn(() => of([])) };
   const paletteService = { openShortcuts: vi.fn() };
-  const deps = { router, theme, i18n, auth, dialog, setLang, personsApi, paletteService } as unknown as PaletteActionDeps;
+  const toast = { success: vi.fn(), error: vi.fn(), info: vi.fn(), errorFrom: vi.fn() };
+  const deps = { router, theme, i18n, auth, dialog, setLang, personsApi, paletteService, toast } as unknown as PaletteActionDeps;
   const actions = paletteActions(deps);
   const byId = (id: string): PaletteAction => actions.find(a => a.id === id)!;
-  return { actions, byId, router, theme, auth, setLang, paletteService };
+  return { actions, byId, router, theme, auth, setLang, paletteService, dialog, personsApi, toast };
 }
 
 describe('paletteActions', () => {
@@ -92,5 +95,26 @@ describe('paletteActions', () => {
     const { byId, paletteService } = setup();
     byId('shortcuts').run(ctx());
     expect(paletteService.openShortcuts).toHaveBeenCalled();
+  });
+
+  it('addRelation fetches the tree\'s persons, opens the dialog, and toasts the shared "added" message for a new person', async () => {
+    const created = { id: 'p9', firstName: 'Maria', lastName: 'Smith' };
+    const result: RelationshipDialogResult = { relationship: { id: 'r1' }, uiType: 'Parent', created };
+    const { byId, dialog, personsApi, toast } = setup(result);
+
+    await byId('addRelation').run(ctx({ treeId: 't7' }));
+
+    expect(personsApi.personsGetByTree).toHaveBeenCalledWith({ treeId: 't7' });
+    expect(dialog.open).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ data: expect.objectContaining({ treeId: 't7', mode: 'new' }) }));
+    // The mock i18n.dynamic() resolves to the key verbatim, so this doubles as a check that
+    // relationshipAddedMessage picked the created-person branch (rel.added.<type>), not the
+    // plain rel.added.toast fallback.
+    expect(toast.success).toHaveBeenCalledWith('rel.added.parent');
+  });
+
+  it('addRelation toasts nothing when the dialog closes without a result', async () => {
+    const { byId, toast } = setup(undefined);
+    await byId('addRelation').run(ctx({ treeId: 't7' }));
+    expect(toast.success).not.toHaveBeenCalled();
   });
 });

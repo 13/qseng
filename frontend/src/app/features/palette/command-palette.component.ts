@@ -12,9 +12,11 @@ import { LangPreferenceService } from '../../core/i18n/lang-preference.service';
 import { TranslatePipe } from '../../core/i18n/translate.pipe';
 import { ThemeService } from '../../core/theme/theme.service';
 import { PaletteService } from '../../core/ui/palette.service';
+import { ToastService } from '../../core/ui/toast.service';
 import { fullName, lifespan } from '../../core/models/person-helpers';
 import { personSearchText } from '../trees/tree-view/tree-graph.model';
 import { PaletteAction, PaletteContext, paletteActions } from './palette-actions';
+import { currentTreesVersion, paletteTreeCache } from './palette-cache';
 
 export interface CommandPaletteData {
   treeId: string | null;
@@ -77,21 +79,33 @@ export class CommandPaletteComponent {
   private readonly treesApi = inject(TreesApi);
   private readonly langPref = inject(LangPreferenceService);
   private readonly paletteService = inject(PaletteService);
+  private readonly toast = inject(ToastService);
 
   readonly query = new FormControl('', { nonNullable: true });
   private readonly term = toSignal(this.query.valueChanges.pipe(debounceTime(80)), { initialValue: '' });
 
   private readonly trees = signal<TreeDto[]>([]);
+  // Distinguishes "the tree list hasn't come back yet" from "it came back and doesn't have
+  // this tree" — only the latter should null out a stale `qs.lastTree` (see `ctx` below).
+  private readonly treesLoaded = signal(false);
   private readonly persons = signal<PersonDto[]>([]);
   private readonly treeName = computed(() => this.trees().find(t => t.id === this.data.treeId)?.name ?? '');
   readonly active = signal(0);
 
-  private readonly ctx = computed<PaletteContext>(() => ({
-    treeId: this.data.treeId,
-    isAdmin: this.auth.isAdmin(),
-    lang: this.i18n.lang(),
-    theme: this.theme.mode()
-  }));
+  // `qs.lastTree` (the session's last-viewed tree) can point at a tree that no longer
+  // exists — deleted from another tab, or from the tree list itself. Once the tree list has
+  // loaded and confirms it's gone, tree-bound context (and the "People in …" group) drops
+  // it rather than offering actions against a dead id.
+  private readonly ctx = computed<PaletteContext>(() => {
+    const requested = this.data.treeId;
+    const staleTreeId = this.treesLoaded() && requested !== null && !this.trees().some(t => t.id === requested);
+    return {
+      treeId: staleTreeId ? null : requested,
+      isAdmin: this.auth.isAdmin(),
+      lang: this.i18n.lang(),
+      theme: this.theme.mode()
+    };
+  });
 
   private readonly allActions: PaletteAction[] = paletteActions({
     router: this.router,
@@ -101,7 +115,8 @@ export class CommandPaletteComponent {
     dialog: this.dialog,
     setLang: l => this.langPref.set(l),
     personsApi: this.personsApi,
-    paletteService: this.paletteService
+    paletteService: this.paletteService,
+    toast: this.toast
   });
 
   private readonly people = computed<PersonDto[]>(() => {
@@ -133,7 +148,9 @@ export class CommandPaletteComponent {
       kind: 'person', id: 'p-' + (p.id ?? ''), index: i++, icon: p.sex === 'Female' ? 'woman' : p.sex === 'Male' ? 'man' : 'person',
       label: fullName({ firstName: p.firstName ?? '', lastName: p.lastName ?? '' }), hint: lifespan({ firstName: p.firstName ?? '', lastName: p.lastName ?? '', birth: p.birth, death: p.death }), personId: p.id ?? ''
     }));
-    if (personRows.length) groups.push({ key: 'people', label: this.i18n.t('palette.group.people').replace('__TREE__', this.treeName()), rows: personRows });
+    // Gated on ctx().treeId, not just data.treeId: a stale `qs.lastTree` that the tree list
+    // no longer contains must not keep offering a "People in …" group for it.
+    if (personRows.length && this.ctx().treeId) groups.push({ key: 'people', label: this.i18n.t('palette.group.people').replace('__TREE__', this.treeName()), rows: personRows });
 
     const treeRows: TreeRow[] = this.matchingTrees().map(t => ({
       kind: 'tree', id: 't-' + (t.id ?? ''), index: i++, icon: 'forest', label: t.name ?? '', hint: '', treeId: t.id ?? ''
@@ -156,7 +173,21 @@ export class CommandPaletteComponent {
   });
 
   constructor() {
-    this.treesApi.treesGetAll().subscribe({ next: ts => this.trees.set(ts), error: () => this.trees.set([]) });
+    const version = currentTreesVersion();
+    if (paletteTreeCache.trees && paletteTreeCache.version === version) {
+      this.trees.set(paletteTreeCache.trees);
+      this.treesLoaded.set(true);
+    } else {
+      this.treesApi.treesGetAll().subscribe({
+        next: ts => {
+          this.trees.set(ts);
+          this.treesLoaded.set(true);
+          paletteTreeCache.trees = ts;
+          paletteTreeCache.version = version;
+        },
+        error: () => { this.trees.set([]); this.treesLoaded.set(true); }
+      });
+    }
     const treeId = this.data.treeId;
     if (treeId) {
       this.personsApi.personsGetByTree({ treeId }).subscribe({ next: ps => this.persons.set(ps), error: () => this.persons.set([]) });

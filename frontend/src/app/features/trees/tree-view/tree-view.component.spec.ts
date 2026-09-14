@@ -236,4 +236,36 @@ describe('TreeViewComponent', () => {
     expect(store.selectedId()).toBe('a');
     expect(graph.select).toHaveBeenCalledWith('a');
   });
+
+  // A pending ?select for an id that doesn't exist yet is spent on its first (failing)
+  // attempt, not kept around hoping a later reload grows a person with that id.
+  it('never selects a pending ?select id that was unknown on its first attempt, even if a later reload would have matched it', async () => {
+    const personsApi = {
+      personsGetByTree: vi.fn()
+        .mockReturnValueOnce(of(people))
+        .mockReturnValueOnce(of([...people, { id: 'zzz', treeId: 't1', firstName: 'New', lastName: 'Person', sex: 'Male' as const }]))
+    };
+    const relsApi = { relationshipsGetByTree: vi.fn(() => of([])) };
+    const treesApi = { treesGetAll: vi.fn(() => of([{ id: 't1', name: 'Familie' }])) };
+    const graph = { build: vi.fn(async () => undefined), select: vi.fn(), fit: vi.fn(), zoomIn: vi.fn(), zoomOut: vi.fn(), toggleLayout: vi.fn(), resetLayout: vi.fn(), exportPng: vi.fn(),
+      layoutMode: signal('tree'), loading: signal(false), selectedId: signal<string | null>(null), searchTerm: signal(''), hasCustomLayout: signal(false), compact: signal(false), destroy: vi.fn() };
+    TestBed.configureTestingModule({ providers: [provideRouter([]), provideNoopAnimations(),
+      { provide: PersonsApi, useValue: personsApi }, { provide: RelationshipsApi, useValue: relsApi }, { provide: TreesApi, useValue: treesApi },
+      { provide: LayoutService, useValue: { handset: () => false, tablet: () => false, desktop: () => true } },
+      { provide: MatDialog, useValue: { open: vi.fn() } }, { provide: MatBottomSheet, useValue: { open: vi.fn() } },
+      { provide: ConfirmDialogService, useValue: { confirm: vi.fn(async () => true) } }, { provide: ToastService, useValue: { success: vi.fn(), errorFrom: vi.fn(), error: vi.fn(), info: vi.fn() } },
+      { provide: BreadcrumbService, useValue: { set: vi.fn() } }, { provide: I18nService, useValue: { t: (k: string) => k, dynamic: (k: string) => k } }] });
+    TestBed.overrideComponent(TreeViewComponent, { set: { providers: [TreeStore, { provide: TreeGraphService, useValue: graph }] } });
+    const fixture = TestBed.createComponent(TreeViewComponent);
+    fixture.componentRef.setInput('treeId', 't1');
+    fixture.componentRef.setInput('select', 'zzz');
+    fixture.detectChanges();
+    await fixture.whenStable();
+    const store = fixture.debugElement.injector.get(TreeStore);
+    expect(store.selectedId()).toBeNull();
+
+    store.reload();
+    await fixture.whenStable();
+    expect(store.selectedId()).toBeNull();
+  });
 });

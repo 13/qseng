@@ -42,6 +42,15 @@ function matches(p: PersonDto, term: string): boolean {
   return `${p.firstName ?? ''} ${p.lastName ?? ''} ${p.maidenName ?? ''}`.toLowerCase().includes(t);
 }
 
+/** The success-toast text for a finished `RelationshipDialogResult`, shared by every place
+ *  that opens this dialog (`tree-view.component.ts`'s own call, and the palette's
+ *  "Add relationship" action) so the wording stays in one place. */
+export function relationshipAddedMessage(i18n: I18nService, result: RelationshipDialogResult): string {
+  if (!result.created) return i18n.t('rel.added.toast');
+  const name = fullName({ firstName: result.created.firstName ?? '', lastName: result.created.lastName ?? '' });
+  return i18n.dynamic('rel.added.' + result.uiType.toLowerCase()).replace('__NAME__', name);
+}
+
 @Component({
   selector: 'qs-relationship-dialog',
   imports: [ReactiveFormsModule, MatDialogModule, MatFormFieldModule, MatInputModule, MatSelectModule, MatAutocompleteModule,

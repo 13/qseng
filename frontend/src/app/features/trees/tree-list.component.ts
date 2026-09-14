@@ -128,6 +128,7 @@ export class TreeListComponent implements OnInit {
   async openCreate() {
     const result = await this.openForm({ mode: 'create' });
     if (!result) return;
+    this.bumpTreesVersion();
     this.toast.success(this.i18n.t('trees.created.toast'));
     this.load();
   }
@@ -139,7 +140,14 @@ export class TreeListComponent implements OnInit {
       OnboardingDialogComponent, { width: '640px', maxWidth: '95vw' }
     );
     const result = await firstValueFrom(ref.afterClosed());
-    if (!result) return;
+    if (!result) {
+      // The stepper always has an exit (Close on step 2/3), and it may close after the tree
+      // itself was already created (step 1 succeeded, then Close/Escape before "you") — a
+      // reload picks that tree up even though the dialog reported no result.
+      this.load();
+      return;
+    }
+    this.bumpTreesVersion();
     this.toast.success(this.i18n.t('onb.ready'));
     await this.router.navigate(['/trees', result.treeId], { queryParams: { select: result.personId } });
   }
@@ -154,6 +162,7 @@ export class TreeListComponent implements OnInit {
   async openRename(tree: TreeDto) {
     const result = await this.openForm({ mode: 'rename', tree });
     if (!result) return;
+    this.bumpTreesVersion();
     this.toast.success(this.i18n.t('trees.renamed.toast'));
     this.load();
   }
@@ -167,9 +176,29 @@ export class TreeListComponent implements OnInit {
     });
     if (ok !== true || !tree.id) return;
     this.api.treesDelete({ id: tree.id }).subscribe({
-      next: () => { this.toast.success(this.i18n.t('trees.deleted.toast')); this.load(); },
+      next: () => {
+        this.bumpTreesVersion();
+        this.clearLastTreeIfDeleted(tree.id!);
+        this.toast.success(this.i18n.t('trees.deleted.toast'));
+        this.load();
+      },
       error: e => this.toast.errorFrom(e, this.i18n.t('trees.err.delete'))
     });
+  }
+
+  /** The palette preselects `qs.lastTree` for its "People in …" group; a deleted tree must
+   *  not keep being offered there once it's gone. */
+  private clearLastTreeIfDeleted(deletedId: string): void {
+    try {
+      if (sessionStorage.getItem('qs.lastTree') === deletedId) sessionStorage.removeItem('qs.lastTree');
+    } catch { /* private browsing etc.: nothing to clear */ }
+  }
+
+  /** Bumps the palette's session-lifetime tree-list cache key (see `features/palette/palette-cache.ts`)
+   *  so the next command palette open refetches instead of serving a stale list — this component can't
+   *  import that cache module directly without pulling MatDialog/palette code into its own chunk. */
+  private bumpTreesVersion(): void {
+    try { sessionStorage.setItem('qs.treesVersion', String(Date.now())); } catch { /* private browsing etc.: cache just won't invalidate */ }
   }
 
   private openForm(data: TreeFormData): Promise<TreeDto | undefined> {

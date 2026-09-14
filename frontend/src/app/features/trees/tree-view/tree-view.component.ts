@@ -21,7 +21,7 @@ import { ConfirmDialogService } from '../../../core/ui/confirm-dialog.service';
 import { ToastService } from '../../../core/ui/toast.service';
 import { LayoutService } from '../../../core/ui/layout.service';
 import { fullName } from '../../../core/models/person-helpers';
-import { RelationshipDialogComponent, RelationshipDialogData, RelationshipDialogResult } from '../../persons/relationship-dialog.component';
+import { RelationshipDialogComponent, RelationshipDialogData, RelationshipDialogResult, relationshipAddedMessage } from '../../persons/relationship-dialog.component';
 import { TreeStore } from './tree.store';
 import { TreeGraphService } from './tree-graph.service';
 import { UiRelType } from './tree-graph.model';
@@ -218,9 +218,14 @@ export class TreeViewComponent {
       }).then(() => {
         const sel = this.store.selectedId();
         if (sel) this.graph.select(sel);
-        if (this.pendingSelect && this.store.personById(this.pendingSelect)) {
-          this.onSelected(this.pendingSelect);
+        // One-shot, spent whether or not it hits: persons is non-empty here (the guard
+        // above returns early otherwise), so this is the pending id's one real chance — an
+        // id that doesn't exist yet must not suddenly get selected on some later reload
+        // once a person with that id happens to show up (e.g. a stale/reused route link).
+        if (this.pendingSelect) {
+          const id = this.pendingSelect;
           this.pendingSelect = null;
+          if (this.store.personById(id)) this.onSelected(id);
         }
       });
     });
@@ -311,15 +316,13 @@ export class TreeViewComponent {
     this.store.reload();
     if (result.created) {
       const created = result.created;
-      const key = 'rel.added.' + result.uiType.toLowerCase();
-      const name = fullName({ firstName: created.firstName ?? '', lastName: created.lastName ?? '' });
-      this.toast.success(this.i18n.dynamic(key).replace('__NAME__', name), {
+      this.toast.success(relationshipAddedMessage(this.i18n, result), {
         action: this.i18n.t('rel.open'),
         onAction: () => this.open(created.id!)
       });
       if (created.id) this.onSelected(created.id);
     } else {
-      this.toast.success(this.i18n.t('rel.added.toast'));
+      this.toast.success(relationshipAddedMessage(this.i18n, result));
     }
   }
 

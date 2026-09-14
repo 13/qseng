@@ -23,6 +23,8 @@ export interface OnboardingResult {
   personId: string;
 }
 
+interface ParentQueueItem { role: 'mother' | 'father'; group: FormGroup; }
+
 /**
  * First-run flow: name a tree, add yourself, then (optionally) your parents — three
  * linear steps in one dialog. Each step creates its row immediately rather than batching
@@ -75,6 +77,7 @@ export interface OnboardingResult {
             <qs-partial-date-input formControlName="birth" [label]="'pd.birth' | translate" />
             @if (error()) { <p class="qs-form-error" role="alert">{{ error() }}</p> }
             <div class="qs-onb-actions">
+              <button matButton type="button" (click)="close()">{{ 'close' | translate }}</button>
               <button matButton="filled" type="submit" [disabled]="saving()">{{ 'onb.next' | translate }}</button>
             </div>
           </form>
@@ -103,6 +106,7 @@ export interface OnboardingResult {
           </div>
           @if (error()) { <p class="qs-form-error" role="alert">{{ error() }}</p> }
           <div class="qs-onb-actions">
+            <button matButton type="button" (click)="close()">{{ 'close' | translate }}</button>
             <button matButton type="button" (click)="skip()" [disabled]="saving()">{{ 'onb.skip' | translate }}</button>
             <button matButton="filled" type="button" (click)="finish()" [disabled]="saving()">{{ 'onb.finish' | translate }}</button>
           </div>
@@ -231,8 +235,9 @@ export class OnboardingDialogComponent {
     const youId = this.youId();
     if (!treeId || !youId) return;
 
-    const queue: FormGroup[] = [];
-    for (const group of [this.parentsForm.controls.mother, this.parentsForm.controls.father]) {
+    const queue: ParentQueueItem[] = [];
+    for (const role of ['mother', 'father'] as const) {
+      const group = this.parentsForm.controls[role];
       const v = group.getRawValue();
       if (!v.firstName.trim()) continue;
       if (!v.lastName.trim()) {
@@ -240,7 +245,7 @@ export class OnboardingDialogComponent {
         group.controls.lastName.markAsTouched();
         return;
       }
-      queue.push(group);
+      queue.push({ role, group });
     }
 
     this.saving.set(true);
@@ -248,13 +253,25 @@ export class OnboardingDialogComponent {
     this.createParents(treeId, youId, queue, 0);
   }
 
-  private createParents(treeId: string, youId: string, queue: FormGroup[], idx: number): void {
+  // Retrying finish() after a mid-flight failure (e.g. relationshipsCreate rejects for the
+  // parent personsCreate already created) must not recreate a parent that already exists —
+  // createdParent remembers each role's created person id, linkedParent which roles already
+  // got their Parent relationship, so a retry only ever repeats the step that actually failed.
+  private readonly createdParent = new Map<'mother' | 'father', string>();
+  private readonly linkedParent = new Set<'mother' | 'father'>();
+
+  private createParents(treeId: string, youId: string, queue: ParentQueueItem[], idx: number): void {
     if (idx >= queue.length) {
       this.saving.set(false);
       this.ref.close({ treeId, personId: youId });
       return;
     }
-    const group = queue[idx];
+    const { role, group } = queue[idx];
+    if (this.linkedParent.has(role)) { this.createParents(treeId, youId, queue, idx + 1); return; }
+
+    const existingParentId = this.createdParent.get(role);
+    if (existingParentId) { this.linkParent(treeId, youId, role, existingParentId, group, queue, idx); return; }
+
     const v = group.getRawValue();
     const body: PersonRequest = {
       firstName: v.firstName.trim(), lastName: v.lastName.trim(), sex: v.sex, birth: v.birth ?? undefined,
@@ -263,14 +280,23 @@ export class OnboardingDialogComponent {
     this.personsApi.personsCreate({ treeId, body }).subscribe({
       next: parent => {
         const parentId = parent.id!;
-        this.relationshipsApi.relationshipsCreate({ treeId, body: toApiRelationship('Parent', parentId, youId) }).subscribe({
-          next: () => this.createParents(treeId, youId, queue, idx + 1),
-          error: e => {
-            this.saving.set(false);
-            if (isValidationProblem(e.error)) this.error.set(setServerErrors(group, e.error).join(' '));
-            else this.toast.errorFrom(e, this.i18n.t('err.save'));
-          }
-        });
+        this.createdParent.set(role, parentId);
+        this.linkParent(treeId, youId, role, parentId, group, queue, idx);
+      },
+      error: e => {
+        this.saving.set(false);
+        if (isValidationProblem(e.error)) this.error.set(setServerErrors(group, e.error).join(' '));
+        else this.toast.errorFrom(e, this.i18n.t('err.save'));
+      }
+    });
+  }
+
+  private linkParent(treeId: string, youId: string, role: 'mother' | 'father', parentId: string, group: FormGroup,
+                      queue: ParentQueueItem[], idx: number): void {
+    this.relationshipsApi.relationshipsCreate({ treeId, body: toApiRelationship('Parent', parentId, youId) }).subscribe({
+      next: () => {
+        this.linkedParent.add(role);
+        this.createParents(treeId, youId, queue, idx + 1);
       },
       error: e => {
         this.saving.set(false);
@@ -285,5 +311,14 @@ export class OnboardingDialogComponent {
     const youId = this.youId();
     if (!treeId || !youId) return;
     this.ref.close({ treeId, personId: youId });
+  }
+
+  /** Onboarding must always have an exit: Escape/backdrop is blocked once a tree exists
+   *  (see `nextFromTree`'s `disableClose`), so step 2/3 carry an explicit Close button that
+   *  still leaves with whatever was already created — a tree without "you" closes empty. */
+  close(): void {
+    const treeId = this.treeId();
+    const youId = this.youId();
+    this.ref.close(youId ? { treeId: treeId!, personId: youId } : undefined);
   }
 }
