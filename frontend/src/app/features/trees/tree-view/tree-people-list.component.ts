@@ -39,8 +39,8 @@ import { PeopleSort, TreeStore } from './tree.store';
             <span class="qs-muted qs-people__span">{{ lifespan({ firstName: '', lastName: '', birth: p.birth, death: p.death }) }}</span>
           </button>
         </div>
-        @if (!store.filteredPersons().length) { <p class="qs-empty qs-empty--compact qs-muted">{{ 'tree.noResults' | translate }}</p> }
       </cdk-virtual-scroll-viewport>
+      @if (!store.filteredPersons().length) { <p class="qs-empty qs-empty--compact qs-muted">{{ 'tree.noResults' | translate }}</p> }
     </div>
   `,
   styles: [`

@@ -182,7 +182,8 @@ Feature parity checklist. Each item must be ticked before P1 is done.
 - [x] Avatar upload on new person deferred until created (existing behaviour).
 
 ### Partial date input
-- [x] Rewritten as `ControlValueAccessor`: day, month, year, approximate toggle.
+- [x] Rewritten as `ControlValueAccessor`: day, month, year, approximate toggle
+      (delivered as one parsed text field `DD.MM.YYYY` / `MM.YYYY` / `YYYY` plus an "approximate" checkbox, not three inputs).
 
 ### Import
 - [x] Step 1 paste textarea with collapsible format guide.
@@ -194,6 +195,7 @@ Feature parity checklist. Each item must be ticked before P1 is done.
 - [x] Cards: Profile (display name, email read-only), Language, Appearance
       (light/dark/auto), Password, Data (export JSON, delete all data), Danger zone
       (delete account). Destructive actions via confirm dialog requiring password.
+      (Delivered grouping: Export is its own card; delete-all-data sits in Danger zone next to delete-account.)
 
 ### Admin users
 - [x] `mat-table` with sort; status and role chips; row kebab: activate/deactivate,
@@ -360,6 +362,7 @@ Playwright, screenshots saved to `docs/superpowers/specs/assets/p1/`.
   by `check-gates.mjs`.
 - Two intentional visual deltas from the avatar-class unification: the selection panel's
   initials avatar is now 1.1rem, sharing `.qs-avatar--56` with the other 56px avatar users;
+  admin-users avatar initials .8rem → .85rem via the shared `.qs-avatar--36`;
   the people-list empty state is now centred with 16px padding, sharing `.qs-empty--compact`
   instead of a one-off local rule.
 
