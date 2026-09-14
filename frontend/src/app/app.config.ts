@@ -14,7 +14,7 @@ import { I18nService } from './core/i18n/i18n.service';
 export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
-    provideRouter(routes, withComponentInputBinding(), withInMemoryScrolling({ scrollPositionRestoration: 'enabled' }), withRouterConfig({ paramsInheritanceStrategy: 'always' })),
+    provideRouter(routes, withComponentInputBinding(), withInMemoryScrolling({ scrollPositionRestoration: 'enabled', anchorScrolling: 'enabled' }), withRouterConfig({ paramsInheritanceStrategy: 'always' })),
     provideHttpClient(withInterceptors([pendingInterceptor, authInterceptor, errorInterceptor])),
     provideAnimationsAsync(),
     { provide: MAT_FORM_FIELD_DEFAULT_OPTIONS, useValue: { appearance: 'outline' } },

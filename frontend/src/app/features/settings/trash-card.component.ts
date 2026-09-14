@@ -1,4 +1,5 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, DestroyRef, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { DatePipe } from '@angular/common';
 import { MatCardModule } from '@angular/material/card';
 import { MatTableModule } from '@angular/material/table';
@@ -46,10 +47,10 @@ import { ToastService } from '../../core/ui/toast.service';
               <ng-container matColumnDef="actions">
                 <th mat-header-cell *matHeaderCellDef class="qs-col-actions"></th>
                 <td mat-cell *matCellDef="let it" class="qs-col-actions">
-                  <button matIconButton [attr.aria-label]="('trash.restore' | translate) + ': ' + name(it)" (click)="restore(it)">
+                  <button matIconButton [attr.aria-label]="('trash.restore' | translate) + ': ' + name(it)" [disabled]="busy()" (click)="restore(it)">
                     <mat-icon>restore_from_trash</mat-icon>
                   </button>
-                  <button matIconButton [attr.aria-label]="('trash.purge' | translate) + ': ' + name(it)" (click)="purge(it)">
+                  <button matIconButton [attr.aria-label]="('trash.purge' | translate) + ': ' + name(it)" [disabled]="busy()" (click)="purge(it)">
                     <mat-icon>delete_forever</mat-icon>
                   </button>
                 </td>
@@ -78,11 +79,16 @@ export class TrashCardComponent {
   private readonly confirm = inject(ConfirmDialogService);
   private readonly toast = inject(ToastService);
   private readonly i18n = inject(I18nService);
+  private readonly destroyRef = inject(DestroyRef);
+  private loadSeq = 0;
 
   readonly columns = ['name', 'tree', 'deleted', 'purge', 'actions'];
   readonly items = signal<TrashedPersonDto[]>([]);
   readonly retentionDays = signal(30);
   readonly loading = signal(true);
+  // Disables both row buttons while a restore/purge request is in flight, so a double
+  // click can't fire the same mutation twice.
+  readonly busy = signal(false);
 
   constructor() { this.load(); }
 
@@ -91,35 +97,46 @@ export class TrashCardComponent {
 
   load() {
     this.loading.set(true);
-    this.trashApi.trashList().subscribe({
+    const requestId = ++this.loadSeq;
+    this.trashApi.trashList().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: dto => {
+        if (requestId !== this.loadSeq) return;
         this.items.set(dto.items ?? []);
         this.retentionDays.set(dto.retentionDays ?? 30);
         this.loading.set(false);
       },
-      error: e => { this.loading.set(false); this.toast.errorFrom(e, this.i18n.t('err.load')); }
+      error: e => {
+        if (requestId !== this.loadSeq) return;
+        this.loading.set(false);
+        this.toast.errorFrom(e, this.i18n.t('err.load'));
+      }
     });
   }
 
   restore(it: TrashedPersonDto) {
-    if (!it.id) return;
-    this.personsApi.personsRestore({ id: it.id }).subscribe({
-      next: () => { this.toast.success(this.i18n.t('trash.restored').replace('__NAME__', this.name(it))); this.load(); },
-      error: e => this.toast.errorFrom(e, this.i18n.t('err.load'))
+    if (!it.id || this.busy()) return;
+    this.busy.set(true);
+    this.personsApi.personsRestore({ id: it.id }).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: () => { this.busy.set(false); this.toast.success(this.i18n.t('trash.restored').replace('__NAME__', this.name(it))); this.load(); },
+      error: e => { this.busy.set(false); this.toast.errorFrom(e, this.i18n.t('err.restore')); }
     });
   }
 
   async purge(it: TrashedPersonDto) {
-    if (!it.id) return;
+    if (!it.id || this.busy()) return;
+    // Set busy before awaiting the confirm dialog (not after), so a second purge() call
+    // fired while the dialog is still open is rejected too, not just a second click on an
+    // already-disabled button.
+    this.busy.set(true);
     const ok = await this.confirm.confirm({
       title: this.i18n.t('trash.purge'),
       message: this.i18n.t('trash.purgeConfirm').replace('__NAME__', this.name(it)),
       confirmLabel: this.i18n.t('delete'), destructive: true
     });
-    if (ok !== true) return;
-    this.trashApi.trashPurge({ personId: it.id }).subscribe({
-      next: () => { this.toast.success(this.i18n.t('trash.purged').replace('__NAME__', this.name(it))); this.load(); },
-      error: e => this.toast.errorFrom(e, this.i18n.t('err.delete'))
+    if (ok !== true) { this.busy.set(false); return; }
+    this.trashApi.trashPurge({ personId: it.id }).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: () => { this.busy.set(false); this.toast.success(this.i18n.t('trash.purged').replace('__NAME__', this.name(it))); this.load(); },
+      error: e => { this.busy.set(false); this.toast.errorFrom(e, this.i18n.t('err.delete')); }
     });
   }
 }

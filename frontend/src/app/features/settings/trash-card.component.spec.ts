@@ -95,6 +95,19 @@ describe('TrashCardComponent', () => {
     expect(trashApi.trashList).toHaveBeenCalled();
   });
 
+  it('firing purge() twice before the confirm dialog resolves only calls trashPurge once', async () => {
+    const { cmp, confirm, trashApi } = setup();
+    trashApi.trashList.mockClear();
+
+    const first = cmp.purge(items[0]);
+    const second = cmp.purge(items[0]);
+    await Promise.all([first, second]);
+
+    expect(confirm.confirm).toHaveBeenCalledTimes(1);
+    expect(trashApi.trashPurge).toHaveBeenCalledTimes(1);
+    expect(cmp.busy()).toBe(false);
+  });
+
   it('Delete now does nothing further when the confirm dialog is cancelled', async () => {
     const { fixture, confirm, trashApi } = setup(items, false);
     const el = fixture.nativeElement as HTMLElement;

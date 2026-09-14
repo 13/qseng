@@ -1,5 +1,5 @@
-import { Component, DestroyRef, Injector, OnInit, afterNextRender, inject, signal } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { Component, ElementRef, OnInit, effect, inject, signal, viewChild } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 import { DatePipe } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -103,7 +103,7 @@ import { TrashCardComponent } from './trash-card.component';
         </mat-card-content>
       </mat-card>
 
-      <qs-trash-card id="trash" />
+      <qs-trash-card id="trash" #trashCard />
 
       <mat-card appearance="outlined" class="qs-danger">
         <mat-card-header><mat-card-title>{{ 'settings.danger.title' | translate }}</mat-card-title></mat-card-header>
@@ -141,9 +141,6 @@ export class SettingsComponent implements OnInit {
   private readonly confirm = inject(ConfirmDialogService);
   private readonly toast = inject(ToastService);
   private readonly crumbs = inject(BreadcrumbService);
-  private readonly route = inject(ActivatedRoute);
-  private readonly injector = inject(Injector);
-  private readonly destroyRef = inject(DestroyRef);
   readonly i18n = inject(I18nService);
   readonly theme = inject(ThemeService);
 
@@ -157,11 +154,17 @@ export class SettingsComponent implements OnInit {
     next: ['', [Validators.required, Validators.minLength(8)]]
   });
 
+  // Scrolls the #trash card into view when arriving (or already sitting) on /settings#trash,
+  // e.g. via the command palette's "Trash" action. anchorScrolling only fires on navigation,
+  // not on a fragment-only change while already on this route, so drive it from the signal
+  // instead; zoneless never re-renders from the fragment alone, hence the explicit effect.
+  private readonly fragment = toSignal(inject(ActivatedRoute).fragment);
+  private readonly trashCard = viewChild<unknown, ElementRef<HTMLElement>>('trashCard', { read: ElementRef });
+
   constructor() {
-    // Scrolls the #trash card into view when arriving (or already sitting) on /settings#trash,
-    // e.g. via the command palette's "Trash" action.
-    this.route.fragment.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(f => {
-      if (f === 'trash') afterNextRender(() => document.getElementById('trash')?.scrollIntoView({ block: 'start' }), { injector: this.injector });
+    effect(() => {
+      const el = this.trashCard()?.nativeElement;
+      if (this.fragment() === 'trash' && el) queueMicrotask(() => el.scrollIntoView({ block: 'start' }));
     });
   }
 

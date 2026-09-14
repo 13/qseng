@@ -31,3 +31,6 @@ frontend/src/app/core/api/generated/
 
 # claude
 CLAUDE.md
+
+# controller browser session scratch
+.playwright-mcp/
