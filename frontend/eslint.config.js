@@ -16,6 +16,7 @@ module.exports = defineConfig([
     ],
     processor: angular.processInlineTemplates,
     rules: {
+      'no-alert': 'error',
       '@angular-eslint/directive-selector': [
         'error',
         {

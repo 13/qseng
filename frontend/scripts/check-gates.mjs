@@ -17,8 +17,7 @@ const srcFiles = tsFiles.filter(f => !f.endsWith('translation-keys.ts'));
 const emoji = /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\u{1F000}-\u{1F2FF}]/u;
 const banned = [
   { re: /\bngModel\b/, label: 'ngModel' },
-  { re: /(^|[^.\w])confirm\(/, label: 'native confirm(' },
-  { re: /(^|[^.\w])alert\(/, label: 'native alert(' },
+  { re: /\b(window|globalThis)\.(confirm|alert|prompt)\(/, label: 'native confirm/alert/prompt (eslint no-alert covers bare calls)' },
   { re: /api-client\.service/, label: 'legacy ApiClient import' },
   { re: /\bautofocus\b/, label: 'autofocus attribute' }
 ];
