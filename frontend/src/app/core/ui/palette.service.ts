@@ -8,9 +8,9 @@ function lastTreeId(): string | null {
   try { return sessionStorage.getItem('qs.lastTree'); } catch { return null; }
 }
 
-/** True while a `MatDialog`/`MatBottomSheet` overlay is on screen — used to refuse opening
- *  the palette or the shortcut sheet on top of another modal. Both use the CDK's global
- *  positioning strategy, which wraps every such overlay's pane in this class. */
+/** True while a modal (MatDialog / MatBottomSheet) is open, so the palette and the shortcut sheet
+ *  never stack on top of one. Only opaque backdrops count: snackbars have none and menus use the
+ *  transparent one. */
 function anotherOverlayOpen(): boolean {
   // A modal (MatDialog, MatBottomSheet) always paints an opaque backdrop; snackbars have none and
   // menus/autocompletes use the transparent one, so neither of those blocks the palette.
