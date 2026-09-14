@@ -1,5 +1,6 @@
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using Qseng.Application.Abstractions;
 using Qseng.Application.Media.DeleteMedia;
@@ -194,7 +195,8 @@ public class RestoreTests
         var hasher = Substitute.For<IPasswordHasher>();
         hasher.Verify(Arg.Any<string>(), Arg.Any<string>()).Returns(true);
 
-        var result = await new DeleteOwnDataHandler(db, user, hasher).Handle(new DeleteOwnDataCommand("pw"), CancellationToken.None);
+        var result = await new DeleteOwnDataHandler(db, user, hasher, Substitute.For<IFileStorage>(), NullLogger<DeleteOwnDataHandler>.Instance)
+            .Handle(new DeleteOwnDataCommand("pw"), CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
         (await db.Trees.IgnoreQueryFilters().CountAsync()).Should().Be(0);

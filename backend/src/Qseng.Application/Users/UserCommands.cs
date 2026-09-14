@@ -1,5 +1,6 @@
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Qseng.Application.Abstractions;
 using Qseng.Application.Auth;
 using Qseng.Application.Auth.Register;
@@ -97,9 +98,12 @@ public class DeleteOwnDataHandler : IRequestHandler<DeleteOwnDataCommand, Result
     private readonly IQsengDbContext _db;
     private readonly ICurrentUser _cu;
     private readonly IPasswordHasher _hasher;
+    private readonly IFileStorage _fileStorage;
+    private readonly ILogger<DeleteOwnDataHandler> _logger;
 
-    public DeleteOwnDataHandler(IQsengDbContext db, ICurrentUser cu, IPasswordHasher hasher)
-    { _db = db; _cu = cu; _hasher = hasher; }
+    public DeleteOwnDataHandler(IQsengDbContext db, ICurrentUser cu, IPasswordHasher hasher,
+        IFileStorage fileStorage, ILogger<DeleteOwnDataHandler> logger)
+    { _db = db; _cu = cu; _hasher = hasher; _fileStorage = fileStorage; _logger = logger; }
 
     public async Task<Result<bool>> Handle(DeleteOwnDataCommand cmd, CancellationToken ct)
     {
@@ -107,9 +111,26 @@ public class DeleteOwnDataHandler : IRequestHandler<DeleteOwnDataCommand, Result
         if (user is null) return Result<bool>.NotFound("User not found.");
         if (!_hasher.Verify(cmd.Password, user.PasswordHash))
             return Result<bool>.Fail("Password is incorrect.");
+
+        // Collected before the delete so the trees (and the FK cascade that
+        // takes their media rows with them) don't take the file list with them
+        // too. IgnoreQueryFilters so trashed media is cleaned up along with live.
+        var urls = await (from m in _db.Media.IgnoreQueryFilters()
+                           join p in _db.Persons.IgnoreQueryFilters() on m.PersonId equals p.Id
+                           join t in _db.Trees on p.TreeId equals t.Id
+                           where t.OwnerId == _cu.UserId
+                           select m.Url).ToListAsync(ct);
+
         var trees = await _db.Trees.Where(t => t.OwnerId == _cu.UserId).ToListAsync(ct);
         _db.Trees.RemoveRange(trees);
         await _db.SaveChangesAsync(ct);
+
+        foreach (var url in urls)
+        {
+            try { await _fileStorage.DeleteAsync(url, ct); }
+            catch (Exception ex) { _logger.LogWarning(ex, "Failed to delete media file {Url} during own-data deletion.", url); }
+        }
+
         return Result<bool>.Ok(true);
     }
 }
@@ -123,9 +144,12 @@ public class DeleteOwnAccountHandler : IRequestHandler<DeleteOwnAccountCommand, 
     private readonly IQsengDbContext _db;
     private readonly ICurrentUser _cu;
     private readonly IPasswordHasher _hasher;
+    private readonly IFileStorage _fileStorage;
+    private readonly ILogger<DeleteOwnAccountHandler> _logger;
 
-    public DeleteOwnAccountHandler(IQsengDbContext db, ICurrentUser cu, IPasswordHasher hasher)
-    { _db = db; _cu = cu; _hasher = hasher; }
+    public DeleteOwnAccountHandler(IQsengDbContext db, ICurrentUser cu, IPasswordHasher hasher,
+        IFileStorage fileStorage, ILogger<DeleteOwnAccountHandler> logger)
+    { _db = db; _cu = cu; _hasher = hasher; _fileStorage = fileStorage; _logger = logger; }
 
     public async Task<Result<bool>> Handle(DeleteOwnAccountCommand cmd, CancellationToken ct)
     {
@@ -133,10 +157,27 @@ public class DeleteOwnAccountHandler : IRequestHandler<DeleteOwnAccountCommand, 
         if (user is null) return Result<bool>.NotFound("User not found.");
         if (!_hasher.Verify(cmd.Password, user.PasswordHash))
             return Result<bool>.Fail("Password is incorrect.");
+
+        // Collected before the delete so the trees (and the FK cascade that
+        // takes their media rows with them) don't take the file list with them
+        // too. IgnoreQueryFilters so trashed media is cleaned up along with live.
+        var urls = await (from m in _db.Media.IgnoreQueryFilters()
+                           join p in _db.Persons.IgnoreQueryFilters() on m.PersonId equals p.Id
+                           join t in _db.Trees on p.TreeId equals t.Id
+                           where t.OwnerId == _cu.UserId
+                           select m.Url).ToListAsync(ct);
+
         var trees = await _db.Trees.Where(t => t.OwnerId == _cu.UserId).ToListAsync(ct);
         _db.Trees.RemoveRange(trees);
         _db.Users.Remove(user);
         await _db.SaveChangesAsync(ct);
+
+        foreach (var url in urls)
+        {
+            try { await _fileStorage.DeleteAsync(url, ct); }
+            catch (Exception ex) { _logger.LogWarning(ex, "Failed to delete media file {Url} during account deletion.", url); }
+        }
+
         return Result<bool>.Ok(true);
     }
 }

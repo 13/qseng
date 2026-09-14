@@ -41,7 +41,12 @@ public class DeleteMediaHandler : IRequestHandler<DeleteMediaCommand, Result<boo
         // replacement — and that clear is saved on its own first: SQLite's unique
         // index check is per-statement, not per-transaction, so the two changes
         // going out in the same SaveChanges could have both rows briefly carrying
-        // IsAvatar = true, in whichever order EF happens to send the UPDATEs.
+        // IsAvatar = true, in whichever order EF happens to send the UPDATEs. Both
+        // saves still need to land as one all-or-nothing unit, so they run inside
+        // an explicit transaction: if the second save fails, disposing the scope
+        // without completing it rolls the first one back too.
+        await using var scope = await _db.BeginTransactionAsync(ct);
+
         var wasAvatar = media.IsAvatar;
         media.IsAvatar = false;
         if (wasAvatar)
@@ -56,6 +61,7 @@ public class DeleteMediaHandler : IRequestHandler<DeleteMediaCommand, Result<boo
         }
 
         await _db.SaveChangesAsync(ct);
+        await scope.CompleteAsync(ct);
         return Result<bool>.Ok(true);
     }
 }
