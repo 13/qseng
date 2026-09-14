@@ -2,6 +2,7 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Qseng.Application.Abstractions;
 using Qseng.Application.Common;
+using Qseng.Domain.Common;
 
 namespace Qseng.Application.Persons.DeletePerson;
 
@@ -18,21 +19,25 @@ public class DeletePersonHandler : IRequestHandler<DeletePersonCommand, Result<b
 
     public async Task<Result<bool>> Handle(DeletePersonCommand cmd, CancellationToken ct)
     {
-        var person = await _db.Persons.FindAsync([cmd.Id], ct);
+        var person = await _db.Persons.FirstOrDefaultAsync(p => p.Id == cmd.Id, ct);
         if (person is null) return Result<bool>.NotFound("Person not found.");
-
         var tree = await _db.Trees.FindAsync([person.TreeId], ct);
         if (tree is null || tree.OwnerId != _currentUser.UserId) return Result<bool>.Fail("Forbidden.", 403);
 
-        var mediaFiles = await _db.Media
-            .Where(m => m.PersonId == cmd.Id)
-            .Select(m => m.Url)
+        var now = DateTime.UtcNow;
+        var batch = Guid.NewGuid();
+        void Stamp(ISoftDeletable row) { row.DeletedAt = now; row.DeletionBatchId = batch; }
+
+        Stamp(person);
+        var rels = await _db.Relationships.Where(r => r.FromPersonId == cmd.Id || r.ToPersonId == cmd.Id).ToListAsync(ct);
+        foreach (var r in rels) Stamp(r);
+        var relIds = rels.Select(r => r.Id).ToList();
+        var events = await _db.TimelineEvents
+            .Where(e => e.PersonId == cmd.Id || (e.SourceRelationshipId != null && relIds.Contains(e.SourceRelationshipId.Value)))
             .ToListAsync(ct);
+        foreach (var e in events) Stamp(e);
+        foreach (var m in await _db.Media.Where(m => m.PersonId == cmd.Id).ToListAsync(ct)) Stamp(m);
 
-        foreach (var url in mediaFiles)
-            await _fileStorage.DeleteAsync(url, ct);
-
-        _db.Persons.Remove(person);
         await _db.SaveChangesAsync(ct);
         return Result<bool>.Ok(true);
     }

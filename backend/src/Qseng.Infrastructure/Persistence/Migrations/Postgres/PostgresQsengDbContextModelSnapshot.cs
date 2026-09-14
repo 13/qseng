@@ -71,6 +71,12 @@ namespace Qseng.Infrastructure.Persistence.Migrations.Postgres
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("DeletionBatchId")
+                        .HasColumnType("uuid");
+
                     b.Property<bool>("IsAvatar")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("boolean")
@@ -88,6 +94,8 @@ namespace Qseng.Infrastructure.Persistence.Migrations.Postgres
                         .HasColumnType("character varying(2048)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("DeletedAt");
 
                     b.HasIndex("PersonId")
                         .IsUnique()
@@ -114,6 +122,12 @@ namespace Qseng.Infrastructure.Persistence.Migrations.Postgres
 
                     b.Property<string>("DeathPlace")
                         .HasColumnType("text");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("DeletionBatchId")
+                        .HasColumnType("uuid");
 
                     b.Property<string>("FirstName")
                         .IsRequired()
@@ -142,6 +156,8 @@ namespace Qseng.Infrastructure.Persistence.Migrations.Postgres
                         .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("DeletedAt");
 
                     b.HasIndex("TreeId");
 
@@ -192,6 +208,12 @@ namespace Qseng.Infrastructure.Persistence.Migrations.Postgres
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("DeletionBatchId")
+                        .HasColumnType("uuid");
+
                     b.Property<int?>("EndDay")
                         .HasColumnType("integer");
 
@@ -227,6 +249,8 @@ namespace Qseng.Infrastructure.Persistence.Migrations.Postgres
 
                     b.HasKey("Id");
 
+                    b.HasIndex("DeletedAt");
+
                     b.HasIndex("FromPersonId");
 
                     b.HasIndex("ToPersonId");
@@ -236,7 +260,9 @@ namespace Qseng.Infrastructure.Persistence.Migrations.Postgres
                     b.HasIndex("TreeId", "ToPersonId");
 
                     b.HasIndex("TreeId", "FromPersonId", "ToPersonId", "Type")
-                        .IsUnique();
+                        .IsUnique()
+                        .HasDatabaseName("ix_relationships_live_edge")
+                        .HasFilter("\"DeletedAt\" IS NULL");
 
                     b.ToTable("relationships", (string)null);
                 });
@@ -272,6 +298,12 @@ namespace Qseng.Infrastructure.Persistence.Migrations.Postgres
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("DeletionBatchId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("Description")
                         .HasColumnType("text");
 
@@ -305,6 +337,8 @@ namespace Qseng.Infrastructure.Persistence.Migrations.Postgres
                         .HasColumnType("integer");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("DeletedAt");
 
                     b.HasIndex("PersonId");
 

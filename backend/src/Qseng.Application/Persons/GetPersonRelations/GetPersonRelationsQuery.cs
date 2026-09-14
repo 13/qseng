@@ -33,7 +33,7 @@ public class GetPersonRelationsHandler : IRequestHandler<GetPersonRelationsQuery
 
     public async Task<Result<IReadOnlyList<PersonRelationDto>>> Handle(GetPersonRelationsQuery q, CancellationToken ct)
     {
-        var person = await _db.Persons.FindAsync([q.PersonId], ct);
+        var person = await _db.Persons.FirstOrDefaultAsync(p => p.Id == q.PersonId, ct);
         if (person is null) return Result<IReadOnlyList<PersonRelationDto>>.NotFound("Person not found.");
 
         var tree = await _db.Trees.FindAsync([person.TreeId], ct);

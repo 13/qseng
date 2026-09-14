@@ -1,9 +1,9 @@
 import { TestBed } from '@angular/core/testing';
-import { NEVER, of, throwError } from 'rxjs';
+import { NEVER, Observable, Subject, of, throwError } from 'rxjs';
 import { HttpErrorResponse } from '@angular/common/http';
 import { describe, expect, it, vi } from 'vitest';
 import { PersonStore } from './person.store';
-import { MediaApi, PersonsApi, TimelineApi, TreesApi } from '../../core/api/generated';
+import { MediaApi, PersonRelationDto, PersonsApi, TimelineApi, TreesApi } from '../../core/api/generated';
 import { I18nService } from '../../core/i18n/i18n.service';
 import { ToastService } from '../../core/ui/toast.service';
 
@@ -13,7 +13,7 @@ const personB = { id: 'p2', treeId: 't1', firstName: 'Maria', lastName: 'Smith',
 function setup(fail = false, personsGetByIdImpl?: (params: { id: string }) => unknown) {
   const persons = {
     personsGetById: vi.fn(personsGetByIdImpl ?? (() => fail ? throwError(() => new HttpErrorResponse({ status: 404, error: { status: 404, title: 'Not Found', detail: 'gone' } })) : of(person))),
-    personsGetRelations: vi.fn(() => of([{ relationshipId: 'r1', type: 'Spouse', direction: 'from', relatedPersonId: 'p2', relatedFirstName: 'Maria', relatedLastName: 'Smith', startYear: 1872 }])),
+    personsGetRelations: vi.fn((): Observable<PersonRelationDto[]> => of([{ relationshipId: 'r1', type: 'Spouse', direction: 'from', relatedPersonId: 'p2', relatedFirstName: 'Maria', relatedLastName: 'Smith', startYear: 1872 }])),
     personsGetByTree: vi.fn(() => of([person, { id: 'p2', treeId: 't1', firstName: 'Maria', lastName: 'Smith', sex: 'Female' }]))
   };
   const trees = { treesGetAll: vi.fn(() => of([{ id: 't1', name: 'Familie' }])) };
@@ -84,5 +84,24 @@ describe('PersonStore', () => {
     expect(store.media().length).toBe(1);
     store.setPerson({ ...person, firstName: 'Kurt' });
     expect(store.fullName()).toBe('Kurt Smith');
+  });
+
+  it('reloadRelations: an earlier call that resolves last does not clobber the later call\'s result', () => {
+    const { store, persons } = setup();
+    store.load('p1');
+    const first = new Subject<PersonRelationDto[]>();
+    const second = new Subject<PersonRelationDto[]>();
+    let call = 0;
+    persons.personsGetRelations.mockImplementation(() => (call++ === 0 ? first : second));
+
+    store.reloadRelations();
+    store.reloadRelations();
+    // Second call (the latest) resolves first; the first call arrives late and must be ignored.
+    second.next([{ relationshipId: 'r-second', type: 'Parent', direction: 'from', relatedPersonId: 'p3', relatedFirstName: 'Late', relatedLastName: 'Winner' }]);
+    second.complete();
+    first.next([{ relationshipId: 'r-first', type: 'Spouse', direction: 'from', relatedPersonId: 'p2', relatedFirstName: 'Maria', relatedLastName: 'Smith' }]);
+    first.complete();
+
+    expect(store.relations().map(r => r.relationshipId)).toEqual(['r-second']);
   });
 });

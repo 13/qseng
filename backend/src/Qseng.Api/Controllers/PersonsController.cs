@@ -7,6 +7,7 @@ using Qseng.Application.Persons.DeletePerson;
 using Qseng.Application.Persons.GetPersonById;
 using Qseng.Application.Persons.GetPersonsByTree;
 using Qseng.Application.Persons.GetPersonRelations;
+using Qseng.Application.Persons.RestorePerson;
 using Qseng.Application.Persons.UpdatePerson;
 using Qseng.Domain.Enums;
 using Qseng.Domain.ValueObjects;
@@ -55,6 +56,12 @@ public class PersonsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct) =>
         (await _mediator.Send(new DeletePersonCommand(id), ct)).ToActionResult();
+
+    [HttpPost("persons/{id:guid}/restore")]
+    [ProducesResponseType(typeof(PersonDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> Restore(Guid id, CancellationToken ct) =>
+        (await _mediator.Send(new RestorePersonCommand(id), ct)).ToActionResult();
 }
 
 public record PersonRequest(

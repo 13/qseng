@@ -35,6 +35,7 @@ public class TimelineEventConfiguration : IEntityTypeConfiguration<TimelineEvent
         // Covers the timeline query: filter by person, order by date descending.
         e.HasIndex(x => new { x.PersonId, x.StartSortKey })
             .HasDatabaseName("ix_timeline_events_person_sort");
+        e.HasIndex(x => x.DeletedAt);
 
         e.Ignore(x => x.SortableDate);
 

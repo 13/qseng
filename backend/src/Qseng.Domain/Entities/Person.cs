@@ -4,7 +4,7 @@ using Qseng.Domain.ValueObjects;
 
 namespace Qseng.Domain.Entities;
 
-public class Person : Entity
+public class Person : Entity, ISoftDeletable
 {
     public Guid TreeId { get; set; }
     public string FirstName { get; set; } = "";
@@ -18,6 +18,8 @@ public class Person : Entity
     public string? DeathPlace { get; set; }
     public string? CauseOfDeath { get; set; }
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime? DeletedAt { get; set; }
+    public Guid? DeletionBatchId { get; set; }
 
     private readonly List<TimelineEvent> _timeline = [];
     public IReadOnlyCollection<TimelineEvent> Timeline => _timeline;

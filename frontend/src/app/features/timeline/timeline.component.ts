@@ -8,7 +8,6 @@ import { firstValueFrom } from 'rxjs';
 import { TimelineApi, TimelineEventDto } from '../../core/api/generated';
 import { I18nService } from '../../core/i18n/i18n.service';
 import { TranslatePipe } from '../../core/i18n/translate.pipe';
-import { ConfirmDialogService } from '../../core/ui/confirm-dialog.service';
 import { ToastService } from '../../core/ui/toast.service';
 import { PartialDatePipe } from '../../shared/pipes/partial-date.pipe';
 import { PersonStore } from '../persons/person.store';
@@ -99,7 +98,6 @@ export class TimelineComponent {
   readonly i18n = inject(I18nService);
   private readonly api = inject(TimelineApi);
   private readonly dialog = inject(MatDialog);
-  private readonly confirm = inject(ConfirmDialogService);
   private readonly toast = inject(ToastService);
 
   readonly decades = computed<DecadeGroup[]>(() => {
@@ -129,14 +127,17 @@ export class TimelineComponent {
     this.toast.success(this.i18n.t('tl.saved.toast'));
   }
 
-  async remove(e: TimelineEventDto) {
+  remove(e: TimelineEventDto) {
     const personId = this.store.person()?.id;
     if (!personId || !e.id) return;
-    const ok = await this.confirm.confirm({ title: this.i18n.t('tl.deleteTitle'), message: this.i18n.t('tl.deleteConfirm'), confirmLabel: this.i18n.t('delete'), destructive: true });
-    if (ok !== true) return;
     const id = e.id;
     this.api.timelineDelete({ personId, id }).subscribe({
-      next: () => { this.store.removeEvent(id); this.toast.success(this.i18n.t('tl.deleted.toast')); },
+      next: () => {
+        this.store.removeEvent(id);
+        this.toast.undoable(this.i18n.t('tl.deleted.undo'), () => firstValueFrom(this.api.timelineRestore({ personId, id })).then(() => {
+          this.store.reloadTimeline();
+        }));
+      },
       error: err => this.toast.errorFrom(err, this.i18n.t('err.delete'))
     });
   }

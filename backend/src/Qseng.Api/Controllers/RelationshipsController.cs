@@ -5,6 +5,7 @@ using Qseng.Application.Relationships;
 using Qseng.Application.Relationships.CreateRelationship;
 using Qseng.Application.Relationships.DeleteRelationship;
 using Qseng.Application.Relationships.GetRelationshipsByTree;
+using Qseng.Application.Relationships.RestoreRelationship;
 using Qseng.Domain.Enums;
 
 namespace Qseng.Api.Controllers;
@@ -35,6 +36,13 @@ public class RelationshipsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> Delete(Guid treeId, Guid id, CancellationToken ct) =>
         (await _mediator.Send(new DeleteRelationshipCommand(id), ct)).ToActionResult();
+
+    [HttpPost("{id:guid}/restore")]
+    [ProducesResponseType(typeof(RelationshipDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> Restore(Guid treeId, Guid id, CancellationToken ct) =>
+        (await _mediator.Send(new RestoreRelationshipCommand(treeId, id), ct)).ToActionResult();
 }
 
 public record RelationshipRequest(

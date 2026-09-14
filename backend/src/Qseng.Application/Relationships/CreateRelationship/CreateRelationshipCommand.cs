@@ -54,7 +54,7 @@ public class CreateRelationshipHandler : IRequestHandler<CreateRelationshipComma
         if (duplicate) return Result<RelationshipDto>.Conflict("Relationship already exists.");
 
         if (cmd.Type == RelationshipType.Parent &&
-            await WouldCreateCycleAsync(cmd.FromPersonId, cmd.ToPersonId, cmd.TreeId, ct))
+            await RelationshipRules.WouldCreateCycleAsync(_db, cmd.TreeId, cmd.FromPersonId, cmd.ToPersonId, ct))
             return Result<RelationshipDto>.Conflict("Adding this relationship would create a cycle in the family tree.");
 
         var rel = new Relationship
@@ -74,43 +74,18 @@ public class CreateRelationshipHandler : IRequestHandler<CreateRelationshipComma
         return Result<RelationshipDto>.Ok(ToDto(rel));
     }
 
-    // BFS from childId downward through descendants; returns true if parentId appears (= cycle).
-    private async Task<bool> WouldCreateCycleAsync(Guid parentId, Guid childId, Guid treeId, CancellationToken ct)
-    {
-        var edges = await _db.Relationships
-            .Where(r => r.TreeId == treeId && r.Type == RelationshipType.Parent)
-            .Select(r => new { r.FromPersonId, r.ToPersonId })
-            .ToListAsync(ct);
-
-        var visited = new HashSet<Guid>();
-        var queue = new Queue<Guid>();
-        queue.Enqueue(childId);
-
-        while (queue.Count > 0)
-        {
-            var current = queue.Dequeue();
-            if (!visited.Add(current)) continue;
-            foreach (var e in edges.Where(r => r.FromPersonId == current))
-            {
-                if (e.ToPersonId == parentId) return true;
-                queue.Enqueue(e.ToPersonId);
-            }
-        }
-        return false;
-    }
-
     private async Task GenerateTimelineEventsAsync(Relationship rel, CancellationToken ct)
     {
         switch (rel.Type)
         {
             case RelationshipType.Spouse:
-                var fromPerson = await _db.Persons.FindAsync([rel.FromPersonId], ct);
-                var toPerson   = await _db.Persons.FindAsync([rel.ToPersonId],   ct);
+                var fromPerson = await _db.Persons.FirstOrDefaultAsync(p => p.Id == rel.FromPersonId, ct);
+                var toPerson   = await _db.Persons.FirstOrDefaultAsync(p => p.Id == rel.ToPersonId,   ct);
                 AddMarriage(rel.FromPersonId, rel, toPerson);
                 AddMarriage(rel.ToPersonId,   rel, fromPerson);
                 break;
             case RelationshipType.Parent:
-                var child = await _db.Persons.FindAsync([rel.ToPersonId], ct);
+                var child = await _db.Persons.FirstOrDefaultAsync(p => p.Id == rel.ToPersonId, ct);
                 if (child?.Birth is not null)
                 {
                     _db.TimelineEvents.Add(new TimelineEvent

@@ -66,6 +66,12 @@ namespace Qseng.Infrastructure.Persistence.Migrations.Sqlite
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("TEXT");
 
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("DeletionBatchId")
+                        .HasColumnType("TEXT");
+
                     b.Property<bool>("IsAvatar")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER")
@@ -83,6 +89,8 @@ namespace Qseng.Infrastructure.Persistence.Migrations.Sqlite
                         .HasColumnType("TEXT");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("DeletedAt");
 
                     b.HasIndex("PersonId")
                         .IsUnique()
@@ -108,6 +116,12 @@ namespace Qseng.Infrastructure.Persistence.Migrations.Sqlite
                         .HasColumnType("TEXT");
 
                     b.Property<string>("DeathPlace")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("DeletionBatchId")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("FirstName")
@@ -137,6 +151,8 @@ namespace Qseng.Infrastructure.Persistence.Migrations.Sqlite
                         .HasColumnType("TEXT");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("DeletedAt");
 
                     b.HasIndex("TreeId");
 
@@ -187,6 +203,12 @@ namespace Qseng.Infrastructure.Persistence.Migrations.Sqlite
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("TEXT");
 
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("DeletionBatchId")
+                        .HasColumnType("TEXT");
+
                     b.Property<int?>("EndDay")
                         .HasColumnType("INTEGER");
 
@@ -222,6 +244,8 @@ namespace Qseng.Infrastructure.Persistence.Migrations.Sqlite
 
                     b.HasKey("Id");
 
+                    b.HasIndex("DeletedAt");
+
                     b.HasIndex("FromPersonId");
 
                     b.HasIndex("ToPersonId");
@@ -231,7 +255,9 @@ namespace Qseng.Infrastructure.Persistence.Migrations.Sqlite
                     b.HasIndex("TreeId", "ToPersonId");
 
                     b.HasIndex("TreeId", "FromPersonId", "ToPersonId", "Type")
-                        .IsUnique();
+                        .IsUnique()
+                        .HasDatabaseName("ix_relationships_live_edge")
+                        .HasFilter("\"DeletedAt\" IS NULL");
 
                     b.ToTable("relationships", (string)null);
                 });
@@ -267,6 +293,12 @@ namespace Qseng.Infrastructure.Persistence.Migrations.Sqlite
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("TEXT");
 
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("DeletionBatchId")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("Description")
                         .HasColumnType("TEXT");
 
@@ -300,6 +332,8 @@ namespace Qseng.Infrastructure.Persistence.Migrations.Sqlite
                         .HasColumnType("INTEGER");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("DeletedAt");
 
                     b.HasIndex("PersonId");
 

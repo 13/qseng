@@ -1,9 +1,9 @@
 import { TestBed } from '@angular/core/testing';
 import { HttpErrorResponse } from '@angular/common/http';
-import { of, throwError } from 'rxjs';
+import { Observable, Subject, of, throwError } from 'rxjs';
 import { describe, expect, it, vi } from 'vitest';
 import { TreeStore } from './tree.store';
-import { PersonsApi, RelationshipsApi, TreesApi } from '../../../core/api/generated';
+import { PersonDto, PersonsApi, RelationshipsApi, TreesApi } from '../../../core/api/generated';
 import { I18nService } from '../../../core/i18n/i18n.service';
 
 const persons = [
@@ -19,7 +19,7 @@ const rels = [
 ];
 
 function setup(fail = false) {
-  const personsApi = { personsGetByTree: vi.fn(() => fail ? throwError(() => new HttpErrorResponse({ status: 500, error: { status: 500, title: 'x' } })) : of(persons)) };
+  const personsApi = { personsGetByTree: vi.fn((): Observable<PersonDto[]> => fail ? throwError(() => new HttpErrorResponse({ status: 500, error: { status: 500, title: 'x' } })) : of(persons)) };
   const relsApi = { relationshipsGetByTree: vi.fn(() => of(rels)) };
   const treesApi = { treesGetAll: vi.fn(() => of([{ id: 't1', name: 'Familie' }])) };
   TestBed.configureTestingModule({ providers: [TreeStore,
@@ -77,5 +77,24 @@ describe('TreeStore', () => {
     personsApi.personsGetByTree.mockReturnValue(of(persons.filter(p => p.id !== 'kid')));
     store.load('t1');
     expect(store.selectedId()).toBeNull();
+  });
+
+  it('an earlier load() that resolves last does not clobber the later load()\'s result', () => {
+    const { store, personsApi } = setup();
+    const first = new Subject<PersonDto[]>();
+    const second = new Subject<PersonDto[]>();
+    let call = 0;
+    personsApi.personsGetByTree.mockImplementation(() => (call++ === 0 ? first : second));
+
+    store.load('t1');
+    store.load('t1');
+    // The second (latest) call resolves first; the first call arrives late and must be ignored.
+    second.next(persons);
+    second.complete();
+    first.next(persons.filter(p => p.id !== 'kid'));
+    first.complete();
+
+    expect(store.persons().map(p => p.id)).toEqual(['gp', 'me', 'wife', 'kid']);
+    expect(store.loading()).toBe(false);
   });
 });

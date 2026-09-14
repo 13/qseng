@@ -21,7 +21,7 @@ public class PersonOwnershipTests
     private static async Task<(IQsengDbContext db, Person person, Guid ownerId)> SetupAsync()
     {
         var db = TestDb.Create();
-        var ownerId = Guid.NewGuid();
+        var ownerId = TestDb.AddOwner(db).Id;
         var tree = new Tree { OwnerId = ownerId, Name = "T" };
         db.Trees.Add(tree);
         var person = new Person { TreeId = tree.Id, FirstName = "Max", LastName = "M" };

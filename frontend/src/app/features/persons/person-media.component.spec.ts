@@ -7,7 +7,6 @@ import { describe, expect, it, vi } from 'vitest';
 import { PersonMediaComponent, kindFor } from './person-media.component';
 import { PersonStore } from './person.store';
 import { MediaApi } from '../../core/api/generated';
-import { ConfirmDialogService } from '../../core/ui/confirm-dialog.service';
 import { ToastService } from '../../core/ui/toast.service';
 import { I18nService } from '../../core/i18n/i18n.service';
 
@@ -16,16 +15,15 @@ const media = [
   { id: 'm2', personId: 'p1', url: '/u/b.pdf', kind: 'Document' as const, isAvatar: false, caption: 'Certificate' }
 ];
 
-function setup(confirmResult = true) {
+function setup() {
   const store = { person: signal({ id: 'p1' }), media: signal(media), addMedia: vi.fn(), removeMedia: vi.fn(), setAvatar: vi.fn(), reloadMedia: vi.fn() };
   const api = {
     mediaUpload: vi.fn(() => of({ id: 'm3', personId: 'p1', url: '/u/c.png', kind: 'Photo', isAvatar: false })),
-    mediaSetAvatar: vi.fn(() => of(undefined)), mediaDelete: vi.fn(() => of(undefined))
+    mediaSetAvatar: vi.fn(() => of(undefined)), mediaDelete: vi.fn(() => of(undefined)), mediaRestore: vi.fn(() => of(undefined))
   };
-  const confirm = { confirm: vi.fn(async () => confirmResult) };
-  const toast = { success: vi.fn(), error: vi.fn(), errorFrom: vi.fn(), info: vi.fn() };
+  const toast = { success: vi.fn(), error: vi.fn(), errorFrom: vi.fn(), info: vi.fn(), undoable: vi.fn() };
   TestBed.configureTestingModule({ providers: [provideNoopAnimations(),
-    { provide: PersonStore, useValue: store }, { provide: MediaApi, useValue: api }, { provide: ConfirmDialogService, useValue: confirm },
+    { provide: PersonStore, useValue: store }, { provide: MediaApi, useValue: api },
     { provide: ToastService, useValue: toast }, { provide: MatDialog, useValue: { open: vi.fn(() => ({ afterClosed: () => of(undefined) })) } },
     { provide: I18nService, useValue: { t: (k: string) => k, dynamic: (k: string) => k } }] });
   const fixture = TestBed.createComponent(PersonMediaComponent);
@@ -79,14 +77,28 @@ describe('PersonMediaComponent', () => {
     expect(toast.error).toHaveBeenCalled();
   });
 
-  it('sets the avatar and deletes after confirm', async () => {
-    const { cmp, api, store } = setup(true);
+  it('sets the avatar', () => {
+    const { cmp, api, store } = setup();
     cmp.setAvatar(media[1]);
     expect(api.mediaSetAvatar).toHaveBeenCalledWith({ personId: 'p1', mediaId: 'm2' });
     expect(store.setAvatar).toHaveBeenCalledWith('m2');
-    await cmp.remove(media[0]);
+  });
+
+  it('deletes, reloads media for the former avatar, and offers an undo toast', () => {
+    const { cmp, api, store, toast } = setup();
+    cmp.remove(media[0]);
     expect(api.mediaDelete).toHaveBeenCalledWith({ personId: 'p1', mediaId: 'm1' });
     expect(store.removeMedia).toHaveBeenCalledWith('m1');
-    expect(store.reloadMedia).toHaveBeenCalled();
+    expect(store.reloadMedia).toHaveBeenCalledTimes(1);
+    expect(toast.undoable).toHaveBeenCalledWith('media.deleted.undo', expect.any(Function));
+  });
+
+  it('restores the file and reloads media when undo is invoked', async () => {
+    const { cmp, api, store, toast } = setup();
+    cmp.remove(media[0]);
+    const onUndo = toast.undoable.mock.calls[0][1];
+    await onUndo();
+    expect(api.mediaRestore).toHaveBeenCalledWith({ personId: 'p1', mediaId: 'm1' });
+    expect(store.reloadMedia).toHaveBeenCalledTimes(2);
   });
 });

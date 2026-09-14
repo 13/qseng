@@ -1,5 +1,6 @@
 using FluentValidation;
 using MediatR;
+using Microsoft.EntityFrameworkCore;
 using Qseng.Application.Abstractions;
 using Qseng.Application.Common;
 using Qseng.Application.Timeline.AddTimelineEvent;
@@ -31,10 +32,10 @@ public class UpdateTimelineEventHandler : IRequestHandler<UpdateTimelineEventCom
 
     public async Task<Result<TimelineEventDto>> Handle(UpdateTimelineEventCommand cmd, CancellationToken ct)
     {
-        var ev = await _db.TimelineEvents.FindAsync([cmd.Id], ct);
+        var ev = await _db.TimelineEvents.FirstOrDefaultAsync(e => e.Id == cmd.Id, ct);
         if (ev is null) return Result<TimelineEventDto>.NotFound("Event not found.");
 
-        var person = await _db.Persons.FindAsync([ev.PersonId], ct);
+        var person = await _db.Persons.FirstOrDefaultAsync(p => p.Id == ev.PersonId, ct);
         var tree = person is null ? null : await _db.Trees.FindAsync([person.TreeId], ct);
         if (tree is null || tree.OwnerId != _currentUser.UserId) return Result<TimelineEventDto>.Fail("Forbidden.", 403);
 

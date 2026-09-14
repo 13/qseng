@@ -1,12 +1,15 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Qseng.Application.Abstractions;
+using Qseng.Application.Trash;
 using Qseng.Infrastructure.Auth;
 using Qseng.Infrastructure.Files;
 using Qseng.Infrastructure.Parsing;
 using Qseng.Infrastructure.Persistence;
 using Qseng.Infrastructure.Seeding;
+using Qseng.Infrastructure.Trash;
 
 namespace Qseng.Infrastructure;
 
@@ -36,6 +39,11 @@ public static class DependencyInjection
         services.AddScoped<IGenealogyParser, GenealogyTextParser>();
         services.AddScoped<IFileStorage, LocalFileStorage>();
         services.AddScoped<DbSeeder>();
+
+        services.AddOptions<TrashOptions>().Bind(cfg.GetSection(TrashOptions.SectionName));
+        services.TryAddSingleton(TimeProvider.System);
+        services.AddScoped<TrashPurger>();
+        services.AddHostedService<TrashPurgeService>();
         return services;
     }
 }

@@ -59,6 +59,7 @@ export type TranslationKey =
   | 'err.delete'
   | 'err.forbidden'
   | 'err.load'
+  | 'err.restore'
   | 'err.save'
   | 'err.server'
   | 'event.birth'
@@ -69,13 +70,16 @@ export type TranslationKey =
   | 'event.move'
   | 'event.occupation'
   | 'fam.add'
+  | 'fam.add.child'
+  | 'fam.add.parent'
+  | 'fam.add.spouse'
   | 'fam.adoptiveChildren'
   | 'fam.adoptiveParents'
   | 'fam.children'
   | 'fam.noRels'
   | 'fam.parents'
   | 'fam.remove'
-  | 'fam.removeConfirm'
+  | 'fam.removed.undo'
   | 'fam.spouses'
   | 'fam.title'
   | 'form.email'
@@ -121,9 +125,7 @@ export type TranslationKey =
   | 'media.add'
   | 'media.avatarBadge'
   | 'media.avatarSet.toast'
-  | 'media.deleteConfirm'
-  | 'media.deleteTitle'
-  | 'media.deleted.toast'
+  | 'media.deleted.undo'
   | 'media.dropHint'
   | 'media.empty'
   | 'media.failed.toast'
@@ -135,13 +137,49 @@ export type TranslationKey =
   | 'media.uploading'
   | 'nav.account'
   | 'nav.logout'
+  | 'nav.search'
   | 'nav.settings'
+  | 'nav.shortcuts'
   | 'nav.skip'
   | 'nav.theme.auto'
   | 'nav.theme.dark'
   | 'nav.theme.light'
   | 'nav.users'
+  | 'onb.father'
+  | 'onb.finish'
+  | 'onb.hero'
+  | 'onb.importInstead'
+  | 'onb.mother'
+  | 'onb.next'
+  | 'onb.ready'
+  | 'onb.skip'
+  | 'onb.start'
+  | 'onb.step.parents'
+  | 'onb.step.tree'
+  | 'onb.step.you'
+  | 'onb.treeDescription'
+  | 'onb.treeName'
   | 'optional'
+  | 'palette.action.addPerson'
+  | 'palette.action.addRelation'
+  | 'palette.action.import'
+  | 'palette.action.langDe'
+  | 'palette.action.langEn'
+  | 'palette.action.logout'
+  | 'palette.action.newTree'
+  | 'palette.action.settings'
+  | 'palette.action.shortcuts'
+  | 'palette.action.themeAuto'
+  | 'palette.action.themeDark'
+  | 'palette.action.themeLight'
+  | 'palette.action.trees'
+  | 'palette.action.users'
+  | 'palette.group.actions'
+  | 'palette.group.people'
+  | 'palette.group.trees'
+  | 'palette.noResults'
+  | 'palette.placeholder'
+  | 'palette.results'
   | 'pd.birth'
   | 'pd.causeOfDeath'
   | 'pd.death'
@@ -190,6 +228,10 @@ export type TranslationKey =
   | 'register.tagline'
   | 'register.title'
   | 'register.username'
+  | 'rel.added.adoptive'
+  | 'rel.added.child'
+  | 'rel.added.parent'
+  | 'rel.added.spouse'
   | 'rel.added.toast'
   | 'rel.adoptive'
   | 'rel.child'
@@ -202,10 +244,16 @@ export type TranslationKey =
   | 'rel.dialog.title'
   | 'rel.dialog.to'
   | 'rel.dialog.type'
+  | 'rel.mode.existing'
+  | 'rel.mode.label'
+  | 'rel.mode.new'
+  | 'rel.new.birthPlace'
+  | 'rel.new.firstName'
+  | 'rel.new.lastName'
+  | 'rel.new.sex'
+  | 'rel.open'
   | 'rel.parent'
-  | 'rel.removed.toast'
   | 'rel.spouse'
-  | 'remove'
   | 'retry'
   | 'save'
   | 'saving'
@@ -248,12 +296,19 @@ export type TranslationKey =
   | 'sex.female'
   | 'sex.label'
   | 'sex.male'
+  | 'shortcuts.close'
+  | 'shortcuts.move'
+  | 'shortcuts.open'
+  | 'shortcuts.palette'
+  | 'shortcuts.save'
+  | 'shortcuts.sheet'
+  | 'shortcuts.title'
+  | 'shortcuts.tree'
+  | 'shortcuts.zoom'
   | 'tl.addEvent'
   | 'tl.auto'
   | 'tl.autoHint'
-  | 'tl.deleteConfirm'
-  | 'tl.deleteTitle'
-  | 'tl.deleted.toast'
+  | 'tl.deleted.undo'
   | 'tl.desc'
   | 'tl.dialog.add'
   | 'tl.dialog.edit'
@@ -280,8 +335,9 @@ export type TranslationKey =
   | 'tree.ctx.addSpouse'
   | 'tree.ctx.focus'
   | 'tree.ctx.remove'
-  | 'tree.deleted.toast'
+  | 'tree.deleted.undo'
   | 'tree.edit'
+  | 'tree.emptyAddSelf'
   | 'tree.emptyTitle'
   | 'tree.export'
   | 'tree.filter'
@@ -325,7 +381,8 @@ export type TranslationKey =
   | 'trees.persons'
   | 'trees.renamed.toast'
   | 'trees.save'
-  | 'trees.title';
+  | 'trees.title'
+  | 'undo';
 
 export const TRANSLATION_KEYS: readonly TranslationKey[] = [
   'actions',
@@ -387,6 +444,7 @@ export const TRANSLATION_KEYS: readonly TranslationKey[] = [
   'err.delete',
   'err.forbidden',
   'err.load',
+  'err.restore',
   'err.save',
   'err.server',
   'event.birth',
@@ -397,13 +455,16 @@ export const TRANSLATION_KEYS: readonly TranslationKey[] = [
   'event.move',
   'event.occupation',
   'fam.add',
+  'fam.add.child',
+  'fam.add.parent',
+  'fam.add.spouse',
   'fam.adoptiveChildren',
   'fam.adoptiveParents',
   'fam.children',
   'fam.noRels',
   'fam.parents',
   'fam.remove',
-  'fam.removeConfirm',
+  'fam.removed.undo',
   'fam.spouses',
   'fam.title',
   'form.email',
@@ -449,9 +510,7 @@ export const TRANSLATION_KEYS: readonly TranslationKey[] = [
   'media.add',
   'media.avatarBadge',
   'media.avatarSet.toast',
-  'media.deleteConfirm',
-  'media.deleteTitle',
-  'media.deleted.toast',
+  'media.deleted.undo',
   'media.dropHint',
   'media.empty',
   'media.failed.toast',
@@ -463,13 +522,49 @@ export const TRANSLATION_KEYS: readonly TranslationKey[] = [
   'media.uploading',
   'nav.account',
   'nav.logout',
+  'nav.search',
   'nav.settings',
+  'nav.shortcuts',
   'nav.skip',
   'nav.theme.auto',
   'nav.theme.dark',
   'nav.theme.light',
   'nav.users',
+  'onb.father',
+  'onb.finish',
+  'onb.hero',
+  'onb.importInstead',
+  'onb.mother',
+  'onb.next',
+  'onb.ready',
+  'onb.skip',
+  'onb.start',
+  'onb.step.parents',
+  'onb.step.tree',
+  'onb.step.you',
+  'onb.treeDescription',
+  'onb.treeName',
   'optional',
+  'palette.action.addPerson',
+  'palette.action.addRelation',
+  'palette.action.import',
+  'palette.action.langDe',
+  'palette.action.langEn',
+  'palette.action.logout',
+  'palette.action.newTree',
+  'palette.action.settings',
+  'palette.action.shortcuts',
+  'palette.action.themeAuto',
+  'palette.action.themeDark',
+  'palette.action.themeLight',
+  'palette.action.trees',
+  'palette.action.users',
+  'palette.group.actions',
+  'palette.group.people',
+  'palette.group.trees',
+  'palette.noResults',
+  'palette.placeholder',
+  'palette.results',
   'pd.birth',
   'pd.causeOfDeath',
   'pd.death',
@@ -518,6 +613,10 @@ export const TRANSLATION_KEYS: readonly TranslationKey[] = [
   'register.tagline',
   'register.title',
   'register.username',
+  'rel.added.adoptive',
+  'rel.added.child',
+  'rel.added.parent',
+  'rel.added.spouse',
   'rel.added.toast',
   'rel.adoptive',
   'rel.child',
@@ -530,10 +629,16 @@ export const TRANSLATION_KEYS: readonly TranslationKey[] = [
   'rel.dialog.title',
   'rel.dialog.to',
   'rel.dialog.type',
+  'rel.mode.existing',
+  'rel.mode.label',
+  'rel.mode.new',
+  'rel.new.birthPlace',
+  'rel.new.firstName',
+  'rel.new.lastName',
+  'rel.new.sex',
+  'rel.open',
   'rel.parent',
-  'rel.removed.toast',
   'rel.spouse',
-  'remove',
   'retry',
   'save',
   'saving',
@@ -576,12 +681,19 @@ export const TRANSLATION_KEYS: readonly TranslationKey[] = [
   'sex.female',
   'sex.label',
   'sex.male',
+  'shortcuts.close',
+  'shortcuts.move',
+  'shortcuts.open',
+  'shortcuts.palette',
+  'shortcuts.save',
+  'shortcuts.sheet',
+  'shortcuts.title',
+  'shortcuts.tree',
+  'shortcuts.zoom',
   'tl.addEvent',
   'tl.auto',
   'tl.autoHint',
-  'tl.deleteConfirm',
-  'tl.deleteTitle',
-  'tl.deleted.toast',
+  'tl.deleted.undo',
   'tl.desc',
   'tl.dialog.add',
   'tl.dialog.edit',
@@ -608,8 +720,9 @@ export const TRANSLATION_KEYS: readonly TranslationKey[] = [
   'tree.ctx.addSpouse',
   'tree.ctx.focus',
   'tree.ctx.remove',
-  'tree.deleted.toast',
+  'tree.deleted.undo',
   'tree.edit',
+  'tree.emptyAddSelf',
   'tree.emptyTitle',
   'tree.export',
   'tree.filter',
@@ -654,4 +767,5 @@ export const TRANSLATION_KEYS: readonly TranslationKey[] = [
   'trees.renamed.toast',
   'trees.save',
   'trees.title',
+  'undo',
 ];

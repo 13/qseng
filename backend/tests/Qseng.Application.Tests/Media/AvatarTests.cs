@@ -4,6 +4,7 @@ using NSubstitute;
 using Xunit;
 using Qseng.Application.Abstractions;
 using Qseng.Application.Media.DeleteMedia;
+using Qseng.Application.Media.RestoreMedia;
 using Qseng.Application.Media.SetAvatar;
 using Qseng.Domain.Entities;
 using Qseng.Domain.Enums;
@@ -31,7 +32,7 @@ public class AvatarTests
         SetupAsync(int photoCount = 2)
     {
         var db = TestDb.Create();
-        var ownerId = Guid.NewGuid();
+        var ownerId = TestDb.AddOwner(db).Id;
         var tree = new Tree { OwnerId = ownerId, Name = "T" };
         db.Trees.Add(tree);
         var person = new Person { TreeId = tree.Id, FirstName = "A", LastName = "B" };
@@ -145,5 +146,27 @@ public class AvatarTests
 
         result.IsSuccess.Should().BeTrue();
         (await db.Media.CountAsync(m => m.PersonId == person.Id)).Should().Be(0);
+    }
+
+    [Fact]
+    public async Task SetAvatar_after_delete_and_restore_of_the_original_avatar_leaves_exactly_one_live_avatar()
+    {
+        var (db, person, ownerId, photos) = await SetupAsync();
+        var user = FakeUser(ownerId);
+
+        // Deleting the avatar promotes photos[1]; restoring photos[0] afterwards
+        // must not resurrect its avatar flag (it would collide with photos[1]'s).
+        await new DeleteMediaHandler(db, user, NoopStorage())
+            .Handle(new DeleteMediaCommand(person.Id, photos[0].Id), CancellationToken.None);
+        var restore = await new RestoreMediaHandler(db, user)
+            .Handle(new RestoreMediaCommand(person.Id, photos[0].Id), CancellationToken.None);
+        restore.IsSuccess.Should().BeTrue();
+
+        var result = await new SetAvatarHandler(db, user)
+            .Handle(new SetAvatarCommand(person.Id, photos[0].Id), CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        var live = await db.Media.Where(m => m.PersonId == person.Id && m.IsAvatar).ToListAsync();
+        live.Should().ContainSingle().Which.Id.Should().Be(photos[0].Id);
     }
 }

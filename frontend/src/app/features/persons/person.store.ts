@@ -20,6 +20,9 @@ export class PersonStore {
   private readonly destroyRef = inject(DestroyRef);
   private inflight?: Subscription;
   private loadSeq = 0;
+  private relSeq = 0;
+  private timelineSeq = 0;
+  private mediaSeq = 0;
 
   private readonly _person = signal<PersonDto | null>(null);
   private readonly _tree = signal<TreeDto | null>(null);
@@ -91,15 +94,30 @@ export class PersonStore {
 
   reloadRelations() {
     const id = this._person()?.id;
-    if (id) this.personsApi.personsGetRelations({ id }).subscribe({ next: r => this._relations.set(r), error: e => this.toast.errorFrom(e, this.i18n.t('err.load')) });
+    if (!id) return;
+    const requestId = ++this.relSeq;
+    this.personsApi.personsGetRelations({ id }).subscribe({
+      next: r => { if (requestId === this.relSeq) this._relations.set(r); },
+      error: e => { if (requestId === this.relSeq) this.toast.errorFrom(e, this.i18n.t('err.load')); }
+    });
   }
   reloadTimeline() {
     const personId = this._person()?.id;
-    if (personId) this.timelineApi.timelineGet({ personId }).subscribe({ next: t => this._timeline.set(t), error: e => this.toast.errorFrom(e, this.i18n.t('err.load')) });
+    if (!personId) return;
+    const requestId = ++this.timelineSeq;
+    this.timelineApi.timelineGet({ personId }).subscribe({
+      next: t => { if (requestId === this.timelineSeq) this._timeline.set(t); },
+      error: e => { if (requestId === this.timelineSeq) this.toast.errorFrom(e, this.i18n.t('err.load')); }
+    });
   }
   reloadMedia() {
     const personId = this._person()?.id;
-    if (personId) this.mediaApi.mediaGetMedia({ personId }).subscribe({ next: m => this._media.set(m), error: e => this.toast.errorFrom(e, this.i18n.t('err.load')) });
+    if (!personId) return;
+    const requestId = ++this.mediaSeq;
+    this.mediaApi.mediaGetMedia({ personId }).subscribe({
+      next: m => { if (requestId === this.mediaSeq) this._media.set(m); },
+      error: e => { if (requestId === this.mediaSeq) this.toast.errorFrom(e, this.i18n.t('err.load')); }
+    });
   }
 
   setPerson(p: PersonDto) { this._person.set(p); }

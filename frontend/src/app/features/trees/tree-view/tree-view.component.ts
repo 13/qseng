@@ -13,7 +13,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatDialog } from '@angular/material/dialog';
 import { MatBottomSheet, MatBottomSheetRef } from '@angular/material/bottom-sheet';
-import { PersonDto, PersonsApi, RelationshipDto } from '../../../core/api/generated';
+import { PersonDto, PersonsApi } from '../../../core/api/generated';
 import { I18nService } from '../../../core/i18n/i18n.service';
 import { TranslatePipe } from '../../../core/i18n/translate.pipe';
 import { BreadcrumbService } from '../../../core/ui/breadcrumb.service';
@@ -21,7 +21,7 @@ import { ConfirmDialogService } from '../../../core/ui/confirm-dialog.service';
 import { ToastService } from '../../../core/ui/toast.service';
 import { LayoutService } from '../../../core/ui/layout.service';
 import { fullName } from '../../../core/models/person-helpers';
-import { RelationshipDialogComponent, RelationshipDialogData } from '../../persons/relationship-dialog.component';
+import { RelationshipDialogComponent, RelationshipDialogData, RelationshipDialogResult, relationshipAddedMessage } from '../../persons/relationship-dialog.component';
 import { TreeStore } from './tree.store';
 import { TreeGraphService } from './tree-graph.service';
 import { UiRelType } from './tree-graph.model';
@@ -107,7 +107,7 @@ class TreeSelectionSheetComponent {
                 <mat-icon class="qs-empty__icon" aria-hidden="true">park</mat-icon>
                 <p>{{ 'tree.emptyTitle' | translate }}</p>
                 <div class="qs-empty__actions">
-                  <a matButton="filled" [routerLink]="['/trees', treeId(), 'persons', 'new']"><mat-icon>person_add</mat-icon>{{ 'tree.addPerson' | translate }}</a>
+                  <a matButton="filled" [routerLink]="['/trees', treeId(), 'persons', 'new']"><mat-icon>person_add</mat-icon>{{ 'tree.emptyAddSelf' | translate }}</a>
                   <a matButton [routerLink]="['/trees', treeId(), 'import']"><mat-icon>upload_file</mat-icon>{{ 'tree.import' | translate }}</a>
                 </div>
               </div>
@@ -175,6 +175,7 @@ export class TreeViewComponent {
 
   readonly treeId = input.required<string>();
   readonly q = input<string>();
+  readonly select = input<string>();
 
   readonly store = inject(TreeStore);
   readonly graph = inject(TreeGraphService);
@@ -193,6 +194,10 @@ export class TreeViewComponent {
   // land server-side even if the user navigates away mid-request. This flag only stops the
   // now-pointless UI follow-up (toast/reload) from touching a destroyed component.
   private destroyed = false;
+  // One-shot: seeded from the `select` route input, applied once the graph has built and
+  // the person exists in the store (see the persons/rels effect below), then cleared so a
+  // later reload doesn't keep re-selecting it.
+  private pendingSelect: string | null = null;
 
   readonly sidenavOpen = signal(true);
   readonly skeletonRows = [0, 1, 2, 3, 4, 5];
@@ -210,7 +215,19 @@ export class TreeViewComponent {
       if (!host || !persons.length) { this.graph.loading.set(false); return; }
       void this.graph.build(host, persons, rels, {
         onSelect: id => this.onSelected(id), onOpen: id => this.open(id), onContext: (id, x, y) => this.onContext(id, x, y)
-      }).then(() => { const sel = this.store.selectedId(); if (sel) this.graph.select(sel); });
+      }).then(() => {
+        const sel = this.store.selectedId();
+        if (sel) this.graph.select(sel);
+        // One-shot, spent whether or not it hits: persons is non-empty here (the guard
+        // above returns early otherwise), so this is the pending id's one real chance — an
+        // id that doesn't exist yet must not suddenly get selected on some later reload
+        // once a person with that id happens to show up (e.g. a stale/reused route link).
+        if (this.pendingSelect) {
+          const id = this.pendingSelect;
+          this.pendingSelect = null;
+          if (this.store.personById(id)) this.onSelected(id);
+        }
+      });
     });
     // One-directional: the graph is the source of truth for tap-to-select, but a
     // store-driven selection (sidebar pick, "focus lineage", chip navigation)
@@ -233,8 +250,15 @@ export class TreeViewComponent {
     });
 
     effect(() => {
-      this.store.load(this.treeId());
-      untracked(() => { const q = this.q(); if (q) this.store.setFilter(q); });
+      const id = this.treeId();
+      this.store.load(id);
+      try { sessionStorage.setItem('qs.lastTree', id); } catch { /* private browsing etc.: the palette just won't preselect a tree */ }
+      untracked(() => {
+        const q = this.q();
+        if (q) this.store.setFilter(q);
+        const select = this.select();
+        if (select) this.pendingSelect = select;
+      });
     });
   }
 
@@ -284,13 +308,22 @@ export class TreeViewComponent {
   }
 
   private async openRelationshipDialog(data: RelationshipDialogData): Promise<void> {
-    const ref = this.dialog.open<RelationshipDialogComponent, RelationshipDialogData, RelationshipDto | undefined>(
+    const ref = this.dialog.open<RelationshipDialogComponent, RelationshipDialogData, RelationshipDialogResult | undefined>(
       RelationshipDialogComponent, { data, width: '520px', maxWidth: '95vw' }
     );
     const result = await firstValueFrom(ref.afterClosed());
     if (!result) return;
-    this.toast.success(this.i18n.t('rel.added.toast'));
     this.store.reload();
+    if (result.created) {
+      const created = result.created;
+      this.toast.success(relationshipAddedMessage(this.i18n, result), {
+        action: this.i18n.t('rel.open'),
+        onAction: () => this.open(created.id!)
+      });
+      if (created.id) this.onSelected(created.id);
+    } else {
+      this.toast.success(relationshipAddedMessage(this.i18n, result));
+    }
   }
 
   async deletePerson(person: PersonDto): Promise<void> {
@@ -307,7 +340,14 @@ export class TreeViewComponent {
     this.personsApi.personsDelete({ id: person.id }).subscribe({
       next: () => {
         if (this.destroyed) return;
-        this.toast.success(this.i18n.t('tree.deleted.toast')); this.store.reload();
+        this.store.reload();
+        this.toast.undoable(this.i18n.t('tree.deleted.undo').replace('__NAME__', name), () => firstValueFrom(this.personsApi.personsRestore({ id: person.id! })).then(() => {
+          // The restore call itself must still complete even if the component was destroyed
+          // (e.g. the toast outlives navigation); only the now-pointless UI follow-up is guarded.
+          if (this.destroyed) return;
+          this.store.reload();
+          this.onSelected(person.id!);
+        }));
       },
       error: e => {
         if (this.destroyed) return;

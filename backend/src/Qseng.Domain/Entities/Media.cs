@@ -3,7 +3,7 @@ using Qseng.Domain.Enums;
 
 namespace Qseng.Domain.Entities;
 
-public class Media : Entity
+public class Media : Entity, ISoftDeletable
 {
     public Guid PersonId { get; set; }
     public string Url { get; set; } = "";
@@ -12,4 +12,6 @@ public class Media : Entity
 
     /// <summary>At most one per person; enforced by a filtered unique index.</summary>
     public bool IsAvatar { get; set; }
+    public DateTime? DeletedAt { get; set; }
+    public Guid? DeletionBatchId { get; set; }
 }

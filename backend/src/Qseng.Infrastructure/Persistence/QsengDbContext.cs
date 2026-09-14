@@ -22,6 +22,13 @@ public abstract class QsengDbContext : DbContext, IQsengDbContext
     {
         b.ApplyConfigurationsFromAssembly(typeof(QsengDbContext).Assembly);
 
+        // Trash: one filter per soft-deletable type so no read path can forget it.
+        // Handlers that need trashed rows call IgnoreQueryFilters() explicitly.
+        b.Entity<Person>().HasQueryFilter(p => p.DeletedAt == null);
+        b.Entity<Relationship>().HasQueryFilter(r => r.DeletedAt == null);
+        b.Entity<TimelineEvent>().HasQueryFilter(e => e.DeletedAt == null);
+        b.Entity<Media>().HasQueryFilter(m => m.DeletedAt == null);
+
         // "At most one avatar per person", enforced by the database instead of
         // trusting every write path to clear the previous one. SQLite stores
         // booleans as 0/1, Postgres as a real boolean, so the filter differs.
@@ -30,6 +37,16 @@ public abstract class QsengDbContext : DbContext, IQsengDbContext
             .IsUnique()
             .HasFilter(AvatarIndexFilter)
             .HasDatabaseName("ix_media_person_avatar");
+
+        // "At most one live edge of a given type between two people", enforced by
+        // the database. Filtered to DeletedAt IS NULL (a single string works on
+        // both providers, unlike the avatar filter above) so a relationship sitting
+        // in the trash never blocks re-creating the same live edge.
+        b.Entity<Relationship>()
+            .HasIndex(r => new { r.TreeId, r.FromPersonId, r.ToPersonId, r.Type })
+            .IsUnique()
+            .HasFilter("\"DeletedAt\" IS NULL")
+            .HasDatabaseName("ix_relationships_live_edge");
     }
 
     protected abstract string AvatarIndexFilter { get; }

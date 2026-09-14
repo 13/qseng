@@ -2,10 +2,10 @@ import { TestBed } from '@angular/core/testing';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { HttpErrorResponse } from '@angular/common/http';
-import { of, throwError } from 'rxjs';
+import { Observable, of, throwError } from 'rxjs';
 import { describe, expect, it, vi } from 'vitest';
 import { RelationshipDialogComponent } from './relationship-dialog.component';
-import { RelationshipsApi } from '../../core/api/generated';
+import { PersonsApi, RelationshipDto, RelationshipsApi } from '../../core/api/generated';
 import { ToastService } from '../../core/ui/toast.service';
 import { I18nService } from '../../core/i18n/i18n.service';
 
@@ -13,18 +13,19 @@ const anchor = { id: 'me', treeId: 't1', firstName: 'Konrad', lastName: 'Smith',
 const other = { id: 'p2', treeId: 't1', firstName: 'Maria', lastName: 'Escobar', sex: 'Female' as const, birth: { year: 1850 } };
 
 function setup(fail = false, data: object = { treeId: 't1', persons: [anchor, other], anchor }) {
-  const api = { relationshipsCreate: vi.fn(() => fail
+  const api = { relationshipsCreate: vi.fn((): Observable<RelationshipDto> => fail
     ? throwError(() => new HttpErrorResponse({ status: 409, error: { status: 409, title: 'Conflict', detail: 'Already related' } }))
     : of({ id: 'r1', treeId: 't1', type: 'Parent', fromPersonId: 'p2', toPersonId: 'me' })) };
+  const persons = { personsCreate: vi.fn(), personsDelete: vi.fn(() => of(true)) };
   const ref = { close: vi.fn() };
   const toast = { errorFrom: vi.fn(), success: vi.fn(), error: vi.fn(), info: vi.fn() };
   TestBed.configureTestingModule({ providers: [provideNoopAnimations(),
     { provide: MAT_DIALOG_DATA, useValue: data }, { provide: MatDialogRef, useValue: ref },
-    { provide: RelationshipsApi, useValue: api }, { provide: ToastService, useValue: toast },
-    { provide: I18nService, useValue: { t: (k: string) => k, dynamic: (k: string) => k, relLabel: (t: string) => t } }] });
+    { provide: RelationshipsApi, useValue: api }, { provide: PersonsApi, useValue: persons }, { provide: ToastService, useValue: toast },
+    { provide: I18nService, useValue: { t: (k: string) => k, dynamic: (k: string) => k, relLabel: (t: string) => t, sexLabel: (s: string) => s } }] });
   const fixture = TestBed.createComponent(RelationshipDialogComponent);
   fixture.detectChanges();
-  return { cmp: fixture.componentInstance, api, ref, toast, fixture };
+  return { cmp: fixture.componentInstance, api, persons, ref, toast, fixture };
 }
 
 describe('RelationshipDialogComponent', () => {
@@ -42,7 +43,7 @@ describe('RelationshipDialogComponent', () => {
     cmp.pick(other);
     cmp.save();
     expect(api.relationshipsCreate).toHaveBeenCalledWith({ treeId: 't1', body: expect.objectContaining({ type: 'Parent', fromPersonId: 'p2', toPersonId: 'me' }) });
-    expect(ref.close).toHaveBeenCalledWith(expect.objectContaining({ id: 'r1' }));
+    expect(ref.close).toHaveBeenCalledWith(expect.objectContaining({ relationship: expect.objectContaining({ id: 'r1' }) }));
   });
 
   it('sends date and place for a spouse and maps Child to a reversed Parent edge', () => {
@@ -96,5 +97,82 @@ describe('RelationshipDialogComponent', () => {
     cmp.pickFromPerson(anchor);
     cmp.save();
     expect(api.relationshipsCreate).toHaveBeenCalledWith({ treeId: 't1', body: expect.objectContaining({ type: 'Parent', fromPersonId: 'me', toPersonId: 'p2' }) });
+  });
+
+  it('new-person mode creates the person, links it and closes with both', async () => {
+    const { cmp, api, persons, ref, fixture } = setup(false, { treeId: 't1', persons: [anchor, other], anchor, presetType: 'Child', mode: 'new' });
+    persons.personsCreate.mockReturnValue(of({ id: 'n1', firstName: 'Anna', lastName: 'Smith', treeId: 't1' }));
+    api.relationshipsCreate.mockReturnValue(of({ id: 'r1' }));
+    cmp.newForm.patchValue({ firstName: 'Anna', sex: 'Female' });
+    cmp.save();
+    await fixture.whenStable();
+    expect(persons.personsCreate).toHaveBeenCalledWith({ treeId: 't1', body: expect.objectContaining({ firstName: 'Anna', lastName: 'Smith' }) });
+    expect(api.relationshipsCreate).toHaveBeenCalledWith({ treeId: 't1', body: expect.objectContaining({ fromPersonId: 'me', toPersonId: 'n1', type: 'Parent' }) });
+    expect(ref.close).toHaveBeenCalledWith({ relationship: { id: 'r1' }, uiType: 'Child', created: expect.objectContaining({ id: 'n1' }) });
+  });
+
+  it('rolls the created person back when linking fails and stays open', async () => {
+    const { cmp, api, persons, ref, fixture } = setup(false, { treeId: 't1', persons: [anchor, other], anchor, presetType: 'Spouse', mode: 'new' });
+    persons.personsCreate.mockReturnValue(of({ id: 'n1', firstName: 'Anna', lastName: 'Ray', treeId: 't1' }));
+    api.relationshipsCreate.mockReturnValue(throwError(() => new HttpErrorResponse({ status: 409, error: { title: 'Conflict', detail: 'Already spouses.', status: 409 } })));
+    cmp.newForm.patchValue({ firstName: 'Anna', lastName: 'Ray', sex: 'Female' });
+    cmp.save();
+    await fixture.whenStable();
+    expect(persons.personsDelete).toHaveBeenCalledWith({ id: 'n1' });
+    expect(ref.close).not.toHaveBeenCalled();
+    expect(cmp.error()).toContain('Already spouses.');
+  });
+
+  it('new-person mode requires first and last name', () => {
+    const { cmp, persons } = setup(false, { treeId: 't1', persons: [anchor, other], anchor, presetType: 'Child', mode: 'new' });
+    cmp.save();
+    expect(persons.personsCreate).not.toHaveBeenCalled();
+    expect(cmp.newForm.controls.firstName.touched).toBe(true);
+  });
+
+  it('labels the existing/new mode toggle group with the dedicated aria-label key', () => {
+    const { fixture } = setup();
+    const el: HTMLElement = fixture.nativeElement;
+    expect(el.querySelector('mat-button-toggle-group[aria-label="rel.mode.label"]')).not.toBeNull();
+  });
+
+  it('wires the sex error to the sex toggle group via aria-describedby/aria-invalid once touched', () => {
+    const { cmp, fixture } = setup(false, { treeId: 't1', persons: [anchor, other], anchor, presetType: 'Child', mode: 'new' });
+    const el: HTMLElement = fixture.nativeElement;
+    const group = () => el.querySelector('.qs-new-person-block mat-button-toggle-group[formcontrolname="sex"]');
+    expect(group()?.getAttribute('aria-describedby')).toBeNull();
+    expect(group()?.getAttribute('aria-invalid')).toBe('false');
+    cmp.newForm.controls.sex.markAsTouched();
+    fixture.detectChanges();
+    const err = el.querySelector('#qs-rel-sex-error');
+    expect(err).not.toBeNull();
+    expect(err?.getAttribute('role')).toBe('alert');
+    expect(group()?.getAttribute('aria-describedby')).toBe('qs-rel-sex-error');
+    expect(group()?.getAttribute('aria-invalid')).toBe('true');
+  });
+
+  it('re-derives the new-person surname when the type changes while lastName is pristine, but leaves a typed one alone', () => {
+    const { cmp } = setup(false, { treeId: 't1', persons: [anchor, other], anchor, presetType: 'Parent', mode: 'new' });
+    expect(cmp.newForm.controls.lastName.value).toBe('Smith');
+    cmp.form.controls.type.setValue('Spouse');
+    expect(cmp.newForm.controls.lastName.value).toBe('');
+    cmp.form.controls.type.setValue('Child');
+    expect(cmp.newForm.controls.lastName.value).toBe('Smith');
+    // A real keystroke marks the control dirty (setValue() alone, as used above for the
+    // re-derivation itself, does not) — simulate that before checking the derivation stops.
+    cmp.newForm.controls.lastName.setValue('Custom');
+    cmp.newForm.controls.lastName.markAsDirty();
+    cmp.form.controls.type.setValue('Spouse');
+    expect(cmp.newForm.controls.lastName.value).toBe('Custom');
+  });
+
+  it('falls back to existing mode when sessionStorage.getItem throws (private browsing etc.)', () => {
+    const spy = vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => { throw new Error('denied'); });
+    try {
+      const { cmp } = setup();
+      expect(cmp.mode()).toBe('existing');
+    } finally {
+      spy.mockRestore();
+    }
   });
 });
