@@ -145,6 +145,20 @@ export type TranslationKey =
   | 'nav.theme.dark'
   | 'nav.theme.light'
   | 'nav.users'
+  | 'onb.father'
+  | 'onb.finish'
+  | 'onb.hero'
+  | 'onb.importInstead'
+  | 'onb.mother'
+  | 'onb.next'
+  | 'onb.ready'
+  | 'onb.skip'
+  | 'onb.start'
+  | 'onb.step.parents'
+  | 'onb.step.tree'
+  | 'onb.step.you'
+  | 'onb.treeDescription'
+  | 'onb.treeName'
   | 'optional'
   | 'palette.action.addPerson'
   | 'palette.action.addRelation'
@@ -323,6 +337,7 @@ export type TranslationKey =
   | 'tree.ctx.remove'
   | 'tree.deleted.undo'
   | 'tree.edit'
+  | 'tree.emptyAddSelf'
   | 'tree.emptyTitle'
   | 'tree.export'
   | 'tree.filter'
@@ -515,6 +530,20 @@ export const TRANSLATION_KEYS: readonly TranslationKey[] = [
   'nav.theme.dark',
   'nav.theme.light',
   'nav.users',
+  'onb.father',
+  'onb.finish',
+  'onb.hero',
+  'onb.importInstead',
+  'onb.mother',
+  'onb.next',
+  'onb.ready',
+  'onb.skip',
+  'onb.start',
+  'onb.step.parents',
+  'onb.step.tree',
+  'onb.step.you',
+  'onb.treeDescription',
+  'onb.treeName',
   'optional',
   'palette.action.addPerson',
   'palette.action.addRelation',
@@ -693,6 +722,7 @@ export const TRANSLATION_KEYS: readonly TranslationKey[] = [
   'tree.ctx.remove',
   'tree.deleted.undo',
   'tree.edit',
+  'tree.emptyAddSelf',
   'tree.emptyTitle',
   'tree.export',
   'tree.filter',

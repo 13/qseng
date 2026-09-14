@@ -84,6 +84,40 @@ describe('TreeListComponent', () => {
     expect(dialog.open).not.toHaveBeenCalled();
   });
 
+  it('shows the hero actions in the empty state', () => {
+    const { fixture } = setup([]);
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain('onb.start');
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain('onb.importInstead');
+  });
+
+  it('startOnboarding lazy-loads the stepper and, on success, toasts and navigates to the tree with the created person selected', async () => {
+    const { cmp, dialog, toast, router } = setup(trees, { treeId: 't9', personId: 'p9' });
+    await cmp.startOnboarding();
+    expect(dialog.open).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ width: '640px', maxWidth: '95vw' }));
+    expect(toast.success).toHaveBeenCalledWith('onb.ready');
+    expect(router.navigate).toHaveBeenCalledWith(['/trees', 't9'], { queryParams: { select: 'p9' } });
+  });
+
+  it('startOnboarding does nothing further when the dialog closes without a result', async () => {
+    const { cmp, toast, router } = setup(trees, undefined);
+    await cmp.startOnboarding();
+    expect(toast.success).not.toHaveBeenCalled();
+    expect(router.navigate).not.toHaveBeenCalled();
+  });
+
+  it('importInstead creates a tree, then navigates straight to its import page without reloading the list', async () => {
+    const { cmp, api, router } = setup(trees, { id: 't9', name: 'New', personCount: 0 });
+    await cmp.importInstead();
+    expect(api.treesGetAll).toHaveBeenCalledTimes(1);
+    expect(router.navigate).toHaveBeenCalledWith(['/trees', 't9', 'import']);
+  });
+
+  it('importInstead does nothing when the create dialog is cancelled', async () => {
+    const { cmp, router } = setup(trees, undefined);
+    await cmp.importInstead();
+    expect(router.navigate).not.toHaveBeenCalled();
+  });
+
   it('deletes only after confirmation', async () => {
     const declined = setup(trees, undefined, false);
     await declined.cmp.remove(trees[0]);

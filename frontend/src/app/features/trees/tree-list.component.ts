@@ -16,6 +16,7 @@ import { ToastService } from '../../core/ui/toast.service';
 import { BreadcrumbService } from '../../core/ui/breadcrumb.service';
 import { problemMessage } from '../../core/api/problem-details';
 import { TreeFormDialogComponent, TreeFormData } from './tree-form-dialog.component';
+import type { OnboardingResult } from '../onboarding/onboarding-dialog.component';
 
 @Component({
   selector: 'qs-tree-list',
@@ -40,7 +41,8 @@ import { TreeFormDialogComponent, TreeFormData } from './tree-form-dialog.compon
         <h2>{{ 'trees.emptyTitle' | translate }}</h2>
         <p class="qs-muted">{{ 'trees.emptyHint' | translate }}</p>
         <div class="qs-empty__actions">
-          <button matButton="filled" (click)="openCreate()"><mat-icon>add</mat-icon>{{ 'trees.new' | translate }}</button>
+          <button matButton="filled" (click)="startOnboarding()"><mat-icon>add</mat-icon>{{ 'onb.start' | translate }}</button>
+          <button matButton (click)="importInstead()">{{ 'onb.importInstead' | translate }}</button>
         </div>
       </div>
     } @else {
@@ -128,6 +130,25 @@ export class TreeListComponent implements OnInit {
     if (!result) return;
     this.toast.success(this.i18n.t('trees.created.toast'));
     this.load();
+  }
+
+  /** First-run hero action: the onboarding stepper, lazy-loaded so it never lands in the initial bundle. */
+  async startOnboarding() {
+    const { OnboardingDialogComponent } = await import('../onboarding/onboarding-dialog.component');
+    const ref = this.dialog.open<InstanceType<typeof OnboardingDialogComponent>, undefined, OnboardingResult | undefined>(
+      OnboardingDialogComponent, { width: '640px', maxWidth: '95vw' }
+    );
+    const result = await firstValueFrom(ref.afterClosed());
+    if (!result) return;
+    this.toast.success(this.i18n.t('onb.ready'));
+    await this.router.navigate(['/trees', result.treeId], { queryParams: { select: result.personId } });
+  }
+
+  /** Hero secondary action: create a bare tree, then go straight to importing people into it. */
+  async importInstead() {
+    const result = await this.openForm({ mode: 'create' });
+    if (!result?.id) return;
+    await this.router.navigate(['/trees', result.id, 'import']);
   }
 
   async openRename(tree: TreeDto) {

@@ -107,7 +107,7 @@ class TreeSelectionSheetComponent {
                 <mat-icon class="qs-empty__icon" aria-hidden="true">park</mat-icon>
                 <p>{{ 'tree.emptyTitle' | translate }}</p>
                 <div class="qs-empty__actions">
-                  <a matButton="filled" [routerLink]="['/trees', treeId(), 'persons', 'new']"><mat-icon>person_add</mat-icon>{{ 'tree.addPerson' | translate }}</a>
+                  <a matButton="filled" [routerLink]="['/trees', treeId(), 'persons', 'new']"><mat-icon>person_add</mat-icon>{{ 'tree.emptyAddSelf' | translate }}</a>
                   <a matButton [routerLink]="['/trees', treeId(), 'import']"><mat-icon>upload_file</mat-icon>{{ 'tree.import' | translate }}</a>
                 </div>
               </div>
@@ -175,6 +175,7 @@ export class TreeViewComponent {
 
   readonly treeId = input.required<string>();
   readonly q = input<string>();
+  readonly select = input<string>();
 
   readonly store = inject(TreeStore);
   readonly graph = inject(TreeGraphService);
@@ -193,6 +194,10 @@ export class TreeViewComponent {
   // land server-side even if the user navigates away mid-request. This flag only stops the
   // now-pointless UI follow-up (toast/reload) from touching a destroyed component.
   private destroyed = false;
+  // One-shot: seeded from the `select` route input, applied once the graph has built and
+  // the person exists in the store (see the persons/rels effect below), then cleared so a
+  // later reload doesn't keep re-selecting it.
+  private pendingSelect: string | null = null;
 
   readonly sidenavOpen = signal(true);
   readonly skeletonRows = [0, 1, 2, 3, 4, 5];
@@ -210,7 +215,14 @@ export class TreeViewComponent {
       if (!host || !persons.length) { this.graph.loading.set(false); return; }
       void this.graph.build(host, persons, rels, {
         onSelect: id => this.onSelected(id), onOpen: id => this.open(id), onContext: (id, x, y) => this.onContext(id, x, y)
-      }).then(() => { const sel = this.store.selectedId(); if (sel) this.graph.select(sel); });
+      }).then(() => {
+        const sel = this.store.selectedId();
+        if (sel) this.graph.select(sel);
+        if (this.pendingSelect && this.store.personById(this.pendingSelect)) {
+          this.onSelected(this.pendingSelect);
+          this.pendingSelect = null;
+        }
+      });
     });
     // One-directional: the graph is the source of truth for tap-to-select, but a
     // store-driven selection (sidebar pick, "focus lineage", chip navigation)
@@ -236,7 +248,12 @@ export class TreeViewComponent {
       const id = this.treeId();
       this.store.load(id);
       try { sessionStorage.setItem('qs.lastTree', id); } catch { /* private browsing etc.: the palette just won't preselect a tree */ }
-      untracked(() => { const q = this.q(); if (q) this.store.setFilter(q); });
+      untracked(() => {
+        const q = this.q();
+        if (q) this.store.setFilter(q);
+        const select = this.select();
+        if (select) this.pendingSelect = select;
+      });
     });
   }
 

@@ -210,4 +210,30 @@ describe('TreeViewComponent', () => {
     const store = fixture.debugElement.injector.get(TreeStore);
     expect(store.filter()).toBe('konrad');
   });
+
+  // The `select` route input can't select right away (the person list hasn't loaded), so it's
+  // stashed as a one-shot and applied once the graph has actually built — using the real
+  // TreeStore, same rationale as the ?q test above.
+  it('seeds a pending selection from ?select once the graph has built, with the real TreeStore', async () => {
+    const personsApi = { personsGetByTree: vi.fn(() => of(people)) };
+    const relsApi = { relationshipsGetByTree: vi.fn(() => of([])) };
+    const treesApi = { treesGetAll: vi.fn(() => of([{ id: 't1', name: 'Familie' }])) };
+    const graph = { build: vi.fn(async () => undefined), select: vi.fn(), fit: vi.fn(), zoomIn: vi.fn(), zoomOut: vi.fn(), toggleLayout: vi.fn(), resetLayout: vi.fn(), exportPng: vi.fn(),
+      layoutMode: signal('tree'), loading: signal(false), selectedId: signal<string | null>(null), searchTerm: signal(''), hasCustomLayout: signal(false), compact: signal(false), destroy: vi.fn() };
+    TestBed.configureTestingModule({ providers: [provideRouter([]), provideNoopAnimations(),
+      { provide: PersonsApi, useValue: personsApi }, { provide: RelationshipsApi, useValue: relsApi }, { provide: TreesApi, useValue: treesApi },
+      { provide: LayoutService, useValue: { handset: () => false, tablet: () => false, desktop: () => true } },
+      { provide: MatDialog, useValue: { open: vi.fn() } }, { provide: MatBottomSheet, useValue: { open: vi.fn() } },
+      { provide: ConfirmDialogService, useValue: { confirm: vi.fn(async () => true) } }, { provide: ToastService, useValue: { success: vi.fn(), errorFrom: vi.fn(), error: vi.fn(), info: vi.fn() } },
+      { provide: BreadcrumbService, useValue: { set: vi.fn() } }, { provide: I18nService, useValue: { t: (k: string) => k, dynamic: (k: string) => k } }] });
+    TestBed.overrideComponent(TreeViewComponent, { set: { providers: [TreeStore, { provide: TreeGraphService, useValue: graph }] } });
+    const fixture = TestBed.createComponent(TreeViewComponent);
+    fixture.componentRef.setInput('treeId', 't1');
+    fixture.componentRef.setInput('select', 'a');
+    fixture.detectChanges();
+    await fixture.whenStable();
+    const store = fixture.debugElement.injector.get(TreeStore);
+    expect(store.selectedId()).toBe('a');
+    expect(graph.select).toHaveBeenCalledWith('a');
+  });
 });
