@@ -1158,6 +1158,7 @@ Run `npm run gen:i18n --prefix /home/ben/repo/qseng/frontend`.
 ```ts
 import { TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
+import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { of } from 'rxjs';
 import { describe, expect, it, vi } from 'vitest';
 import { SettingsComponent } from './settings.component';
@@ -1185,7 +1186,7 @@ function setup(confirmResult: boolean | string = 'hunter2') {
   const i18n = { t: (k: string) => k, dynamic: (k: string) => k, lang: () => 'en', setLang: vi.fn() };
   TestBed.configureTestingModule({
     providers: [
-      provideRouter([]),
+      provideRouter([]), provideNoopAnimations(),
       { provide: UserApi, useValue: api }, { provide: AuthService, useValue: auth },
       { provide: ConfirmDialogService, useValue: confirm }, { provide: ToastService, useValue: toast },
       { provide: I18nService, useValue: i18n }, { provide: ThemeService, useValue: { mode: () => 'auto', setMode: vi.fn() } }
@@ -1678,6 +1679,7 @@ Run the dialogs spec: `Tests  2 passed (2)`.
 ```ts
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
+import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { MatDialog } from '@angular/material/dialog';
 import { of } from 'rxjs';
 import { describe, expect, it, vi } from 'vitest';
@@ -1711,7 +1713,7 @@ function setup(handset = false, confirmResult = true, dialogResult: unknown = un
   const dialog = { open: vi.fn(() => ({ afterClosed: () => of(dialogResult) })) };
   TestBed.configureTestingModule({
     providers: [
-      provideRouter([]),
+      provideRouter([]), provideNoopAnimations(),
       { provide: AdminApi, useValue: api }, { provide: AuthService, useValue: { userId: () => 'me' } },
       { provide: ConfirmDialogService, useValue: confirm }, { provide: ToastService, useValue: toast },
       { provide: MatDialog, useValue: dialog }, { provide: LayoutService, useValue: { handset: () => handset } },
