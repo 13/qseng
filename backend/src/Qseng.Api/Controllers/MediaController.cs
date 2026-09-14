@@ -1,6 +1,7 @@
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Qseng.Application.Media;
 using Qseng.Application.Media.DeleteMedia;
 using Qseng.Application.Media.GetPersonMedia;
 using Qseng.Application.Media.SetAvatar;
@@ -11,6 +12,7 @@ namespace Qseng.Api.Controllers;
 
 [ApiController]
 [Authorize]
+[Produces("application/json")]
 [Route("api/v1")]
 public class MediaController : ControllerBase
 {
@@ -18,12 +20,14 @@ public class MediaController : ControllerBase
     public MediaController(ISender mediator) => _mediator = mediator;
 
     [HttpGet("persons/{personId:guid}/media")]
+    [ProducesResponseType(typeof(List<MediaDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetMedia(Guid personId, CancellationToken ct) =>
         (await _mediator.Send(new GetPersonMediaQuery(personId), ct)).ToActionResult();
 
     [HttpPost("persons/{personId:guid}/media")]
     [RequestSizeLimit(20_971_520)] // 20 MB
     [RequestFormLimits(MultipartBodyLengthLimit = 20_971_520)]
+    [ProducesResponseType(typeof(MediaDto), StatusCodes.Status201Created)]
     public async Task<IActionResult> Upload(
         Guid personId, IFormFile file,
         [FromForm] string? caption,
@@ -40,10 +44,12 @@ public class MediaController : ControllerBase
     }
 
     [HttpPut("persons/{personId:guid}/media/{mediaId:guid}/avatar")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> SetAvatar(Guid personId, Guid mediaId, CancellationToken ct) =>
         (await _mediator.Send(new SetAvatarCommand(personId, mediaId), ct)).ToActionResult();
 
     [HttpDelete("persons/{personId:guid}/media/{mediaId:guid}")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> Delete(Guid personId, Guid mediaId, CancellationToken ct) =>
         (await _mediator.Send(new DeleteMediaCommand(personId, mediaId), ct)).ToActionResult();
 }

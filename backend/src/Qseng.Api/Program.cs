@@ -40,6 +40,12 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new() { Title = "Qseng API", Version = "v1" });
+    c.SupportNonNullableReferenceTypes();
+    // Only controller actions; minimal endpoints (e.g. /api/v1/health) are not part of the client contract.
+    c.DocInclusionPredicate((_, api) => api.ActionDescriptor is Microsoft.AspNetCore.Mvc.Controllers.ControllerActionDescriptor);
+    // Stable, unique ids -> readable generated client methods (treesGetAll, personsCreate, ...).
+    c.CustomOperationIds(api =>
+        $"{api.ActionDescriptor.RouteValues["controller"]}_{api.ActionDescriptor.RouteValues["action"]}");
     c.AddSecurityDefinition("Bearer", new()
     {
         Name = "Authorization", Type = Microsoft.OpenApi.Models.SecuritySchemeType.Http,
