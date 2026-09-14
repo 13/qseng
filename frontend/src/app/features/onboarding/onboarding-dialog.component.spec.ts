@@ -8,20 +8,24 @@ import { OnboardingDialogComponent } from './onboarding-dialog.component';
 import { PersonDto, PersonsApi, RelationshipDto, RelationshipsApi, TreeDto, TreesApi } from '../../core/api/generated';
 import { I18nService } from '../../core/i18n/i18n.service';
 import { LayoutService } from '../../core/ui/layout.service';
+import { ToastService } from '../../core/ui/toast.service';
 
-function setup(opts: { treesFail?: boolean; personsFail?: boolean } = {}) {
+function setup(opts: { treesFail?: boolean; personsFail?: boolean; personsServerError?: boolean } = {}) {
   const trees = {
     treesCreate: vi.fn((): Observable<TreeDto> => opts.treesFail
       ? throwError(() => new HttpErrorResponse({ status: 409, error: { status: 409, title: 'Conflict', detail: 'Name taken' } }))
       : of({ id: 't1' }))
   };
   const persons = {
-    personsCreate: vi.fn((): Observable<PersonDto> => opts.personsFail
-      ? throwError(() => new HttpErrorResponse({ status: 400, error: { status: 400, title: 'Bad', errors: { firstName: ['Required'] } } }))
-      : of({ id: 'me' }))
+    personsCreate: vi.fn((): Observable<PersonDto> => {
+      if (opts.personsFail) return throwError(() => new HttpErrorResponse({ status: 400, error: { status: 400, title: 'Bad', errors: { firstName: ['Required'] } } }));
+      if (opts.personsServerError) return throwError(() => new HttpErrorResponse({ status: 500, error: { status: 500, title: 'Server error' } }));
+      return of({ id: 'me' });
+    })
   };
   const relationships = { relationshipsCreate: vi.fn((): Observable<RelationshipDto> => of({ id: 'r1' })) };
   const ref = { close: vi.fn(), disableClose: false };
+  const toast = { success: vi.fn(), error: vi.fn(), info: vi.fn(), errorFrom: vi.fn() };
   // Reset first: several tests call setup() more than once, and TestBed forbids
   // reconfiguring after it's been instantiated.
   TestBed.resetTestingModule();
@@ -33,12 +37,13 @@ function setup(opts: { treesFail?: boolean; personsFail?: boolean } = {}) {
       { provide: PersonsApi, useValue: persons },
       { provide: RelationshipsApi, useValue: relationships },
       { provide: LayoutService, useValue: { handset: () => false, tablet: () => false, desktop: () => true } },
+      { provide: ToastService, useValue: toast },
       { provide: I18nService, useValue: { t: (k: string) => k, dynamic: (k: string) => k, sexLabel: (s: string) => s } }
     ]
   });
   const fixture = TestBed.createComponent(OnboardingDialogComponent);
   fixture.detectChanges();
-  return { cmp: fixture.componentInstance, trees, persons, relationships, ref, fixture };
+  return { cmp: fixture.componentInstance, trees, persons, relationships, ref, toast, fixture };
 }
 
 /** Drives step 1 (tree name) and step 2 (your name/sex) to completion so tests can focus on step 3. */
@@ -104,7 +109,7 @@ describe('OnboardingDialogComponent', () => {
   });
 
   it('a failing personsCreate (validation problem) keeps step 2 open and shows the server error on firstName', () => {
-    const { cmp, persons, ref } = setup({ personsFail: true });
+    const { cmp, persons, ref, toast } = setup({ personsFail: true });
     cmp.treeForm.controls.name.setValue('Escobar');
     cmp.next();
     cmp.youForm.setValue({ firstName: 'Konrad', lastName: 'Smith', sex: 'Male', birth: null });
@@ -113,6 +118,18 @@ describe('OnboardingDialogComponent', () => {
     expect(cmp.stepper().selectedIndex).toBe(1);
     expect(cmp.youForm.controls.firstName.errors).toEqual(expect.objectContaining({ server: 'Required' }));
     expect(ref.close).not.toHaveBeenCalled();
+    expect(toast.errorFrom).not.toHaveBeenCalled();
+  });
+
+  it('a failing personsCreate (non-validation, e.g. 500) routes the error through ToastService instead of the inline paragraph', () => {
+    const { cmp, persons, toast } = setup({ personsServerError: true });
+    cmp.treeForm.controls.name.setValue('Escobar');
+    cmp.next();
+    cmp.youForm.setValue({ firstName: 'Konrad', lastName: 'Smith', sex: 'Male', birth: null });
+    cmp.next();
+    expect(persons.personsCreate).toHaveBeenCalled();
+    expect(toast.errorFrom).toHaveBeenCalledWith(expect.anything(), 'err.save');
+    expect(cmp.error()).toBe('');
   });
 
   it('sets ref.disableClose once the tree is created, so an accidental Escape does not lose the flow', () => {

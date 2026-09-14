@@ -10,9 +10,10 @@ import { PartialDate, PersonRequest, PersonsApi, RelationshipsApi, Sex, TreesApi
 import { I18nService } from '../../core/i18n/i18n.service';
 import { TranslatePipe } from '../../core/i18n/translate.pipe';
 import { LayoutService } from '../../core/ui/layout.service';
+import { ToastService } from '../../core/ui/toast.service';
 import { FormErrorsPipe } from '../../core/forms/form-errors.pipe';
 import { setServerErrors } from '../../core/forms/server-errors';
-import { isValidationProblem, problemMessage } from '../../core/api/problem-details';
+import { isValidationProblem } from '../../core/api/problem-details';
 import { PartialDateInputComponent } from '../../shared/ui/partial-date-input.component';
 import { toApiRelationship } from '../trees/tree-view/tree-graph.model';
 
@@ -126,6 +127,7 @@ export class OnboardingDialogComponent {
   readonly ref = inject<MatDialogRef<OnboardingDialogComponent, OnboardingResult | undefined>>(MatDialogRef);
   readonly i18n = inject(I18nService);
   readonly layout = inject(LayoutService);
+  private readonly toast = inject(ToastService);
   private readonly treesApi = inject(TreesApi);
   private readonly personsApi = inject(PersonsApi);
   private readonly relationshipsApi = inject(RelationshipsApi);
@@ -178,7 +180,7 @@ export class OnboardingDialogComponent {
       error: e => {
         this.saving.set(false);
         if (isValidationProblem(e.error)) this.error.set(setServerErrors(this.treeForm, e.error).join(' '));
-        else this.error.set(problemMessage(e, this.i18n.t('trees.err.create')));
+        else this.toast.errorFrom(e, this.i18n.t('trees.err.create'));
       }
     });
   }
@@ -203,7 +205,7 @@ export class OnboardingDialogComponent {
       error: e => {
         this.saving.set(false);
         if (isValidationProblem(e.error)) this.error.set(setServerErrors(this.youForm, e.error).join(' '));
-        else this.error.set(problemMessage(e, this.i18n.t('err.save')));
+        else this.toast.errorFrom(e, this.i18n.t('err.save'));
       }
     });
   }
@@ -266,14 +268,14 @@ export class OnboardingDialogComponent {
           error: e => {
             this.saving.set(false);
             if (isValidationProblem(e.error)) this.error.set(setServerErrors(group, e.error).join(' '));
-            else this.error.set(problemMessage(e, this.i18n.t('err.save')));
+            else this.toast.errorFrom(e, this.i18n.t('err.save'));
           }
         });
       },
       error: e => {
         this.saving.set(false);
         if (isValidationProblem(e.error)) this.error.set(setServerErrors(group, e.error).join(' '));
-        else this.error.set(problemMessage(e, this.i18n.t('err.save')));
+        else this.toast.errorFrom(e, this.i18n.t('err.save'));
       }
     });
   }

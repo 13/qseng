@@ -34,7 +34,8 @@ export class PaletteService {
 
     const data: CommandPaletteData = { treeId };
     this.ref = dialog.open(CommandPaletteComponent, {
-      data, position: { top: '10vh' }, panelClass: 'qs-palette-panel', autoFocus: '[cdkFocusInitial]', restoreFocus: true
+      data, position: { top: '10vh' }, panelClass: 'qs-palette-panel', autoFocus: '[cdkFocusInitial]', restoreFocus: true,
+      width: 'min(640px, 95vw)', maxWidth: '95vw'
     });
     this.ref.afterClosed().subscribe(() => (this.ref = null));
   }

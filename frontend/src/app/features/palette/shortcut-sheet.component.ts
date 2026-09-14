@@ -19,7 +19,9 @@ import { ShortcutService } from '../../core/ui/shortcut.service';
       <div><dt><kbd class="qs-kbd">?</kbd></dt><dd>{{ 'shortcuts.sheet' | translate }}</dd></div>
       <div><dt><kbd class="qs-kbd">{{ mod }}</kbd>+<kbd class="qs-kbd">S</kbd></dt><dd>{{ 'shortcuts.save' | translate }}</dd></div>
       <div><dt><kbd class="qs-kbd">Esc</kbd></dt><dd>{{ 'shortcuts.close' | translate }}</dd></div>
-      <div class="qs-shortcuts__group">{{ 'shortcuts.tree' | translate }}</div>
+    </dl>
+    <p class="qs-shortcuts__group">{{ 'shortcuts.tree' | translate }}</p>
+    <dl class="qs-shortcuts">
       <div><dt><kbd class="qs-kbd">+</kbd><kbd class="qs-kbd">-</kbd><kbd class="qs-kbd">0</kbd></dt><dd>{{ 'shortcuts.zoom' | translate }}</dd></div>
       <div><dt><kbd class="qs-kbd">&uarr;</kbd><kbd class="qs-kbd">&darr;</kbd><kbd class="qs-kbd">&larr;</kbd><kbd class="qs-kbd">&rarr;</kbd></dt><dd>{{ 'shortcuts.move' | translate }}</dd></div>
       <div><dt><kbd class="qs-kbd">Enter</kbd></dt><dd>{{ 'shortcuts.open' | translate }}</dd></div>
@@ -33,7 +35,7 @@ import { ShortcutService } from '../../core/ui/shortcut.service';
     .qs-shortcuts > div { display: flex; align-items: baseline; gap: 12px; }
     .qs-shortcuts dt { flex: 0 0 auto; min-width: 100px; display: flex; gap: 4px; }
     .qs-shortcuts dd { margin: 0; color: var(--mat-sys-on-surface-variant); }
-    .qs-shortcuts__group { font-size: .8rem; font-weight: 500; color: var(--mat-sys-on-surface-variant); margin-top: 4px; }
+    .qs-shortcuts__group { margin: 0; font-size: .8rem; font-weight: 500; color: var(--mat-sys-on-surface-variant); }
     .qs-shortcuts__close { align-self: flex-end; }
   `]
 })

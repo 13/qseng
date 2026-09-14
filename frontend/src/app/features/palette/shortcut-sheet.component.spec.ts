@@ -37,19 +37,21 @@ describe('ShortcutSheetComponent', () => {
 
   it('lists mod+K in a definition list built from the injected modLabel', () => {
     const { el } = setup();
-    const dl = el.querySelector('dl.qs-shortcuts');
-    expect(dl).not.toBeNull();
-    expect(dl?.textContent).toContain('Ctrl');
-    expect(dl?.textContent).toContain('K');
+    const dls = el.querySelectorAll('dl.qs-shortcuts');
+    expect(dls.length).toBe(2);
+    expect(dls[0].textContent).toContain('Ctrl');
+    expect(dls[0].textContent).toContain('K');
   });
 
-  it('lists the tree-view (canvas-focused) rows', () => {
+  it('lists the tree-view (canvas-focused) rows under their own group label, outside any dl', () => {
     const { el } = setup();
-    const dl = el.querySelector('dl.qs-shortcuts');
-    expect(dl?.textContent).toContain('shortcuts.tree');
-    expect(dl?.textContent).toContain('shortcuts.zoom');
-    expect(dl?.textContent).toContain('shortcuts.move');
-    expect(dl?.textContent).toContain('shortcuts.open');
+    const group = el.querySelector('.qs-shortcuts__group');
+    expect(group?.tagName).toBe('P');
+    expect(group?.textContent).toContain('shortcuts.tree');
+    const dls = el.querySelectorAll('dl.qs-shortcuts');
+    expect(dls[1].textContent).toContain('shortcuts.zoom');
+    expect(dls[1].textContent).toContain('shortcuts.move');
+    expect(dls[1].textContent).toContain('shortcuts.open');
   });
 
   it('dismisses the sheet via MatBottomSheetRef when Close is clicked', () => {

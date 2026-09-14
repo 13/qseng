@@ -55,13 +55,13 @@ interface PaletteGroup { key: string; label: string; rows: PaletteRow[]; }
     </div>
   `,
   styles: [`
-    .qs-palette { width: min(640px, 95vw); display: flex; flex-direction: column; padding: 8px 16px; gap: 8px; }
+    .qs-palette { width: 100%; box-sizing: border-box; display: flex; flex-direction: column; padding: 8px 16px; gap: 8px; }
     .qs-palette__input { flex: 1; width: 100%; border: 0; outline: none; background: transparent; font: inherit; color: var(--mat-sys-on-surface); padding: 12px 0; }
     .qs-palette__list { list-style: none; margin: 0; padding: 0 0 8px; max-height: 60vh; overflow: auto; }
     .qs-palette__group { padding: 8px 4px 4px; font-size: .8rem; font-weight: 500; color: var(--mat-sys-on-surface-variant); }
-    .qs-palette__row { display: flex; align-items: center; gap: 10px; padding: 10px 8px; border-radius: var(--mat-sys-corner-small); cursor: pointer; }
+    .qs-palette__row { display: flex; align-items: center; gap: 10px; padding: 10px 8px; border-radius: var(--mat-sys-corner-small); cursor: pointer; min-width: 0; }
     .qs-palette__row--active { background: var(--mat-sys-secondary-container); }
-    .qs-palette__label { flex: 1; }
+    .qs-palette__label { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   `]
 })
 export class CommandPaletteComponent {
