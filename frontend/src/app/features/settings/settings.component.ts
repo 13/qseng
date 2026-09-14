@@ -1,5 +1,6 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
-import { Router } from '@angular/router';
+import { Component, DestroyRef, Injector, OnInit, afterNextRender, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { ActivatedRoute, Router } from '@angular/router';
 import { DatePipe } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatCardModule } from '@angular/material/card';
@@ -20,11 +21,12 @@ import { BreadcrumbService } from '../../core/ui/breadcrumb.service';
 import { FormErrorsPipe } from '../../core/forms/form-errors.pipe';
 import { setServerErrors } from '../../core/forms/server-errors';
 import { isValidationProblem } from '../../core/api/problem-details';
+import { TrashCardComponent } from './trash-card.component';
 
 @Component({
   selector: 'qs-settings',
   imports: [ReactiveFormsModule, DatePipe, MatCardModule, MatFormFieldModule, MatInputModule, MatButtonModule, MatIconModule,
-            MatButtonToggleModule, MatProgressBarModule, TranslatePipe, FormErrorsPipe],
+            MatButtonToggleModule, MatProgressBarModule, TranslatePipe, FormErrorsPipe, TrashCardComponent],
   template: `
     <header class="qs-page-header"><h1 tabindex="-1">{{ 'settings.title' | translate }}</h1></header>
 
@@ -101,6 +103,8 @@ import { isValidationProblem } from '../../core/api/problem-details';
         </mat-card-content>
       </mat-card>
 
+      <qs-trash-card id="trash" />
+
       <mat-card appearance="outlined" class="qs-danger">
         <mat-card-header><mat-card-title>{{ 'settings.danger.title' | translate }}</mat-card-title></mat-card-header>
         <mat-card-content class="qs-danger__content">
@@ -137,6 +141,9 @@ export class SettingsComponent implements OnInit {
   private readonly confirm = inject(ConfirmDialogService);
   private readonly toast = inject(ToastService);
   private readonly crumbs = inject(BreadcrumbService);
+  private readonly route = inject(ActivatedRoute);
+  private readonly injector = inject(Injector);
+  private readonly destroyRef = inject(DestroyRef);
   readonly i18n = inject(I18nService);
   readonly theme = inject(ThemeService);
 
@@ -149,6 +156,14 @@ export class SettingsComponent implements OnInit {
     current: ['', Validators.required],
     next: ['', [Validators.required, Validators.minLength(8)]]
   });
+
+  constructor() {
+    // Scrolls the #trash card into view when arriving (or already sitting) on /settings#trash,
+    // e.g. via the command palette's "Trash" action.
+    this.route.fragment.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(f => {
+      if (f === 'trash') afterNextRender(() => document.getElementById('trash')?.scrollIntoView({ block: 'start' }), { injector: this.injector });
+    });
+  }
 
   ngOnInit() {
     this.crumbs.set([{ label: this.i18n.t('settings.title') }]);
