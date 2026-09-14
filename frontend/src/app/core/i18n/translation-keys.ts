@@ -53,8 +53,10 @@ export type TranslationKey =
   | 'delete'
   | 'edit'
   | 'err.delete'
+  | 'err.forbidden'
   | 'err.load'
   | 'err.save'
+  | 'err.server'
   | 'event.birth'
   | 'event.custom'
   | 'event.death'
@@ -85,6 +87,12 @@ export type TranslationKey =
   | 'fam.title'
   | 'fam.type'
   | 'fam.year'
+  | 'form.email'
+  | 'form.invalid'
+  | 'form.maxlength'
+  | 'form.minlength'
+  | 'form.range'
+  | 'form.required'
   | 'import.analyzing'
   | 'import.back'
   | 'import.commit'
@@ -342,8 +350,10 @@ export const TRANSLATION_KEYS: readonly TranslationKey[] = [
   'delete',
   'edit',
   'err.delete',
+  'err.forbidden',
   'err.load',
   'err.save',
+  'err.server',
   'event.birth',
   'event.custom',
   'event.death',
@@ -374,6 +384,12 @@ export const TRANSLATION_KEYS: readonly TranslationKey[] = [
   'fam.title',
   'fam.type',
   'fam.year',
+  'form.email',
+  'form.invalid',
+  'form.maxlength',
+  'form.minlength',
+  'form.range',
+  'form.required',
   'import.analyzing',
   'import.back',
   'import.commit',

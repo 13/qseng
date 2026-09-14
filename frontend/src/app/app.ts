@@ -18,7 +18,7 @@ import { TranslatePipe } from './core/i18n/translate.pipe';
         </a>
         <span class="app-nav__spacer"></span>
 
-        <button class="app-nav__theme-btn" (click)="theme.toggle()"
+        <button class="app-nav__theme-btn" (click)="theme.cycle()"
                 [title]="(theme.dark() ? 'nav.theme.dark' : 'nav.theme.light') | translate"
                 [attr.aria-label]="(theme.dark() ? 'nav.theme.dark' : 'nav.theme.light') | translate">
           {{ theme.dark() ? '☀' : '🌙' }}
