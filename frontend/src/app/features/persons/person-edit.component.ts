@@ -33,7 +33,7 @@ const SEXES: Sex[] = ['Male', 'Female'];
     <header class="qs-page-header">
       <h1 tabindex="-1">{{ (isNew() ? 'pe.new' : 'pe.edit') | translate }}</h1>
       @if (!isNew()) {
-        <button matIconButton [matMenuTriggerFor]="menu" [attr.aria-label]="'admin.actions' | translate"><mat-icon>more_vert</mat-icon></button>
+        <button matIconButton [matMenuTriggerFor]="menu" [attr.aria-label]="'actions' | translate"><mat-icon>more_vert</mat-icon></button>
         <mat-menu #menu="matMenu"><button mat-menu-item (click)="remove()"><mat-icon>delete</mat-icon>{{ 'delete' | translate }}</button></mat-menu>
       }
     </header>

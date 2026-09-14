@@ -1,4 +1,5 @@
 {
+  "actions": "Aktionen",
   "add": "Hinzufügen",
   "admin.action.activate": "Aktivieren",
   "admin.action.deactivate": "Deaktivieren",
@@ -137,6 +138,7 @@
   "login.tagline": "Deine Familiengeschichte, wunderschön bewahrt",
   "login.title": "Anmelden",
   "login.username": "Benutzername",
+  "media.actions": "Dateiaktionen",
   "media.add": "Dateien hinzufügen",
   "media.avatarBadge": "Profilfoto",
   "media.avatarSet.toast": "Profilfoto aktualisiert.",

@@ -1,4 +1,5 @@
 {
+  "actions": "Actions",
   "add": "Add",
   "admin.action.activate": "Activate",
   "admin.action.deactivate": "Deactivate",
@@ -137,6 +138,7 @@
   "login.tagline": "Your family history, beautifully preserved",
   "login.title": "Sign in",
   "login.username": "Username",
+  "media.actions": "File actions",
   "media.add": "Add files",
   "media.avatarBadge": "Avatar",
   "media.avatarSet.toast": "Profile photo updated.",

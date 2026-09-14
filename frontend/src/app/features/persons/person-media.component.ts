@@ -51,7 +51,7 @@ export function kindFor(file: File): MediaKind {
           <figcaption class="qs-media__caption">
             <span class="qs-media__text">{{ item.caption || '' }}</span>
             @if (item.isAvatar) { <span class="qs-media__badge">{{ 'media.avatarBadge' | translate }}</span> }
-            <button matIconButton [matMenuTriggerFor]="menu" [attr.aria-label]="'admin.actions' | translate"><mat-icon>more_vert</mat-icon></button>
+            <button matIconButton [matMenuTriggerFor]="menu" [attr.aria-label]="('media.actions' | translate) + (item.caption ? ': ' + item.caption : '')"><mat-icon>more_vert</mat-icon></button>
             <mat-menu #menu="matMenu">
               @if (item.kind === 'Photo' && !item.isAvatar) { <button mat-menu-item (click)="setAvatar(item)"><mat-icon>account_circle</mat-icon>{{ 'media.setAvatar' | translate }}</button> }
               <button mat-menu-item (click)="remove(item)"><mat-icon>delete</mat-icon>{{ 'delete' | translate }}</button>

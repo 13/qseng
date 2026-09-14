@@ -39,7 +39,6 @@ import { PersonMediaComponent } from './person-media.component';
                 <div class="qs-identity__initials" [class]="'qs-identity__initials qs-sex-' + sexClass(p.sex)" aria-hidden="true">{{ initials({ firstName: p.firstName ?? '', lastName: p.lastName ?? '' }) }}</div>
               }
               <div>
-                <div class="qs-identity__name qs-display">{{ store.fullName() }}</div>
                 @if (p.maidenName) { <div class="qs-muted">{{ 'pd.maiden' | translate }} {{ p.maidenName }}</div> }
                 @if (span(); as s) { <div class="qs-muted">{{ s }}</div> }
               </div>
@@ -76,7 +75,6 @@ import { PersonMediaComponent } from './person-media.component';
     .qs-identity__photo, .qs-identity__initials { width: 72px; height: 72px; border-radius: 50%; object-fit: cover; flex: 0 0 auto; }
     .qs-identity__initials { display: grid; place-items: center; font-weight: 600; font-size: 1.4rem; color: #fff; }
     .qs-sex-male { background: var(--qs-sex-male); } .qs-sex-female { background: var(--qs-sex-female); } .qs-sex-unknown { background: var(--qs-sex-unknown); }
-    .qs-identity__name { font-size: 1.35rem; }
     .qs-dl { display: grid; grid-template-columns: max-content 1fr; gap: 6px 12px; margin: 0; }
     .qs-dl dt { color: var(--mat-sys-on-surface-variant); font-size: .8rem; text-transform: uppercase; letter-spacing: .04em; }
     .qs-dl dd { margin: 0; }
