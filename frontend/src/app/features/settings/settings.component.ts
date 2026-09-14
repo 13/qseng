@@ -1,252 +1,248 @@
-import { Component, signal, OnInit, inject } from '@angular/core';
-import { FormsModule } from '@angular/forms';
+import { Component, OnInit, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
-import { ApiClient, UserProfile } from '../../core/api/api-client.service';
+import { DatePipe } from '@angular/common';
+import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { MatCardModule } from '@angular/material/card';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatInputModule } from '@angular/material/input';
+import { MatButtonModule } from '@angular/material/button';
+import { MatIconModule } from '@angular/material/icon';
+import { MatButtonToggleModule } from '@angular/material/button-toggle';
+import { MatProgressBarModule } from '@angular/material/progress-bar';
+import { UserApi, UserProfileDto } from '../../core/api/generated';
 import { AuthService } from '../../core/auth/auth.service';
-import { I18nService } from '../../core/i18n/i18n.service';
+import { I18nService, Lang } from '../../core/i18n/i18n.service';
 import { TranslatePipe } from '../../core/i18n/translate.pipe';
+import { ThemeService } from '../../core/theme/theme.service';
+import { ConfirmDialogService } from '../../core/ui/confirm-dialog.service';
+import { ToastService } from '../../core/ui/toast.service';
+import { BreadcrumbService } from '../../core/ui/breadcrumb.service';
+import { FormErrorsPipe } from '../../core/forms/form-errors.pipe';
+import { setServerErrors } from '../../core/forms/server-errors';
+import { isValidationProblem } from '../../core/api/problem-details';
 
 @Component({
   selector: 'qs-settings',
-  standalone: true,
-  imports: [FormsModule, TranslatePipe],
+  imports: [ReactiveFormsModule, DatePipe, MatCardModule, MatFormFieldModule, MatInputModule, MatButtonModule, MatIconModule,
+            MatButtonToggleModule, MatProgressBarModule, TranslatePipe, FormErrorsPipe],
   template: `
-    <div class="settings-page">
-      <div class="settings-header">
-        <h1>{{ 'settings.title' | translate }}</h1>
-        @if (profile()) {
-          <p class="muted">&#64;{{ profile()!.username }}</p>
-        }
-      </div>
+    <header class="qs-page-header"><h1 tabindex="-1">{{ 'settings.title' | translate }}</h1></header>
 
-      @if (loadingProfile()) {
-        <div class="loading">{{ 'settings.loading' | translate }}</div>
-      } @else {
+    <div class="qs-settings">
+      <mat-card appearance="outlined">
+        <mat-card-header><mat-card-title>{{ 'settings.profile.title' | translate }}</mat-card-title></mat-card-header>
+        <mat-card-content>
+          @if (profile(); as p) {
+            <dl class="qs-dl">
+              <dt>{{ 'settings.profile.displayName' | translate }}</dt><dd>{{ p.displayName }}</dd>
+              <dt>{{ 'settings.profile.username' | translate }}</dt><dd>{{ p.username }}</dd>
+              <dt>{{ 'settings.profile.email' | translate }}</dt><dd>{{ p.email || '–' }}</dd>
+              <dt>{{ 'settings.profile.member' | translate }}</dt><dd>{{ p.createdAt | date:'mediumDate' }}</dd>
+            </dl>
+          } @else if (loadingProfile()) {
+            <mat-progress-bar mode="indeterminate" />
+          }
+        </mat-card-content>
+      </mat-card>
 
-        <!-- Change Password -->
-        <div class="settings-section">
-          <h2>{{ 'settings.password.title' | translate }}</h2>
-          <form (ngSubmit)="changePassword()">
-            <div class="settings-fields">
-              <label>
-                {{ 'settings.password.current' | translate }}
-                <input type="password" [(ngModel)]="pw.current" name="pwCurrent" required
-                       placeholder="••••••••" autocomplete="current-password">
-              </label>
-              <label>
-                {{ 'settings.password.new' | translate }}
-                <input type="password" [(ngModel)]="pw.next" name="pwNext" required minlength="8"
-                       placeholder="••••••••" autocomplete="new-password">
-              </label>
-            </div>
-            @if (pwMsg()) {
-              <p class="success" style="margin-top:.5rem">{{ pwMsg() }}</p>
-            }
-            @if (pwErr()) {
-              <p class="error-msg" style="margin-top:.5rem">{{ pwErr() }}</p>
-            }
-            <div class="form-actions" style="margin-top:.875rem">
-              <button type="submit" class="btn primary" [disabled]="pwLoading()">
-                {{ pwLoading() ? ('settings.password.saving' | translate) : ('settings.password.save' | translate) }}
+      <mat-card appearance="outlined">
+        <mat-card-header><mat-card-title>{{ 'settings.lang.title' | translate }}</mat-card-title></mat-card-header>
+        <mat-card-content>
+          <p class="qs-muted">{{ 'settings.lang.hint' | translate }}</p>
+          <mat-button-toggle-group hideSingleSelectionIndicator [value]="i18n.lang()" (change)="setLang($event.value)">
+            <mat-button-toggle value="de">Deutsch</mat-button-toggle>
+            <mat-button-toggle value="en">English</mat-button-toggle>
+          </mat-button-toggle-group>
+        </mat-card-content>
+      </mat-card>
+
+      <mat-card appearance="outlined">
+        <mat-card-header><mat-card-title>{{ 'settings.appearance.title' | translate }}</mat-card-title></mat-card-header>
+        <mat-card-content>
+          <p class="qs-muted">{{ 'settings.appearance.hint' | translate }}</p>
+          <mat-button-toggle-group hideSingleSelectionIndicator [value]="theme.mode()" (change)="setTheme($event.value)">
+            <mat-button-toggle value="light"><mat-icon>light_mode</mat-icon> {{ 'settings.appearance.light' | translate }}</mat-button-toggle>
+            <mat-button-toggle value="dark"><mat-icon>dark_mode</mat-icon> {{ 'settings.appearance.dark' | translate }}</mat-button-toggle>
+            <mat-button-toggle value="auto"><mat-icon>brightness_auto</mat-icon> {{ 'settings.appearance.auto' | translate }}</mat-button-toggle>
+          </mat-button-toggle-group>
+        </mat-card-content>
+      </mat-card>
+
+      <mat-card appearance="outlined">
+        <mat-card-header><mat-card-title>{{ 'settings.password.title' | translate }}</mat-card-title></mat-card-header>
+        <mat-card-content>
+          <form [formGroup]="pwForm" (ngSubmit)="changePassword()" class="qs-form" novalidate>
+            <mat-form-field>
+              <mat-label>{{ 'settings.password.current' | translate }}</mat-label>
+              <input matInput type="password" formControlName="current" autocomplete="current-password">
+              <mat-error>{{ pwForm.controls.current.errors | formErrors }}</mat-error>
+            </mat-form-field>
+            <mat-form-field>
+              <mat-label>{{ 'settings.password.new' | translate }}</mat-label>
+              <input matInput type="password" formControlName="next" autocomplete="new-password">
+              <mat-error>{{ pwForm.controls.next.errors | formErrors }}</mat-error>
+            </mat-form-field>
+            <div class="qs-form__actions">
+              <button matButton="filled" type="submit" [disabled]="pwLoading()">
+                {{ (pwLoading() ? 'settings.password.saving' : 'settings.password.save') | translate }}
               </button>
             </div>
           </form>
-        </div>
+        </mat-card-content>
+      </mat-card>
 
-        <!-- Language -->
-        <div class="settings-section">
-          <h2>{{ 'settings.lang.title' | translate }}</h2>
-          <p class="muted" style="margin-bottom:.875rem;font-size:.85rem">
-            {{ 'settings.lang.hint' | translate }}
-          </p>
-          <div class="lang-options">
-            <button class="lang-btn" [class.active]="i18n.lang() === 'de'" (click)="setLang('de')">
-              <span class="lang-flag">🇩🇪</span> Deutsch
-            </button>
-            <button class="lang-btn" [class.active]="i18n.lang() === 'en'" (click)="setLang('en')">
-              <span class="lang-flag">🇬🇧</span> English
-            </button>
-          </div>
-          @if (langMsg()) {
-            <p class="success" style="margin-top:.5rem">{{ langMsg() }}</p>
-          }
-        </div>
-
-        <!-- Export -->
-        <div class="settings-section">
-          <h2>{{ 'settings.export.title' | translate }}</h2>
-          <p class="muted" style="margin-bottom:.875rem;font-size:.85rem">
-            {{ 'settings.export.hint' | translate }}
-          </p>
-          <button class="btn" (click)="exportData()" [disabled]="exporting()">
-            {{ exporting() ? ('settings.export.busy' | translate) : ('settings.export.btn' | translate) }}
+      <mat-card appearance="outlined">
+        <mat-card-header><mat-card-title>{{ 'settings.export.title' | translate }}</mat-card-title></mat-card-header>
+        <mat-card-content>
+          <p class="qs-muted">{{ 'settings.export.hint' | translate }}</p>
+          <button matButton="outlined" (click)="exportData()" [disabled]="exporting()">
+            <mat-icon>download</mat-icon>{{ (exporting() ? 'settings.export.busy' : 'settings.export.btn') | translate }}
           </button>
-        </div>
+        </mat-card-content>
+      </mat-card>
 
-        <!-- Delete All Data -->
-        <div class="settings-section danger-zone">
-          <h2>{{ 'settings.deleteData.title' | translate }}</h2>
-          <p class="muted" style="margin-bottom:.875rem;font-size:.85rem">
-            {{ 'settings.deleteData.hint' | translate }}
-          </p>
-          @if (!showDeleteDataForm()) {
-            <button class="btn danger" (click)="showDeleteDataForm.set(true)">
-              {{ 'settings.deleteData.btn' | translate }}
-            </button>
-          } @else {
-            <form (ngSubmit)="deleteAllData()">
-              <label style="margin-bottom:.75rem">
-                {{ 'settings.deleteData.confirm' | translate }}
-                <input type="password" [(ngModel)]="deleteDataPw" name="deleteDataPw" required
-                       placeholder="••••••••" autocomplete="current-password">
-              </label>
-              @if (deleteDataErr()) {
-                <p class="error-msg" style="margin-bottom:.5rem">{{ deleteDataErr() }}</p>
-              }
-              <div class="form-actions">
-                <button type="submit" class="btn danger" [disabled]="deleteDataLoading()">
-                  {{ deleteDataLoading() ? ('settings.deleteData.deleting' | translate) : ('settings.deleteData.submit' | translate) }}
-                </button>
-                <button type="button" class="btn ghost" (click)="showDeleteDataForm.set(false)">
-                  {{ 'cancel' | translate }}
-                </button>
-              </div>
-            </form>
-          }
-        </div>
-
-        <!-- Delete Account -->
-        <div class="settings-section danger-zone">
-          <h2>{{ 'settings.delete.title' | translate }}</h2>
-          <p class="muted" style="margin-bottom:.875rem;font-size:.85rem">
-            {{ 'settings.delete.hint' | translate }}
-          </p>
-          @if (!showDeleteForm()) {
-            <button class="btn danger" (click)="showDeleteForm.set(true)">
-              {{ 'settings.delete.btn' | translate }}
-            </button>
-          } @else {
-            <form (ngSubmit)="deleteAccount()">
-              <label style="margin-bottom:.75rem">
-                {{ 'settings.delete.confirm' | translate }}
-                <input type="password" [(ngModel)]="deletePw" name="deletePw" required
-                       placeholder="••••••••" autocomplete="current-password">
-              </label>
-              @if (deleteErr()) {
-                <p class="error-msg" style="margin-bottom:.5rem">{{ deleteErr() }}</p>
-              }
-              <div class="form-actions">
-                <button type="submit" class="btn danger" [disabled]="deleteLoading()">
-                  {{ deleteLoading() ? ('settings.delete.deleting' | translate) : ('settings.delete.submit' | translate) }}
-                </button>
-                <button type="button" class="btn ghost" (click)="showDeleteForm.set(false)">
-                  {{ 'cancel' | translate }}
-                </button>
-              </div>
-            </form>
-          }
-        </div>
-      }
+      <mat-card appearance="outlined" class="qs-danger">
+        <mat-card-header><mat-card-title>{{ 'settings.danger.title' | translate }}</mat-card-title></mat-card-header>
+        <mat-card-content class="qs-danger__content">
+          <div>
+            <p class="qs-muted">{{ 'settings.deleteData.hint' | translate }}</p>
+            <button matButton="outlined" class="qs-danger__btn" (click)="deleteAllData()">{{ 'settings.deleteData.btn' | translate }}</button>
+          </div>
+          <div>
+            <p class="qs-muted">{{ 'settings.delete.hint' | translate }}</p>
+            <button matButton="outlined" class="qs-danger__btn" (click)="deleteAccount()">{{ 'settings.delete.btn' | translate }}</button>
+          </div>
+        </mat-card-content>
+      </mat-card>
     </div>
-  `
+  `,
+  styles: [`
+    :host { display: block; }
+    .qs-settings { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; max-width: 900px; align-items: start; }
+    .qs-dl { display: grid; grid-template-columns: max-content 1fr; gap: 6px 16px; margin: 0; }
+    .qs-dl dt { color: var(--mat-sys-on-surface-variant); }
+    .qs-dl dd { margin: 0; }
+    .qs-form { display: flex; flex-direction: column; gap: 4px; }
+    .qs-form__actions { display: flex; justify-content: flex-end; }
+    .qs-danger { --mat-card-outlined-outline-color: var(--mat-sys-error); grid-column: 1 / -1; }
+    .qs-danger__content { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
+    .qs-danger__btn { --mat-button-outlined-label-text-color: var(--mat-sys-error); --mat-button-outlined-outline-color: var(--mat-sys-error); }
+    mat-card-content > p:first-child { margin-top: 0; }
+  `]
 })
 export class SettingsComponent implements OnInit {
-  private api = inject(ApiClient);
-  private auth = inject(AuthService);
-  private router = inject(Router);
+  private readonly api = inject(UserApi);
+  private readonly auth = inject(AuthService);
+  private readonly router = inject(Router);
+  private readonly confirm = inject(ConfirmDialogService);
+  private readonly toast = inject(ToastService);
+  private readonly crumbs = inject(BreadcrumbService);
   readonly i18n = inject(I18nService);
+  readonly theme = inject(ThemeService);
 
-  profile        = signal<UserProfile | null>(null);
-  loadingProfile = signal(true);
+  readonly profile = signal<UserProfileDto | null>(null);
+  readonly loadingProfile = signal(true);
+  readonly pwLoading = signal(false);
+  readonly exporting = signal(false);
 
-  pw           = { current: '', next: '' };
-  pwLoading    = signal(false);
-  pwMsg        = signal('');
-  pwErr        = signal('');
-
-  langMsg      = signal('');
-
-  exporting    = signal(false);
-
-  showDeleteDataForm = signal(false);
-  deleteDataPw       = '';
-  deleteDataLoading  = signal(false);
-  deleteDataErr      = signal('');
-
-  showDeleteForm = signal(false);
-  deletePw       = '';
-  deleteLoading  = signal(false);
-  deleteErr      = signal('');
+  readonly pwForm = inject(FormBuilder).nonNullable.group({
+    current: ['', Validators.required],
+    next: ['', [Validators.required, Validators.minLength(8)]]
+  });
 
   ngOnInit() {
-    this.api.getProfile().subscribe({
+    this.crumbs.set([{ label: this.i18n.t('settings.title') }]);
+    this.api.userGetProfile().subscribe({
       next: p => {
         this.profile.set(p);
-        this.i18n.setLang(p.language as 'en' | 'de');
+        if (p.language === 'de' || p.language === 'en') this.i18n.setLang(p.language);
         this.loadingProfile.set(false);
       },
-      error: () => this.loadingProfile.set(false)
+      error: e => { this.loadingProfile.set(false); this.toast.errorFrom(e, this.i18n.t('err.load')); }
     });
   }
 
   changePassword() {
-    this.pwLoading.set(true); this.pwMsg.set(''); this.pwErr.set('');
-    this.api.changePassword(this.pw.current, this.pw.next).subscribe({
+    if (this.pwForm.invalid) { this.pwForm.markAllAsTouched(); return; }
+    this.pwLoading.set(true);
+    const { current, next } = this.pwForm.getRawValue();
+    this.api.userChangePassword({ body: { currentPassword: current, newPassword: next } }).subscribe({
       next: session => {
-        // The old session was revoked server-side; adopt the replacement so this
-        // tab stays signed in while other devices are logged out.
+        // The old session was revoked server-side; adopt the replacement so this tab stays signed in.
         this.auth.adoptSession(session);
-        this.pwMsg.set(this.i18n.t('settings.password.ok'));
-        this.pw = { current: '', next: '' };
+        this.toast.success(this.i18n.t('settings.password.ok'));
+        this.pwForm.reset({ current: '', next: '' });
         this.pwLoading.set(false);
       },
-      error: e => { this.pwErr.set(e.error?.error ?? this.i18n.t('err.save')); this.pwLoading.set(false); }
+      error: e => {
+        if (isValidationProblem(e.error)) {
+          const rest = setServerErrors(this.pwForm, e.error);
+          if (rest.length) this.toast.error(rest.join(' '));
+        } else {
+          this.toast.errorFrom(e, this.i18n.t('err.save'));
+        }
+        this.pwLoading.set(false);
+      }
     });
   }
 
-  setLang(lang: 'en' | 'de') {
-    this.i18n.setLang(lang);
-    this.langMsg.set('');
-    this.api.changeLanguage(lang).subscribe({
-      next: () => this.langMsg.set(this.i18n.t('settings.lang.saved')),
-      error: e => this.langMsg.set(e.error?.error ?? this.i18n.t('err.save'))
+  // Narrows the button-toggle group's untyped `$event.value` (a plain string
+  // as far as strict templates know) to the Lang/ThemeMode literal unions.
+  setLang(lang: string) {
+    if (lang !== 'de' && lang !== 'en') return;
+    const l: Lang = lang;
+    this.i18n.setLang(l);
+    this.api.userChangeLanguage({ body: { language: l } }).subscribe({
+      next: () => this.toast.success(this.i18n.t('settings.lang.saved')),
+      error: e => this.toast.errorFrom(e, this.i18n.t('err.save'))
     });
+  }
+
+  setTheme(mode: string) {
+    if (mode === 'light' || mode === 'dark' || mode === 'auto') this.theme.setMode(mode);
   }
 
   exportData() {
     this.exporting.set(true);
-    this.api.exportData().subscribe({
-      next: (blob: Blob) => {
+    this.api.userExport().subscribe({
+      next: dto => {
+        const blob = new Blob([JSON.stringify(dto, null, 2)], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
         a.download = `qseng-export-${new Date().toISOString().slice(0, 10)}.json`;
+        document.body.appendChild(a);
         a.click();
-        URL.revokeObjectURL(url);
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 0);
         this.exporting.set(false);
+        this.toast.success(this.i18n.t('settings.export.done'));
       },
-      error: () => this.exporting.set(false)
+      error: e => { this.exporting.set(false); this.toast.errorFrom(e, this.i18n.t('err.load')); }
     });
   }
 
-  deleteAllData() {
-    this.deleteDataLoading.set(true); this.deleteDataErr.set('');
-    this.api.deleteOwnData(this.deleteDataPw).subscribe({
-      next: () => {
-        this.showDeleteDataForm.set(false);
-        this.deleteDataPw = '';
-        this.deleteDataLoading.set(false);
-        this.router.navigate(['/trees']);
-      },
-      error: e => { this.deleteDataErr.set(e.error?.error ?? this.i18n.t('err.delete')); this.deleteDataLoading.set(false); }
+  async deleteAllData() {
+    const password = await this.confirm.confirm({
+      title: this.i18n.t('settings.deleteData.title'), message: this.i18n.t('settings.deleteData.hint'),
+      confirmLabel: this.i18n.t('settings.deleteData.submit'), destructive: true, requirePassword: true
+    });
+    if (typeof password !== 'string') return;
+    this.api.userDeleteData({ body: { password } }).subscribe({
+      next: () => { this.toast.success(this.i18n.t('settings.deleteData.done')); void this.router.navigate(['/trees']); },
+      error: e => this.toast.errorFrom(e, this.i18n.t('err.delete'))
     });
   }
 
-  deleteAccount() {
-    this.deleteLoading.set(true); this.deleteErr.set('');
-    this.api.deleteOwnAccount(this.deletePw).subscribe({
-      next: () => { this.auth.logout(); this.router.navigate(['/login']); },
-      error: e => { this.deleteErr.set(e.error?.error ?? this.i18n.t('err.delete')); this.deleteLoading.set(false); }
+  async deleteAccount() {
+    const password = await this.confirm.confirm({
+      title: this.i18n.t('settings.delete.title'), message: this.i18n.t('settings.delete.hint'),
+      confirmLabel: this.i18n.t('settings.delete.submit'), destructive: true, requirePassword: true
+    });
+    if (typeof password !== 'string') return;
+    this.api.userDeleteAccount({ body: { password } }).subscribe({
+      next: () => { this.auth.logout(); void this.router.navigate(['/login']); },
+      error: e => this.toast.errorFrom(e, this.i18n.t('err.delete'))
     });
   }
 }

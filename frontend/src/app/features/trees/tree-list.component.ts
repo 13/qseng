@@ -1,173 +1,149 @@
-import { Component, OnInit, signal, inject } from '@angular/core';
+import { Component, OnInit, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { FormsModule } from '@angular/forms';
-import { ApiClient, Tree } from '../../core/api/api-client.service';
+import { DatePipe } from '@angular/common';
+import { MatButtonModule } from '@angular/material/button';
+import { MatCardModule } from '@angular/material/card';
+import { MatIconModule } from '@angular/material/icon';
+import { MatMenuModule } from '@angular/material/menu';
+import { MatChipsModule } from '@angular/material/chips';
+import { MatDialog } from '@angular/material/dialog';
+import { firstValueFrom } from 'rxjs';
+import { TreeDto, TreesApi } from '../../core/api/generated';
 import { I18nService } from '../../core/i18n/i18n.service';
 import { TranslatePipe } from '../../core/i18n/translate.pipe';
+import { ConfirmDialogService } from '../../core/ui/confirm-dialog.service';
+import { ToastService } from '../../core/ui/toast.service';
+import { BreadcrumbService } from '../../core/ui/breadcrumb.service';
+import { problemMessage } from '../../core/api/problem-details';
+import { TreeFormDialogComponent, TreeFormData } from './tree-form-dialog.component';
 
 @Component({
   selector: 'qs-tree-list',
-  standalone: true,
-  imports: [RouterLink, FormsModule, TranslatePipe],
+  imports: [RouterLink, DatePipe, MatButtonModule, MatCardModule, MatIconModule, MatMenuModule, MatChipsModule, TranslatePipe],
   template: `
-    <div class="trees-page">
-      <div class="trees-page-header">
-        <h2>{{ 'trees.title' | translate }}</h2>
-        <button class="primary" (click)="showNewForm.set(!showNewForm())">
-          {{ showNewForm() ? ('trees.cancel' | translate) : ('trees.new' | translate) }}
-        </button>
+    <header class="qs-page-header">
+      <h1 tabindex="-1">{{ 'trees.title' | translate }}</h1>
+      <button matButton="filled" (click)="openCreate()">
+        <mat-icon>add</mat-icon>{{ 'trees.new' | translate }}
+      </button>
+    </header>
+
+    @if (loadError()) {
+      <div class="qs-empty" role="alert">
+        <mat-icon aria-hidden="true">error</mat-icon>
+        <p>{{ loadError() }}</p>
+        <button matButton="outlined" (click)="load()">{{ 'retry' | translate }}</button>
       </div>
-
-      @if (showNewForm()) {
-        <div class="tree-new-form" style="margin-bottom:1.5rem">
-          <h3>{{ 'trees.new.title' | translate }}</h3>
-          <div class="fields">
-            <label>
-              {{ 'trees.new.name' | translate }}
-              <input [(ngModel)]="newName" name="name" placeholder="Smith Family" required>
-            </label>
-            <label>
-              {{ 'trees.new.desc' | translate }}
-              <input [(ngModel)]="newDesc" name="desc" [placeholder]="'trees.optional' | translate">
-            </label>
-          </div>
-          @if (createErr()) {
-            <p class="error-msg" style="margin-bottom:.5rem">{{ createErr() }}</p>
-          }
-          <button class="primary" (click)="createTree()" [disabled]="!newName.trim()">
-            {{ 'trees.new.submit' | translate }}
-          </button>
+    } @else if (!loading() && trees().length === 0) {
+      <div class="qs-empty">
+        <mat-icon aria-hidden="true" class="qs-empty__icon">forest</mat-icon>
+        <h2>{{ 'trees.emptyTitle' | translate }}</h2>
+        <p class="qs-muted">{{ 'trees.emptyHint' | translate }}</p>
+        <div class="qs-empty__actions">
+          <button matButton="filled" (click)="openCreate()"><mat-icon>add</mat-icon>{{ 'trees.new' | translate }}</button>
         </div>
-      }
-
-      @if (loadErr()) {
-        <div class="error-msg" role="alert">{{ loadErr() }}</div>
-      } @else if (trees().length === 0 && !loading()) {
-        <div class="empty-state">
-          <span class="empty-icon">🌳</span>
-          <p>{{ 'trees.empty' | translate }}</p>
-        </div>
-      } @else {
-        <div class="tree-grid">
-          @for (tree of trees(); track tree.id) {
-            @if (editingId() === tree.id) {
-              <div class="card tree-card">
-                <label>
-                  {{ 'trees.new.name' | translate }}
-                  <input [(ngModel)]="editName" name="editName" (keydown.escape)="cancelEdit()">
-                </label>
-                <label style="margin-top:.5rem">
-                  {{ 'trees.new.desc' | translate }}
-                  <input [(ngModel)]="editDesc" name="editDesc" [placeholder]="'trees.optional' | translate" (keydown.escape)="cancelEdit()">
-                </label>
-                @if (editErr()) {
-                  <p class="error-msg" style="font-size:.78rem;margin:.25rem 0">{{ editErr() }}</p>
-                }
-                <div class="tree-card__actions" style="margin-top:.5rem">
-                  <button class="primary sm" (click)="saveEdit(tree.id)">{{ 'trees.save' | translate }}</button>
-                  <button class="sm ghost" (click)="cancelEdit()">{{ 'trees.editCancel' | translate }}</button>
-                </div>
+      </div>
+    } @else {
+      <div class="qs-tree-grid">
+        @for (tree of trees(); track tree.id) {
+          <mat-card appearance="outlined" class="qs-tree-card">
+            <mat-card-header>
+              <mat-card-title>
+                <a class="qs-tree-card__title qs-display" [routerLink]="['/trees', tree.id]">{{ tree.name }}</a>
+              </mat-card-title>
+              <button matIconButton [matMenuTriggerFor]="menu" [attr.aria-label]="'trees.menu' | translate" class="qs-tree-card__menu">
+                <mat-icon>more_vert</mat-icon>
+              </button>
+              <mat-menu #menu="matMenu">
+                <button mat-menu-item (click)="openRename(tree)"><mat-icon>edit</mat-icon>{{ 'trees.edit' | translate }}</button>
+                <button mat-menu-item (click)="remove(tree)"><mat-icon>delete</mat-icon>{{ 'trees.delete' | translate }}</button>
+              </mat-menu>
+            </mat-card-header>
+            <mat-card-content>
+              @if (tree.description) { <p class="qs-tree-card__desc">{{ tree.description }}</p> }
+              <div class="qs-tree-card__meta">
+                <mat-chip-set>
+                  <mat-chip disabled><mat-icon matChipAvatar>group</mat-icon>{{ tree.personCount ?? 0 }} {{ 'trees.persons' | translate }}</mat-chip>
+                </mat-chip-set>
+                <span class="qs-muted">{{ 'trees.created' | translate }} {{ tree.createdAt | date:'mediumDate' }}</span>
               </div>
-            } @else {
-              <div class="card tree-card">
-                <a class="tree-card__title" [routerLink]="['/trees', tree.id]">{{ tree.name }}</a>
-                @if (tree.description) {
-                  <p class="tree-card__desc">{{ tree.description }}</p>
-                }
-                <p class="tree-card__meta">
-                  👤 {{ tree.personCount }} {{ 'trees.persons' | translate }}
-                  · {{ 'trees.created' | translate }} {{ formatDate(tree.createdAt) }}
-                </p>
-                @if (deleteErr()[tree.id]) {
-                  <p class="error-msg" style="font-size:.75rem">{{ deleteErr()[tree.id] }}</p>
-                }
-                <div class="tree-card__actions">
-                  <a [routerLink]="['/trees', tree.id]" class="btn primary sm">{{ 'trees.open' | translate }}</a>
-                  <button class="sm ghost" (click)="startEdit(tree)">{{ 'trees.edit' | translate }}</button>
-                  <button class="sm danger" (click)="deleteTree(tree.id)">{{ 'trees.delete' | translate }}</button>
-                </div>
-              </div>
-            }
-          }
-        </div>
-      }
-    </div>
+            </mat-card-content>
+            <mat-card-actions>
+              <a matButton="tonal" [routerLink]="['/trees', tree.id]">{{ 'trees.open' | translate }}<mat-icon iconPositionEnd>arrow_forward</mat-icon></a>
+            </mat-card-actions>
+          </mat-card>
+        }
+      </div>
+    }
   `,
   styles: [`
-    .tree-card { padding: 1.25rem; display: flex; flex-direction: column; gap: .5rem; min-height: 140px; }
-    .tree-card__title { font-size: 1rem; font-weight: 600; color: var(--c-text); }
-    .tree-card__title:hover { color: var(--c-accent); text-decoration: none; }
-    .tree-card__desc { font-size: .85rem; color: var(--c-text-3); margin: 0; flex: 1; line-height: 1.5; }
-    .tree-card__meta { font-size: .72rem; color: var(--c-text-4); margin: 0 0 .25rem; }
-    .tree-card__actions { display: flex; align-items: center; gap: .4rem; margin-top: auto; }
-    .tree-card label { font-size: .78rem; font-weight: 600; color: var(--c-text-2); }
+    :host { display: block; }
+    .qs-tree-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+    .qs-tree-card { display: flex; flex-direction: column; }
+    .qs-tree-card mat-card-header { align-items: flex-start; }
+    .qs-tree-card__title { font-size: 1.2rem; color: var(--mat-sys-on-surface); }
+    .qs-tree-card__menu { margin-left: auto; }
+    .qs-tree-card__desc { margin: 8px 0; color: var(--mat-sys-on-surface-variant); }
+    .qs-tree-card__meta { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; font-size: .85rem; margin-top: 8px; }
+    .qs-tree-card mat-card-content { flex: 1; }
   `]
 })
 export class TreeListComponent implements OnInit {
-  private api = inject(ApiClient);
-  private i18n = inject(I18nService);
+  private readonly api = inject(TreesApi);
+  private readonly dialog = inject(MatDialog);
+  private readonly confirm = inject(ConfirmDialogService);
+  private readonly toast = inject(ToastService);
+  private readonly i18n = inject(I18nService);
+  private readonly crumbs = inject(BreadcrumbService);
 
-  trees      = signal<Tree[]>([]);
-  loading    = signal(true);
-  loadErr    = signal('');
-  showNewForm = signal(false);
-  createErr  = signal('');
+  readonly trees = signal<TreeDto[]>([]);
+  readonly loading = signal(true);
+  readonly loadError = signal('');
 
-  newName = '';
-  newDesc = '';
-
-  editingId = signal<string | null>(null);
-  editName  = '';
-  editDesc  = '';
-  editErr   = signal('');
-  deleteErr = signal<Record<string, string>>({});
-
-  ngOnInit() { this.load(); }
+  ngOnInit() {
+    this.crumbs.set([{ label: this.i18n.t('trees.title') }]);
+    this.load();
+  }
 
   load() {
     this.loading.set(true);
-    this.api.getTrees().subscribe({
+    this.loadError.set('');
+    this.api.treesGetAll().subscribe({
       next: t => { this.trees.set(t); this.loading.set(false); },
-      error: e => { this.loadErr.set(e.error?.error ?? this.i18n.t('trees.err.load')); this.loading.set(false); }
+      error: e => { this.loadError.set(problemMessage(e, this.i18n.t('trees.err.load'))); this.loading.set(false); }
     });
   }
 
-  createTree() {
-    if (!this.newName.trim()) return;
-    this.createErr.set('');
-    this.api.createTree(this.newName.trim(), this.newDesc.trim() || undefined).subscribe({
-      next: () => { this.newName = ''; this.newDesc = ''; this.showNewForm.set(false); this.load(); },
-      error: e => this.createErr.set(e.error?.error ?? this.i18n.t('trees.err.create'))
+  async openCreate() {
+    const result = await this.openForm({ mode: 'create' });
+    if (!result) return;
+    this.toast.success(this.i18n.t('trees.created.toast'));
+    this.load();
+  }
+
+  async openRename(tree: TreeDto) {
+    const result = await this.openForm({ mode: 'rename', tree });
+    if (!result) return;
+    this.toast.success(this.i18n.t('trees.renamed.toast'));
+    this.load();
+  }
+
+  async remove(tree: TreeDto) {
+    const ok = await this.confirm.confirm({
+      title: `${this.i18n.t('trees.delete')}: ${tree.name ?? ''}`,
+      message: this.i18n.t('trees.delete.confirm'),
+      confirmLabel: this.i18n.t('trees.delete'),
+      destructive: true
+    });
+    if (ok !== true || !tree.id) return;
+    this.api.treesDelete({ id: tree.id }).subscribe({
+      next: () => { this.toast.success(this.i18n.t('trees.deleted.toast')); this.load(); },
+      error: e => this.toast.errorFrom(e, this.i18n.t('trees.err.delete'))
     });
   }
 
-  startEdit(tree: Tree) {
-    this.editingId.set(tree.id);
-    this.editName = tree.name;
-    this.editDesc = tree.description ?? '';
-    this.editErr.set('');
-  }
-
-  saveEdit(id: string) {
-    if (!this.editName.trim()) return;
-    this.editErr.set('');
-    this.api.updateTree(id, this.editName.trim(), this.editDesc.trim() || undefined).subscribe({
-      next: () => { this.editingId.set(null); this.load(); },
-      error: e => this.editErr.set(e.error?.error ?? this.i18n.t('trees.err.save'))
-    });
-  }
-
-  cancelEdit() { this.editingId.set(null); }
-
-  deleteTree(id: string) {
-    if (!confirm(this.i18n.t('trees.delete.confirm'))) return;
-    this.api.deleteTree(id).subscribe({
-      next: () => this.load(),
-      error: e => this.deleteErr.update(prev => ({ ...prev, [id]: e.error?.error ?? this.i18n.t('trees.err.delete') }))
-    });
-  }
-
-  formatDate(iso: string): string {
-    return new Date(iso).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+  private openForm(data: TreeFormData): Promise<TreeDto | undefined> {
+    const ref = this.dialog.open<TreeFormDialogComponent, TreeFormData, TreeDto | undefined>(TreeFormDialogComponent, { data, width: '480px', maxWidth: '95vw' });
+    return firstValueFrom(ref.afterClosed());
   }
 }

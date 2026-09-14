@@ -1,292 +1,273 @@
-import { Component, signal, OnInit, inject } from '@angular/core';
-import { DatePipe } from '@angular/common';
-import { FormsModule } from '@angular/forms';
-import { ApiClient, UserSummary, SiteSettings } from '../../core/api/api-client.service';
+import { Component, OnInit, effect, inject, signal, viewChild } from '@angular/core';
+import { DatePipe, NgTemplateOutlet } from '@angular/common';
+import { MatTableModule, MatTableDataSource } from '@angular/material/table';
+import { MatSortModule, MatSort } from '@angular/material/sort';
+import { MatCardModule } from '@angular/material/card';
+import { MatButtonModule } from '@angular/material/button';
+import { MatIconModule } from '@angular/material/icon';
+import { MatMenuModule } from '@angular/material/menu';
+import { MatChipsModule } from '@angular/material/chips';
+import { MatSlideToggleModule } from '@angular/material/slide-toggle';
+import { MatProgressBarModule } from '@angular/material/progress-bar';
+import { MatDialog } from '@angular/material/dialog';
+import { firstValueFrom } from 'rxjs';
+import { AdminApi, UserSummaryDto } from '../../core/api/generated';
 import { AuthService } from '../../core/auth/auth.service';
 import { I18nService } from '../../core/i18n/i18n.service';
 import { TranslatePipe } from '../../core/i18n/translate.pipe';
+import { ConfirmDialogService } from '../../core/ui/confirm-dialog.service';
+import { ToastService } from '../../core/ui/toast.service';
+import { LayoutService } from '../../core/ui/layout.service';
+import { BreadcrumbService } from '../../core/ui/breadcrumb.service';
+import { problemMessage } from '../../core/api/problem-details';
+import { UserFormDialogComponent } from './user-form-dialog.component';
+import { UserPasswordDialogComponent } from './user-password-dialog.component';
 
 @Component({
   selector: 'qs-admin-users',
-  standalone: true,
-  imports: [DatePipe, FormsModule, TranslatePipe],
+  imports: [DatePipe, NgTemplateOutlet, MatTableModule, MatSortModule, MatCardModule, MatButtonModule, MatIconModule, MatMenuModule, MatChipsModule,
+            MatSlideToggleModule, MatProgressBarModule, TranslatePipe],
   template: `
-    <div class="admin-page">
-
-      <!-- Header -->
-      <div class="admin-header">
-        <div>
-          <h1>{{ 'admin.title' | translate }}</h1>
-          <p class="muted">{{ ('admin.registered' | translate).replace('__N__', users().length.toString()) }}</p>
-        </div>
-        <div class="admin-header-actions">
-          @if (siteSettings()) {
-            <label class="toggle-label">
-              <span>{{ 'admin.registration' | translate }}</span>
-              <button class="toggle-btn" [class.on]="siteSettings()!.registrationEnabled"
-                      (click)="toggleRegistration()">
-                <span class="toggle-track">
-                  <span class="toggle-thumb"></span>
-                </span>
-                {{ siteSettings()!.registrationEnabled ? ('admin.reg.on' | translate) : ('admin.reg.off' | translate) }}
-              </button>
-            </label>
-          }
-          @if (toggleErr()) {
-            <span class="error-msg" style="font-size:.78rem">{{ toggleErr() }}</span>
-          }
-          <button class="btn primary" (click)="showCreate.set(!showCreate())">
-            {{ showCreate() ? ('admin.create.cancel' | translate) : ('admin.create.btn' | translate) }}
-          </button>
-        </div>
+    <header class="qs-page-header">
+      <div>
+        <h1 tabindex="-1">{{ 'admin.title' | translate }}</h1>
+        <p class="qs-muted qs-page-header__sub">{{ registeredLabel() }}</p>
       </div>
+      <div class="qs-page-header__actions">
+        @if (!settingsUnavailable()) {
+          <div class="qs-reg-toggle">
+            <mat-slide-toggle [checked]="registrationEnabled()" (change)="toggleRegistration($event.checked)">
+              {{ 'admin.registration' | translate }}: {{ (registrationEnabled() ? 'admin.reg.on' : 'admin.reg.off') | translate }}
+            </mat-slide-toggle>
+            <span class="qs-muted qs-reg-toggle__hint">{{ 'admin.reg.hint' | translate }}</span>
+          </div>
+        }
+        <button matButton="filled" (click)="openCreate()"><mat-icon>person_add</mat-icon>{{ 'admin.create.btn' | translate }}</button>
+      </div>
+    </header>
 
-      <!-- Create user form -->
-      @if (showCreate()) {
-        <div class="create-user-form">
-          <h3>{{ 'admin.create.title' | translate }}</h3>
-          <div class="create-user-grid">
-            <label>
-              {{ 'admin.create.username' | translate }}
-              <input type="text" [(ngModel)]="newUser.username" placeholder="username">
-            </label>
-            <label>
-              {{ 'admin.create.displayName' | translate }}
-              <input type="text" [(ngModel)]="newUser.displayName" placeholder="Jane Smith">
-            </label>
-            <label>
-              {{ 'admin.create.email' | translate }}
-              <input type="email" [(ngModel)]="newUser.email" placeholder="jane@example.com">
-            </label>
-            <label>
-              {{ 'admin.create.password' | translate }}
-              <input type="password" [(ngModel)]="newUser.password" placeholder="min. 8 chars">
-            </label>
-          </div>
-          <div class="create-user-footer">
-            <label class="checkbox-label">
-              <input type="checkbox" [(ngModel)]="newUser.isAdmin">
-              {{ 'admin.create.isAdmin' | translate }}
-            </label>
-            @if (createErr()) {
-              <span class="error-msg">{{ createErr() }}</span>
-            }
-            <button class="btn primary" (click)="createUser()" [disabled]="createLoading()">
-              {{ createLoading() ? ('admin.create.submitting' | translate) : ('admin.create.submit' | translate) }}
-            </button>
-          </div>
-        </div>
-      }
+    @if (error()) {
+      <div class="qs-empty" role="alert">
+        <mat-icon aria-hidden="true">error</mat-icon>
+        <p>{{ error() }}</p>
+        <button matButton="outlined" (click)="loadUsers()">{{ 'retry' | translate }}</button>
+      </div>
+    } @else {
+      @if (loading()) { <mat-progress-bar mode="indeterminate" /> }
 
-      <!-- Password change panel -->
-      @if (changePwUserId()) {
-        <div class="pw-change-panel">
-          <strong>{{ ('admin.pw.title' | translate).replace('__NAME__', changePwUsername()) }}</strong>
-          <div class="pw-change-row">
-            <input type="password" [(ngModel)]="newPw" [placeholder]="'admin.pw.placeholder' | translate">
-            <button class="btn primary" (click)="submitPwChange()" [disabled]="pwChangeLoading()">
-              {{ pwChangeLoading() ? ('admin.pw.saving' | translate) : ('admin.pw.save' | translate) }}
-            </button>
-            <button class="btn ghost" (click)="cancelPwChange()">{{ 'admin.pw.cancel' | translate }}</button>
-          </div>
-          @if (pwChangeErr()) {
-            <p class="error-msg">{{ pwChangeErr() }}</p>
+      @if (layout.handset()) {
+        <div class="qs-user-cards">
+          @for (u of users(); track u.id) {
+            <mat-card appearance="outlined">
+              <mat-card-header>
+                <div matCardAvatar class="qs-avatar qs-avatar--36 qs-admin__avatar">{{ initials(u) }}</div>
+                <mat-card-title>{{ u.displayName }} @if (isMe(u)) { <span class="qs-me">({{ 'admin.me' | translate }})</span> }</mat-card-title>
+                <mat-card-subtitle>&#64;{{ u.username }} · {{ u.email || '–' }}</mat-card-subtitle>
+                <ng-container *ngTemplateOutlet="actions; context: { $implicit: u }" />
+              </mat-card-header>
+              <mat-card-content>
+                <ng-container *ngTemplateOutlet="chips; context: { $implicit: u }" />
+                <p class="qs-muted">{{ 'admin.table.registered' | translate }}: {{ u.createdAt | date:'mediumDate' }}</p>
+              </mat-card-content>
+            </mat-card>
           }
         </div>
-      }
-
-      <!-- User table -->
-      @if (loading()) {
-        <div class="loading">{{ 'admin.loading' | translate }}</div>
-      } @else if (error()) {
-        <div class="error-msg" role="alert">{{ error() }}</div>
       } @else {
-        <div class="user-table-wrap">
-          <table class="user-table">
-            <thead>
-              <tr>
-                <th>{{ 'admin.table.user' | translate }}</th>
-                <th>{{ 'admin.table.email' | translate }}</th>
-                <th>{{ 'admin.table.lang' | translate }}</th>
-                <th>{{ 'admin.table.registered' | translate }}</th>
-                <th>{{ 'admin.table.status' | translate }}</th>
-                <th>{{ 'admin.table.role' | translate }}</th>
-                <th>{{ 'admin.table.actions' | translate }}</th>
-              </tr>
-            </thead>
-            <tbody>
-              @for (u of users(); track u.id) {
-                <tr [class.inactive-row]="!u.isActive">
-                  <td>
-                    <div class="user-cell">
-                      <div [class]="avatarClass(u)">{{ initials(u) }}</div>
-                      <div>
-                        <div class="user-name">{{ u.displayName }}</div>
-                        <div class="user-username">&#64;{{ u.username }}</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td class="muted">{{ u.email || '—' }}</td>
-                  <td><span class="lang-badge">{{ u.language.toUpperCase() }}</span></td>
-                  <td class="muted">{{ u.createdAt | date:'dd.MM.yyyy' }}</td>
-                  <td>
-                    <span class="status-badge" [class.active]="u.isActive" [class.inactive]="!u.isActive">
-                      {{ u.isActive ? ('admin.status.active' | translate) : ('admin.status.inactive' | translate) }}
-                    </span>
-                  </td>
-                  <td>
-                    <span class="role-badge" [class.admin]="u.isAdmin" [class.user]="!u.isAdmin">
-                      {{ u.isAdmin ? ('admin.role.admin' | translate) : ('admin.role.user' | translate) }}
-                    </span>
-                  </td>
-                  <td>
-                    @if (u.id !== currentUserId()) {
-                      <div class="action-row">
-                        <button class="btn sm" (click)="toggleActive(u)">
-                          {{ u.isActive ? ('admin.action.deactivate' | translate) : ('admin.action.activate' | translate) }}
-                        </button>
-                        <button class="btn sm" (click)="toggleAdmin(u)">
-                          {{ u.isAdmin ? ('admin.action.removeAdmin' | translate) : ('admin.action.makeAdmin' | translate) }}
-                        </button>
-                        <button class="btn sm" (click)="startPwChange(u)">{{ 'admin.action.password' | translate }}</button>
-                        <button class="btn sm danger" (click)="deleteUser(u)">{{ 'admin.action.delete' | translate }}</button>
-                      </div>
-                      @if (actionErr()[u.id]) {
-                        <p class="error-msg" style="font-size:.75rem;margin-top:.2rem">{{ actionErr()[u.id] }}</p>
-                      }
-                    } @else {
-                      <span class="muted" style="font-size:.75rem">{{ 'admin.me' | translate }}</span>
-                    }
-                  </td>
-                </tr>
-              }
-            </tbody>
+        <div class="qs-table-wrap">
+          <table mat-table [dataSource]="dataSource" matSort class="qs-users-table">
+            <ng-container matColumnDef="user">
+              <th mat-header-cell *matHeaderCellDef mat-sort-header>{{ 'admin.table.user' | translate }}</th>
+              <td mat-cell *matCellDef="let u">
+                <div class="qs-user-cell">
+                  <span class="qs-avatar qs-avatar--36 qs-admin__avatar">{{ initials(u) }}</span>
+                  <div>
+                    <div>{{ u.displayName }} @if (isMe(u)) { <span class="qs-me">({{ 'admin.me' | translate }})</span> }</div>
+                    <div class="qs-muted">&#64;{{ u.username }}</div>
+                  </div>
+                </div>
+              </td>
+            </ng-container>
+            <ng-container matColumnDef="email">
+              <th mat-header-cell *matHeaderCellDef mat-sort-header>{{ 'admin.table.email' | translate }}</th>
+              <td mat-cell *matCellDef="let u">{{ u.email || '–' }}</td>
+            </ng-container>
+            <ng-container matColumnDef="status">
+              <th mat-header-cell *matHeaderCellDef>{{ 'admin.table.status' | translate }} / {{ 'admin.table.role' | translate }}</th>
+              <td mat-cell *matCellDef="let u"><ng-container *ngTemplateOutlet="chips; context: { $implicit: u }" /></td>
+            </ng-container>
+            <ng-container matColumnDef="registered">
+              <th mat-header-cell *matHeaderCellDef mat-sort-header>{{ 'admin.table.registered' | translate }}</th>
+              <td mat-cell *matCellDef="let u">{{ u.createdAt | date:'mediumDate' }}</td>
+            </ng-container>
+            <ng-container matColumnDef="actions">
+              <th mat-header-cell *matHeaderCellDef class="qs-col-actions">{{ 'admin.table.actions' | translate }}</th>
+              <td mat-cell *matCellDef="let u" class="qs-col-actions"><ng-container *ngTemplateOutlet="actions; context: { $implicit: u }" /></td>
+            </ng-container>
+            <tr mat-header-row *matHeaderRowDef="columns"></tr>
+            <tr mat-row *matRowDef="let row; columns: columns"></tr>
           </table>
         </div>
       }
-    </div>
-  `
+    }
+
+    <ng-template #chips let-u>
+      <mat-chip-set>
+        <mat-chip [class.qs-chip-active]="u.isActive">{{ (u.isActive ? 'admin.status.active' : 'admin.status.inactive') | translate }}</mat-chip>
+        <mat-chip [class.qs-chip-admin]="u.isAdmin">{{ (u.isAdmin ? 'admin.role.admin' : 'admin.role.user') | translate }}</mat-chip>
+        <mat-chip>{{ (u.language ?? '').toUpperCase() }}</mat-chip>
+      </mat-chip-set>
+    </ng-template>
+
+    <ng-template #actions let-u>
+      <button matIconButton [matMenuTriggerFor]="menu" [attr.aria-label]="('admin.actions' | translate) + ': ' + (u.username ?? '')" class="qs-row-menu">
+        <mat-icon>more_vert</mat-icon>
+      </button>
+      <mat-menu #menu="matMenu">
+        <button mat-menu-item (click)="toggleActive(u)" [disabled]="isMe(u)">
+          <mat-icon>{{ u.isActive ? 'person_off' : 'how_to_reg' }}</mat-icon>{{ (u.isActive ? 'admin.action.deactivate' : 'admin.action.activate') | translate }}
+        </button>
+        <button mat-menu-item (click)="toggleAdmin(u)" [disabled]="isMe(u)">
+          <mat-icon>{{ u.isAdmin ? 'remove_moderator' : 'add_moderator' }}</mat-icon>{{ (u.isAdmin ? 'admin.action.removeAdmin' : 'admin.action.makeAdmin') | translate }}
+        </button>
+        <button mat-menu-item (click)="changePassword(u)" [disabled]="isMe(u)"><mat-icon>key</mat-icon>{{ 'admin.action.password' | translate }}</button>
+        <button mat-menu-item (click)="deleteUser(u)" [disabled]="isMe(u)"><mat-icon>delete</mat-icon>{{ 'admin.action.delete' | translate }}</button>
+      </mat-menu>
+    </ng-template>
+  `,
+  styles: [`
+    :host { display: block; }
+    .qs-reg-toggle { display: flex; flex-direction: column; gap: 2px; }
+    .qs-reg-toggle__hint { font-size: .8rem; }
+    .qs-table-wrap { overflow-x: auto; border: 1px solid var(--mat-sys-outline-variant); border-radius: var(--mat-sys-corner-medium); }
+    .qs-users-table { width: 100%; }
+    .qs-user-cell { display: flex; align-items: center; gap: 12px; padding: 6px 0; }
+    .qs-admin__avatar { background: var(--mat-sys-primary-container); color: var(--mat-sys-on-primary-container); font-weight: 600; }
+    .qs-me { color: var(--mat-sys-on-surface-variant); font-size: .85rem; }
+    .qs-col-actions { width: 56px; text-align: right; }
+    .qs-chip-active { --mat-chip-label-text-color: var(--mat-sys-on-primary-container); --mat-chip-elevated-container-color: var(--mat-sys-primary-container); }
+    .qs-chip-admin { --mat-chip-label-text-color: var(--mat-sys-on-tertiary-container); --mat-chip-elevated-container-color: var(--mat-sys-tertiary-container); }
+    .qs-user-cards { display: grid; gap: 12px; }
+    .qs-row-menu { margin-left: auto; }
+  `]
 })
 export class AdminUsersComponent implements OnInit {
-  private api = inject(ApiClient);
-  private auth = inject(AuthService);
-  private i18n = inject(I18nService);
+  private readonly api = inject(AdminApi);
+  private readonly auth = inject(AuthService);
+  private readonly confirm = inject(ConfirmDialogService);
+  private readonly toast = inject(ToastService);
+  private readonly dialog = inject(MatDialog);
+  private readonly crumbs = inject(BreadcrumbService);
+  readonly i18n = inject(I18nService);
+  readonly layout = inject(LayoutService);
 
-  users        = signal<UserSummary[]>([]);
-  siteSettings = signal<SiteSettings | null>(null);
-  loading      = signal(true);
-  error        = signal('');
-  toggleErr    = signal('');
-  actionErr    = signal<Record<string, string>>({});
+  readonly columns = ['user', 'email', 'status', 'registered', 'actions'];
+  readonly users = signal<UserSummaryDto[]>([]);
+  readonly registrationEnabled = signal(false);
+  readonly settingsUnavailable = signal(false);
+  readonly loading = signal(true);
+  readonly error = signal('');
 
-  showCreate    = signal(false);
-  newUser       = { username: '', displayName: '', email: '', password: '', isAdmin: false };
-  createLoading = signal(false);
-  createErr     = signal('');
+  readonly dataSource = new MatTableDataSource<UserSummaryDto>([]);
+  private readonly sort = viewChild(MatSort);
 
-  changePwUserId   = signal<string | null>(null);
-  changePwUsername = signal('');
-  newPw            = '';
-  pwChangeLoading  = signal(false);
-  pwChangeErr      = signal('');
+  constructor() {
+    this.dataSource.sortingDataAccessor = (u, property) => {
+      if (property === 'user') return u.displayName ?? '';
+      if (property === 'registered') return u.createdAt ?? '';
+      return (u as unknown as Record<string, string>)[property] ?? '';
+    };
+    effect(() => { this.dataSource.data = this.users(); });
+    effect(() => {
+      const s = this.sort();
+      if (s) this.dataSource.sort = s;
+    });
+  }
 
-  currentUserId() { return this.auth.userId(); }
+  ngOnInit() {
+    this.crumbs.set([{ label: this.i18n.t('admin.title') }]);
+    this.loadUsers();
+    this.loadSettings();
+  }
 
-  ngOnInit() { this.load(); }
+  registeredLabel() { return this.i18n.t('admin.registered').replace('__N__', String(this.users().length)); }
+  isMe(u: UserSummaryDto) { return u.id === this.auth.userId(); }
+  initials(u: UserSummaryDto) { return (u.displayName ?? u.username ?? '?').split(' ').map(p => p[0]).join('').slice(0, 2).toUpperCase(); }
 
-  load() {
+  loadUsers() {
     this.loading.set(true);
-    this.api.listUsers().subscribe({
+    this.error.set('');
+    this.api.adminListUsers().subscribe({
       next: u => { this.users.set(u); this.loading.set(false); },
-      error: e => { this.error.set(e.error?.error ?? this.i18n.t('admin.err.load')); this.loading.set(false); }
-    });
-    this.api.getSiteSettings().subscribe({
-      next: s => this.siteSettings.set(s)
+      error: e => { this.error.set(problemMessage(e, this.i18n.t('admin.err.load'))); this.loading.set(false); }
     });
   }
 
-  toggleRegistration() {
-    const s = this.siteSettings();
-    if (!s) return;
-    this.toggleErr.set('');
-    this.api.setRegistrationEnabled(!s.registrationEnabled).subscribe({
-      next: () => this.siteSettings.update(prev => prev ? { ...prev, registrationEnabled: !prev.registrationEnabled } : prev),
-      error: e => this.toggleErr.set(e.error?.error ?? this.i18n.t('err.save'))
+  loadSettings() {
+    this.api.adminGetSettings().subscribe({
+      next: s => { this.registrationEnabled.set(s.registrationEnabled ?? false); this.settingsUnavailable.set(false); },
+      error: () => this.settingsUnavailable.set(true)
     });
   }
 
-  createUser() {
-    this.createLoading.set(true); this.createErr.set('');
-    this.api.adminCreateUser({
-      username: this.newUser.username,
-      password: this.newUser.password,
-      displayName: this.newUser.displayName || undefined,
-      email: this.newUser.email || undefined,
-      isAdmin: this.newUser.isAdmin
-    }).subscribe({
-      next: () => {
-        this.newUser = { username: '', displayName: '', email: '', password: '', isAdmin: false };
-        this.showCreate.set(false);
-        this.createLoading.set(false);
-        this.load();
-      },
-      error: e => { this.createErr.set(e.error?.error ?? this.i18n.t('err.save')); this.createLoading.set(false); }
+  toggleRegistration(enabled: boolean) {
+    const previous = this.registrationEnabled();
+    this.registrationEnabled.set(enabled);
+    this.api.adminSetRegistration({ body: { enabled } }).subscribe({
+      next: () => this.toast.success(this.i18n.t('admin.saved.toast')),
+      error: e => { this.registrationEnabled.set(previous); this.toast.errorFrom(e, this.i18n.t('err.save')); }
     });
   }
 
-  toggleActive(u: UserSummary) {
-    this.api.setUserActive(u.id, !u.isActive).subscribe({
-      next: () => this.load(),
-      error: e => this.setActionErr(u.id, e.error?.error ?? this.i18n.t('err.save'))
+  async openCreate() {
+    const ref = this.dialog.open<UserFormDialogComponent, unknown, UserSummaryDto | undefined>(UserFormDialogComponent, { data: {}, width: '520px', maxWidth: '95vw' });
+    const result = await firstValueFrom(ref.afterClosed());
+    if (!result) return;
+    this.toast.success(this.i18n.t('admin.created.toast'));
+    this.loadUsers();
+  }
+
+  toggleActive(u: UserSummaryDto) {
+    if (!u.id || this.isMe(u)) return;
+    this.api.adminSetActive({ id: u.id, body: { active: !u.isActive } }).subscribe({
+      next: () => { this.toast.success(this.i18n.t('admin.saved.toast')); this.loadUsers(); },
+      error: e => this.toast.errorFrom(e, this.i18n.t('err.save'))
     });
   }
 
-  toggleAdmin(u: UserSummary) {
+  async toggleAdmin(u: UserSummaryDto) {
+    if (!u.id || this.isMe(u)) return;
     const key = u.isAdmin ? 'admin.confirm.removeAdmin' : 'admin.confirm.makeAdmin';
-    if (!confirm(this.i18n.t(key).replace('__NAME__', u.username))) return;
-    this.api.setUserAdmin(u.id, !u.isAdmin).subscribe({
-      next: () => this.load(),
-      error: e => this.setActionErr(u.id, e.error?.error ?? this.i18n.t('err.save'))
+    const ok = await this.confirm.confirm({
+      title: this.i18n.t(u.isAdmin ? 'admin.action.removeAdmin' : 'admin.action.makeAdmin'),
+      message: this.i18n.dynamic(key).replace('__NAME__', u.username ?? ''),
+      confirmLabel: this.i18n.t('save')
+    });
+    if (ok !== true) return;
+    this.api.adminSetAdmin({ id: u.id, body: { admin: !u.isAdmin } }).subscribe({
+      next: () => { this.toast.success(this.i18n.t('admin.saved.toast')); this.loadUsers(); },
+      error: e => this.toast.errorFrom(e, this.i18n.t('err.save'))
     });
   }
 
-  startPwChange(u: UserSummary) {
-    this.changePwUserId.set(u.id);
-    this.changePwUsername.set(u.username);
-    this.newPw = '';
-    this.pwChangeErr.set('');
+  async changePassword(u: UserSummaryDto) {
+    if (!u.id || this.isMe(u)) return;
+    const ref = this.dialog.open<UserPasswordDialogComponent, { id: string; username: string }, true | undefined>(UserPasswordDialogComponent, { data: { id: u.id, username: u.username ?? '' }, width: '440px', maxWidth: '95vw' });
+    const result = await firstValueFrom(ref.afterClosed());
+    if (!result) return;
+    this.toast.success(this.i18n.t('admin.pw.saved'));
   }
 
-  cancelPwChange() { this.changePwUserId.set(null); }
-
-  submitPwChange() {
-    const id = this.changePwUserId();
-    if (!id) return;
-    this.pwChangeLoading.set(true); this.pwChangeErr.set('');
-    this.api.adminChangeUserPassword(id, this.newPw).subscribe({
-      next: () => { this.cancelPwChange(); this.pwChangeLoading.set(false); },
-      error: e => { this.pwChangeErr.set(e.error?.error ?? this.i18n.t('err.save')); this.pwChangeLoading.set(false); }
+  async deleteUser(u: UserSummaryDto) {
+    if (!u.id || this.isMe(u)) return;
+    const ok = await this.confirm.confirm({
+      title: this.i18n.t('admin.action.delete'),
+      message: this.i18n.t('admin.confirm.delete').replace('__NAME__', u.username ?? ''),
+      confirmLabel: this.i18n.t('delete'), destructive: true
     });
-  }
-
-  deleteUser(u: UserSummary) {
-    if (!confirm(this.i18n.t('admin.confirm.delete').replace('__NAME__', u.username))) return;
-    this.api.adminDeleteUser(u.id).subscribe({
-      next: () => this.load(),
-      error: e => this.setActionErr(u.id, e.error?.error ?? this.i18n.t('err.delete'))
+    if (ok !== true) return;
+    this.api.adminDeleteUser({ id: u.id }).subscribe({
+      next: () => { this.toast.success(this.i18n.t('admin.deleted.toast')); this.loadUsers(); },
+      error: e => this.toast.errorFrom(e, this.i18n.t('err.delete'))
     });
-  }
-
-  private setActionErr(id: string, msg: string) {
-    this.actionErr.update(prev => ({ ...prev, [id]: msg }));
-  }
-
-  initials(u: UserSummary) {
-    return u.displayName.split(' ').map(p => p[0]).join('').slice(0, 2).toUpperCase();
-  }
-
-  avatarClass(u: UserSummary) {
-    const colors = ['av-blue', 'av-green', 'av-purple', 'av-orange', 'av-rose'];
-    return `user-avatar ${colors[u.username.charCodeAt(0) % colors.length]}`;
   }
 }

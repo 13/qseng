@@ -24,13 +24,28 @@ Log.Logger = new LoggerConfiguration()
 
 builder.Host.UseSerilog();
 
-builder.Services.AddControllers()
+builder.Services.AddControllers(opt =>
+    {
+        // Every action can fail with these shapes; declaring them once keeps the OpenAPI spec honest.
+        opt.Filters.Add(new Microsoft.AspNetCore.Mvc.ProducesResponseTypeAttribute(typeof(Microsoft.AspNetCore.Mvc.ValidationProblemDetails), StatusCodes.Status400BadRequest, "application/problem+json"));
+        opt.Filters.Add(new Microsoft.AspNetCore.Mvc.ProducesResponseTypeAttribute(typeof(Microsoft.AspNetCore.Mvc.ProblemDetails), StatusCodes.Status401Unauthorized, "application/problem+json"));
+        opt.Filters.Add(new Microsoft.AspNetCore.Mvc.ProducesResponseTypeAttribute(typeof(Microsoft.AspNetCore.Mvc.ProblemDetails), StatusCodes.Status403Forbidden, "application/problem+json"));
+        opt.Filters.Add(new Microsoft.AspNetCore.Mvc.ProducesResponseTypeAttribute(typeof(Microsoft.AspNetCore.Mvc.ProblemDetails), StatusCodes.Status404NotFound, "application/problem+json"));
+        opt.Filters.Add(new Microsoft.AspNetCore.Mvc.ProducesResponseTypeAttribute(typeof(Microsoft.AspNetCore.Mvc.ProblemDetails), StatusCodes.Status409Conflict, "application/problem+json"));
+        opt.Filters.Add(new Microsoft.AspNetCore.Mvc.ProducesResponseTypeAttribute(typeof(Microsoft.AspNetCore.Mvc.ProblemDetails), StatusCodes.Status500InternalServerError, "application/problem+json"));
+    })
     .AddJsonOptions(opt =>
         opt.JsonSerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter()));
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new() { Title = "Qseng API", Version = "v1" });
+    c.SupportNonNullableReferenceTypes();
+    // Only controller actions; minimal endpoints (e.g. /api/v1/health) are not part of the client contract.
+    c.DocInclusionPredicate((_, api) => api.ActionDescriptor is Microsoft.AspNetCore.Mvc.Controllers.ControllerActionDescriptor);
+    // Stable, unique ids -> readable generated client methods (treesGetAll, personsCreate, ...).
+    c.CustomOperationIds(api =>
+        $"{api.ActionDescriptor.RouteValues["controller"]}_{api.ActionDescriptor.RouteValues["action"]}");
     c.AddSecurityDefinition("Bearer", new()
     {
         Name = "Authorization", Type = Microsoft.OpenApi.Models.SecuritySchemeType.Http,

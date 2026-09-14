@@ -1,249 +1,143 @@
-import { Component, computed, inject, input, OnInit, signal } from '@angular/core';
-import { animate, style, transition, trigger } from '@angular/animations';
-import { FormsModule } from '@angular/forms';
-import { ApiClient, Person, TimelineEvent, TimelineEventType, TIMELINE_EVENT_TYPES, PartialDate } from '../../core/api/api-client.service';
-import { TimelineService } from './timeline.service';
-import { TimelineEventCardComponent } from './timeline-event-card.component';
+import { Component, computed, inject } from '@angular/core';
+import { MatButtonModule } from '@angular/material/button';
+import { MatIconModule } from '@angular/material/icon';
+import { MatChipsModule } from '@angular/material/chips';
+import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatDialog } from '@angular/material/dialog';
+import { firstValueFrom } from 'rxjs';
+import { TimelineApi, TimelineEventDto } from '../../core/api/generated';
 import { I18nService } from '../../core/i18n/i18n.service';
 import { TranslatePipe } from '../../core/i18n/translate.pipe';
-import { PartialDateInputComponent, PartialDateValue } from '../../shared/ui/partial-date-input.component';
+import { ConfirmDialogService } from '../../core/ui/confirm-dialog.service';
+import { ToastService } from '../../core/ui/toast.service';
+import { PartialDatePipe } from '../../shared/pipes/partial-date.pipe';
+import { PersonStore } from '../persons/person.store';
+import { TimelineEventDialogComponent, TimelineEventDialogData } from './timeline-event-dialog.component';
+
+interface DecadeGroup { decade: number | null; events: TimelineEventDto[]; }
+
+/** Descending compare by (year, month, day); a missing value sorts after a present one at that field. */
+function compareStart(a: TimelineEventDto, b: TimelineEventDto): number {
+  const ay = a.start?.year ?? null;
+  const by = b.start?.year ?? null;
+  if (ay !== by) return ay === null ? 1 : by === null ? -1 : by - ay;
+  const am = a.start?.month ?? null;
+  const bm = b.start?.month ?? null;
+  if (am !== bm) return am === null ? 1 : bm === null ? -1 : bm - am;
+  const ad = a.start?.day ?? null;
+  const bd = b.start?.day ?? null;
+  if (ad !== bd) return ad === null ? 1 : bd === null ? -1 : bd - ad;
+  return 0;
+}
 
 @Component({
   selector: 'qs-timeline',
-  standalone: true,
-  imports: [FormsModule, TimelineEventCardComponent, TranslatePipe, PartialDateInputComponent],
-  animations: [
-    trigger('slide', [
-      transition(':enter', [
-        style({ opacity: 0, transform: 'translateY(6px)' }),
-        animate('200ms ease-out', style({ opacity: 1, transform: 'translateY(0)' }))
-      ]),
-      transition(':leave', [
-        animate('140ms ease-in', style({ opacity: 0, transform: 'translateY(-4px)' }))
-      ])
-    ])
-  ],
+  imports: [MatButtonModule, MatIconModule, MatChipsModule, MatTooltipModule, TranslatePipe, PartialDatePipe],
   template: `
-    <div class="timeline-wrap">
-      <div class="timeline-wrap__header">
-        <h3>{{ 'tl.title' | translate }}</h3>
-        <button class="btn sm ghost" (click)="showAdd.set(!showAdd())">
-          {{ showAdd() ? ('tl.cancel' | translate) : ('tl.addEvent' | translate) }}
-        </button>
-      </div>
-
-      @if (showAdd()) {
-        <div class="add-event-form" @slide>
-          <div class="form-row">
-            <label class="field-lbl">
-              {{ 'tl.type' | translate }}
-              <select [(ngModel)]="newType" name="type" (ngModelChange)="onTypeChange($event)">
-                @for (t of eventTypes; track t) {
-                  <option [value]="t">{{ i18n.eventLabel(t) }}</option>
-                }
-              </select>
-            </label>
-            <label class="field-lbl">
-              {{ 'tl.eventTitle' | translate }}
-              <input [(ngModel)]="newTitle" name="title" required [placeholder]="'tl.eventTitle' | translate">
-            </label>
-          </div>
-
-          @if (newType === 'Marriage' && treeId()) {
-            <div class="rel-search-field" style="position:relative">
-              <label class="field-lbl">
-                {{ 'tl.marriage.spouse' | translate }}
-                <input [ngModel]="spouseSearch()" (ngModelChange)="spouseSearch.set($event); selectedSpouse.set(null)"
-                       [placeholder]="'tl.marriage.spousePlaceholder' | translate"
-                       autocomplete="off">
-              </label>
-              @if (spouseFiltered().length > 0 && !selectedSpouse()) {
-                <div class="rel-suggestions">
-                  @for (p of spouseFiltered(); track p.id) {
-                    <div class="rel-suggestions__item" (click)="pickSpouse(p)">
-                      {{ p.firstName }} {{ p.lastName }}
-                      @if (p.birth?.year) { <span style="font-size:.7rem;color:var(--c-text-4);margin-left:auto">{{ p.birth!.year }}</span> }
-                    </div>
-                  }
-                </div>
-              }
-            </div>
-          }
-
-          <qs-partial-date-input prefix="tl_new" [value]="newDate" (valueChange)="newDate = $event" />
-
-          <label class="field-lbl" style="margin-top:.5rem">
-            {{ 'tl.place' | translate }}
-            <input [(ngModel)]="newLocation" name="loc">
-          </label>
-          <label class="field-lbl" style="margin-top:.5rem">
-            {{ 'tl.desc' | translate }}
-            <textarea [(ngModel)]="newDesc" name="desc" rows="2"></textarea>
-          </label>
-          <div class="form-actions">
-            <button class="btn primary sm" (click)="addEvent()" [disabled]="!newTitle.trim()">
-              {{ 'tl.add' | translate }}
-            </button>
-          </div>
-        </div>
-      }
-
-      @if (events().length === 0) {
-        <div class="empty-state" style="padding:2rem 0">
-          <span class="empty-icon">📅</span>
-          <p>{{ 'tl.noEvents' | translate }}</p>
-        </div>
-      } @else {
-        <div class="timeline-track">
-          @for (group of decades(); track group.decade) {
-            <div class="decade-group">
-              <p class="decade-label">
-                {{ group.decade >= 9990 ? ('tl.unknownDate' | translate) : (group.decade + ('tl.era' | translate)) }}
-              </p>
-              @for (e of group.events; track e.id) {
-                <div class="tl-item" @slide>
-                  <span class="tl-dot" [attr.data-type]="e.type"></span>
-                  <qs-timeline-event-card
-                    [ev]="e"
-                    (saved)="onSaved(e, $event)"
-                    (removed)="onRemoved(e.id)" />
-                </div>
-              }
-            </div>
-          }
-        </div>
-      }
+    <div class="qs-section-header">
+      <h2>{{ 'tl.title' | translate }}</h2>
+      <button matButton="tonal" (click)="openDialog()"><mat-icon>add</mat-icon>{{ 'tl.addEvent' | translate }}</button>
     </div>
+    @if (!store.timeline().length) {
+      <div class="qs-empty"><mat-icon class="qs-empty__icon" aria-hidden="true">event_note</mat-icon><p class="qs-muted">{{ 'tl.noEvents' | translate }}</p></div>
+    } @else {
+      <ol class="qs-tl">
+        @for (g of decades(); track g.decade) {
+          <li class="qs-tl__decade">
+            <p class="qs-tl__decade-label">{{ g.decade === null ? ('tl.unknownDate' | translate) : g.decade + ('tl.era' | translate) }}</p>
+            <ul class="qs-tl__list">
+              @for (e of g.events; track e.id) {
+                <li class="qs-tl__item" [attr.data-event-id]="e.id">
+                  <span class="qs-tl__dot" [attr.data-type]="e.type" aria-hidden="true"></span>
+                  <div class="qs-tl__card">
+                    <div class="qs-tl__meta">
+                      @if (e.start) { <span class="qs-tl__date">{{ e.start | partialDate }}</span> }
+                      <mat-chip-set><mat-chip>{{ i18n.eventLabel(e.type ?? 'Custom') }}</mat-chip>
+                        @if (e.isAutoGenerated) { <mat-chip [matTooltip]="'tl.autoHint' | translate" [attr.aria-label]="('tl.auto' | translate) + ': ' + ('tl.autoHint' | translate)">{{ 'tl.auto' | translate }}</mat-chip> }
+                      </mat-chip-set>
+                      <span class="qs-tl__spacer"></span>
+                      @if (!e.isAutoGenerated) {
+                        <button matIconButton data-action="edit" (click)="openDialog(e)" [attr.aria-label]="'edit' | translate"><mat-icon>edit</mat-icon></button>
+                        <button matIconButton data-action="delete" (click)="remove(e)" [attr.aria-label]="'delete' | translate"><mat-icon>delete</mat-icon></button>
+                      }
+                    </div>
+                    <p class="qs-tl__title">{{ title(e) }}</p>
+                    @if (e.location) { <p class="qs-muted qs-tl__line"><mat-icon aria-hidden="true">place</mat-icon>{{ e.location }}</p> }
+                    @if (e.description) { <p class="qs-tl__desc">{{ e.description }}</p> }
+                    @if (e.end) { <p class="qs-muted qs-tl__line">{{ 'tl.until' | translate }} {{ e.end | partialDate }}</p> }
+                  </div>
+                </li>
+              }
+            </ul>
+          </li>
+        }
+      </ol>
+    }
   `,
   styles: [`
     :host { display: block; }
-    .rel-search-field { position: relative; }
-    .rel-suggestions {
-      position: absolute;
-      top: 100%; left: 0; right: 0;
-      z-index: 50;
-      background: var(--c-bg);
-      border: 1px solid var(--c-border);
-      border-radius: var(--r-md);
-      box-shadow: 0 4px 16px rgba(0,0,0,.1);
-      max-height: 160px;
-      overflow-y: auto;
-    }
-    .rel-suggestions__item {
-      display: flex;
-      align-items: center;
-      gap: .4rem;
-      padding: .4rem .6rem;
-      font-size: .82rem;
-      cursor: pointer;
-      &:hover { background: var(--c-accent-sub); }
-    }
+    .qs-tl, .qs-tl__list { list-style: none; margin: 0; padding: 0; }
+    .qs-tl { border-left: 2px solid var(--mat-sys-outline-variant); margin-left: 8px; padding-left: 20px; }
+    .qs-tl__decade { margin-bottom: 20px; }
+    .qs-tl__decade-label { margin: 0 0 8px; font-size: .78rem; letter-spacing: .08em; text-transform: uppercase; color: var(--mat-sys-on-surface-variant); }
+    .qs-tl__item { position: relative; margin-bottom: 12px; }
+    .qs-tl__dot { position: absolute; left: -27px; top: 18px; width: 12px; height: 12px; border-radius: 50%; background: var(--mat-sys-primary); border: 2px solid var(--mat-sys-surface); }
+    .qs-tl__dot[data-type="Marriage"] { background: var(--mat-sys-tertiary); }
+    .qs-tl__dot[data-type="Death"] { background: var(--mat-sys-outline); }
+    .qs-tl__card { border: 1px solid var(--mat-sys-outline-variant); border-radius: var(--mat-sys-corner-medium); background: var(--mat-sys-surface-container-lowest); padding: 10px 14px; }
+    .qs-tl__meta { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .qs-tl__date { font-weight: 500; }
+    .qs-tl__spacer { flex: 1; }
+    .qs-tl__title { margin: 6px 0 2px; font-weight: 500; font-size: 1.05rem; }
+    .qs-tl__line { display: flex; align-items: center; gap: 4px; margin: 2px 0; font-size: .9rem; }
+    .qs-tl__line mat-icon { font-size: 18px; width: 18px; height: 18px; }
+    .qs-tl__desc { margin: 4px 0 0; white-space: pre-wrap; }
   `]
 })
-export class TimelineComponent implements OnInit {
-  readonly personId = input.required<string>();
-  readonly treeId   = input<string>('');
-
-  private readonly svc = inject(TimelineService);
-  private readonly api = inject(ApiClient);
+export class TimelineComponent {
+  readonly store = inject(PersonStore);
   readonly i18n = inject(I18nService);
+  private readonly api = inject(TimelineApi);
+  private readonly dialog = inject(MatDialog);
+  private readonly confirm = inject(ConfirmDialogService);
+  private readonly toast = inject(ToastService);
 
-  events     = signal<TimelineEvent[]>([]);
-  showAdd    = signal(false);
-  eventTypes = TIMELINE_EVENT_TYPES;
-
-  treePersons    = signal<Person[]>([]);
-  spouseSearch   = signal('');
-  selectedSpouse = signal<Person | null>(null);
-
-  spouseFiltered = computed(() => {
-    const s = this.spouseSearch().toLowerCase().trim();
-    if (!s || this.selectedSpouse()) return [];
-    return this.treePersons()
-      .filter(p => p.id !== this.personId() &&
-        (p.firstName.toLowerCase().includes(s) || p.lastName.toLowerCase().includes(s)))
-      .slice(0, 8);
-  });
-
-  newType: TimelineEventType = 'Custom';
-  newTitle    = '';
-  newLocation = '';
-  newDesc     = '';
-  newDate: PartialDateValue = {};
-
-  decades = computed(() => {
-    const groups = new Map<number, TimelineEvent[]>();
-    for (const e of this.events()) {
-      const y = e.start?.year ?? 9999;
-      const decade = Math.floor(y / 10) * 10;
-      const arr = groups.get(decade) ?? [];
-      arr.push(e);
-      groups.set(decade, arr);
+  readonly decades = computed<DecadeGroup[]>(() => {
+    const groups = new Map<number | null, TimelineEventDto[]>();
+    for (const e of this.store.timeline()) {
+      const y = e.start?.year ?? null;
+      const decade = y === null ? null : Math.floor(y / 10) * 10;
+      groups.set(decade, [...(groups.get(decade) ?? []), e]);
     }
     return [...groups.entries()]
-      .sort(([a], [b]) => {
-        if (a >= 9990) return 1;   // unknown-date group always last
-        if (b >= 9990) return -1;
-        return b - a;              // newest decade first
-      })
-      .map(([decade, events]) => ({ decade, events }));
+      .sort(([a], [b]) => (a === null ? 1 : b === null ? -1 : b - a))
+      .map(([decade, events]) => ({ decade, events: [...events].sort(compareStart) }));
   });
 
-  ngOnInit() {
-    this.load();
-    const tid = this.treeId();
-    if (tid) this.api.getPersonsByTree(tid).subscribe(p => this.treePersons.set(p));
+  title(e: TimelineEventDto): string {
+    return e.type === 'Marriage' && e.spouseName ? `${this.i18n.eventLabel('Marriage')} – ${e.spouseName}` : (e.title ?? '');
   }
 
-  load() { this.svc.list(this.personId()).subscribe(e => this.events.set(e)); }
-
-  onTypeChange(type: TimelineEventType) {
-    if (type === 'Marriage' && !this.newTitle) this.newTitle = this.i18n.eventLabel('Marriage');
-    if (type !== 'Marriage') { this.spouseSearch.set(''); this.selectedSpouse.set(null); }
+  async openDialog(event?: TimelineEventDto) {
+    const personId = this.store.person()?.id;
+    if (!personId) return;
+    const data: TimelineEventDialogData = { personId, treePersons: this.store.treePersons(), event };
+    const ref = this.dialog.open<TimelineEventDialogComponent, TimelineEventDialogData, TimelineEventDto | undefined>(TimelineEventDialogComponent, { data, width: '560px', maxWidth: '95vw' });
+    const saved = await firstValueFrom(ref.afterClosed());
+    if (!saved) return;
+    this.store.upsertEvent(saved);
+    this.toast.success(this.i18n.t('tl.saved.toast'));
   }
 
-  pickSpouse(p: Person) {
-    this.selectedSpouse.set(p);
-    this.spouseSearch.set(`${p.firstName} ${p.lastName}`);
-    if (!this.newTitle || this.newTitle === this.i18n.eventLabel('Marriage')) {
-      this.newTitle = `${this.i18n.eventLabel('Marriage')} – ${p.firstName} ${p.lastName}`;
-    }
-  }
-
-  addEvent() {
-    if (!this.newTitle.trim()) return;
-    const start: PartialDate | undefined = this.newDate.year
-      ? { year: this.newDate.year, month: this.newDate.month, day: this.newDate.day }
-      : undefined;
-    this.svc.add(this.personId(), {
-      type: this.newType,
-      title: this.newTitle.trim(),
-      location: this.newLocation || undefined,
-      description: this.newDesc || undefined,
-      start
-    }).subscribe(ev => {
-      this.events.update(list => [...list, ev].sort((a, b) =>
-        (b.start?.year ?? -1) - (a.start?.year ?? -1)));
-      this.newTitle    = '';
-      this.newLocation = '';
-      this.newDesc     = '';
-      this.newDate     = {};
-      this.spouseSearch.set('');
-      this.selectedSpouse.set(null);
-      this.showAdd.set(false);
+  async remove(e: TimelineEventDto) {
+    const personId = this.store.person()?.id;
+    if (!personId || !e.id) return;
+    const ok = await this.confirm.confirm({ title: this.i18n.t('tl.deleteTitle'), message: this.i18n.t('tl.deleteConfirm'), confirmLabel: this.i18n.t('delete'), destructive: true });
+    if (ok !== true) return;
+    const id = e.id;
+    this.api.timelineDelete({ personId, id }).subscribe({
+      next: () => { this.store.removeEvent(id); this.toast.success(this.i18n.t('tl.deleted.toast')); },
+      error: err => this.toast.errorFrom(err, this.i18n.t('err.delete'))
     });
-  }
-
-  onSaved(original: TimelineEvent, patch: Partial<TimelineEvent>) {
-    this.svc.update(this.personId(), original.id, patch).subscribe(updated =>
-      this.events.update(list => list.map(e => e.id === updated.id ? updated : e))
-    );
-  }
-
-  onRemoved(id: string) {
-    if (!confirm(this.i18n.t('tl.deleteConfirm'))) return;
-    this.svc.remove(this.personId(), id).subscribe(() =>
-      this.events.update(list => list.filter(e => e.id !== id))
-    );
   }
 }

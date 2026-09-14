@@ -1,0 +1,107 @@
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body { height: 100%; margin: 0; }
+
+body {
+  color: var(--mat-sys-on-surface);
+  background: var(--mat-sys-surface);
+  -webkit-font-smoothing: antialiased;
+}
+
+a { color: var(--mat-sys-primary); text-decoration: none; }
+a:hover { text-decoration: underline; }
+/* Inline links in running text must not rely on colour alone (WCAG 1.4.1). .qs-prose is reserved for future long-form text. */
+.qs-prose a, .qs-auth-footer a { text-decoration: underline; text-underline-offset: 2px; }
+
+:focus-visible {
+  outline: 2px solid var(--mat-sys-primary);
+  outline-offset: 2px;
+}
+
+.qs-skip-link {
+  position: absolute;
+  left: 8px;
+  top: -100px;
+  z-index: 1000;
+  padding: 8px 12px;
+  background: var(--mat-sys-primary);
+  color: var(--mat-sys-on-primary);
+  border-radius: var(--mat-sys-corner-small);
+  &:focus { top: 8px; }
+}
+
+.qs-page {
+  max-width: var(--qs-page-max);
+  margin: 0 auto;
+  padding: 24px var(--qs-gutter) 48px;
+}
+
+.qs-page-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 20px; }
+.qs-page-header__sub { margin: 4px 0 0; }
+.qs-page-header__actions { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+.qs-form-error { margin: 0 0 8px; color: var(--mat-sys-error); font-size: .9rem; }
+.qs-dialog-form { display: flex; flex-direction: column; gap: 4px; min-width: min(440px, 90vw); }
+.qs-empty { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 8px; padding: 48px 16px; }
+.qs-empty__icon { font-size: 56px; width: 56px; height: 56px; color: var(--mat-sys-primary); }
+.qs-empty__actions { display: flex; gap: 8px; margin-top: 8px; }
+
+.qs-section-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+.qs-section-header h2 { font-size: 1.15rem; }
+.qs-sex-male { background: var(--qs-sex-male); }
+.qs-sex-female { background: var(--qs-sex-female); }
+.qs-sex-unknown { background: var(--qs-sex-unknown); }
+
+/* Avatar circle: photo (<img>) or initials (<span>); size modifiers in px. */
+.qs-avatar { display: inline-grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; object-fit: cover; flex: 0 0 auto; overflow: hidden; }
+.qs-avatar--28 { width: 28px; height: 28px; font-size: .75rem; }
+.qs-avatar--32 { width: 32px; height: 32px; font-size: .8rem; }
+.qs-avatar--36 { width: 36px; height: 36px; font-size: .85rem; }
+.qs-avatar--56 { width: 56px; height: 56px; font-size: 1.1rem; }
+.qs-avatar--72 { width: 72px; height: 72px; font-size: 1.4rem; }
+.qs-avatar--88 { width: 88px; height: 88px; font-size: 1.8rem; }
+.qs-avatar__initials { font-weight: 600; color: #fff; }
+
+.qs-empty--compact { padding: 16px; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}
+
+h1[tabindex="-1"]:focus, h1[tabindex="-1"]:focus-visible { outline: none; }
+
+.qs-toast-error   { --mat-snack-bar-container-color: var(--mat-sys-error-container); --mat-snack-bar-supporting-text-color: var(--mat-sys-on-error-container); --mat-snack-bar-button-color: var(--mat-sys-on-error-container); }
+.qs-toast-success { --mat-snack-bar-container-color: var(--mat-sys-primary-container); --mat-snack-bar-supporting-text-color: var(--mat-sys-on-primary-container); --mat-snack-bar-button-color: var(--mat-sys-on-primary-container); }
+.qs-toast-info { --mat-snack-bar-container-color: var(--mat-sys-inverse-surface); --mat-snack-bar-supporting-text-color: var(--mat-sys-inverse-on-surface); --mat-snack-bar-button-color: var(--mat-sys-inverse-primary); }
+
+.qs-main--app { max-width: var(--qs-page-max); margin: 0 auto; padding: 24px var(--qs-gutter) 48px; }
+
+// MatBottomSheet's overlay pane sits outside component style encapsulation, so
+// the sheet panelClass has to be styled globally. Without an explicit height a
+// flex child (e.g. cdk-virtual-scroll-viewport) inside it collapses to 0.
+// The panelClass lands on the cdk-overlay-pane; the visible box is its child
+// mat-bottom-sheet-container, which otherwise just hugs its content height and
+// never passes the pane's height down to our component.
+.qs-sheet {
+  display: flex;
+  flex-direction: column;
+  height: 70dvh;
+  max-height: 85dvh;
+  padding: 0;
+
+  .mat-bottom-sheet-container {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+  }
+}
+
+// The selection sheet's content (an identity card, not a scrolling list)
+// should hug its own height instead of stretching to the people sheet's 70dvh.
+.qs-sheet--auto {
+  height: auto;
+
+  .mat-bottom-sheet-container {
+    flex: initial;
+  }
+}

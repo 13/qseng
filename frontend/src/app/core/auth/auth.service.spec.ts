@@ -2,7 +2,8 @@ import { TestBed } from '@angular/core/testing';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { AuthResponse, AuthService } from './auth.service';
+import { AuthService } from './auth.service';
+import { AuthResponse } from '../api/generated';
 
 function session(overrides: Partial<AuthResponse> = {}): AuthResponse {
   return {
@@ -80,7 +81,7 @@ describe('AuthService', () => {
     auth.login('demo', 'pw').subscribe();
     http.expectOne(r => r.url.endsWith('/auth/login')).flush(session());
 
-    auth.refreshSession().subscribe({ error: () => {} });
+    auth.refreshSession().subscribe({ error: () => {/* error handling tested elsewhere */} });
     http.expectOne(r => r.url.endsWith('/auth/refresh'))
       .flush({ error: 'revoked' }, { status: 401, statusText: 'Unauthorized' });
 

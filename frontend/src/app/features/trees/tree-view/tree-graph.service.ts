@@ -1,9 +1,9 @@
 import { DestroyRef, Injectable, computed, effect, inject, signal } from '@angular/core';
-import type {
-  Core, EdgeDefinition, EdgeSingular, NodeDefinition, NodeSingular, StylesheetStyle
-} from 'cytoscape';
-import { Person, Relationship } from '../../../core/api/api-client.service';
+import type { Core, EdgeSingular, EventObjectNode, NodeSingular, StylesheetStyle } from 'cytoscape';
+import { PersonDto as Person, RelationshipDto as Relationship } from '../../../core/api/generated';
 import { ThemeService } from '../../../core/theme/theme.service';
+import { NodeTheme, NODE_W, cssVar, readNodeTheme, renderCompactNodeSvg, renderNodeSvg } from './node-svg';
+import { COUPLE_DOT_SIZE, graphStylesheet } from './graph-stylesheet';
 import {
   LAYOUT_VERSION, LineageIndex, SavedLayout,
   buildElements, indexLineage, isLayoutReusable, lineageOf
@@ -13,11 +13,18 @@ export type GraphLayout = 'auto' | 'tree';
 
 const SNAP_GRID = 24;
 
+/** Minimum clearance between a spouse card's inner edge and the couple dot. */
+const MIN_SPOUSE_GAP = 12;
+/** Half the space a couple pair needs either side of its dot's centre. */
+const MIN_SPOUSE_HALF_SPAN = NODE_W / 2 + COUPLE_DOT_SIZE / 2 + MIN_SPOUSE_GAP;
+
 export interface GraphCallbacks {
   /** Single tap / sidebar click — selects without leaving the page. */
   onSelect: (personId: string) => void;
   /** Double tap — navigate to the person's profile. */
   onOpen: (personId: string) => void;
+  /** Right-click / context tap — open the context menu at the given viewport position. */
+  onContext: (personId: string, clientX: number, clientY: number) => void;
 }
 
 /**
@@ -29,14 +36,27 @@ export interface GraphCallbacks {
 @Injectable()
 export class TreeGraphService {
   private readonly theme = inject(ThemeService);
+  private nodeTheme: NodeTheme = readNodeTheme();
 
   private cy?: Core;
   private container?: HTMLElement;
   private callbacks?: GraphCallbacks;
   private resizeObserver?: ResizeObserver;
+  private personsById = new Map<string, Person>();
 
   private treeId = '';
   private lineage: LineageIndex = indexLineage([]);
+
+  /** Shared by the 'cxttap' (right-click / two-finger tap) and 'taphold' (one-finger long press) node handlers. */
+  private readonly onNodeContext = (evt: EventObjectNode) => {
+    if (evt.target.data('coupleNode')) return;
+    // 'taphold' also fires for a slow mouse press; only honour it on touch.
+    const oe = evt.originalEvent as (PointerEvent & TouchEvent) | undefined;
+    if (evt.type === 'taphold' && !(oe?.touches?.length || oe?.pointerType === 'touch')) return;
+    const { x, y } = evt.renderedPosition ?? { x: 0, y: 0 };
+    const rect = this.container?.getBoundingClientRect();
+    this.callbacks?.onContext(evt.target.id(), (rect?.left ?? 0) + x, (rect?.top ?? 0) + y);
+  };
 
   readonly layoutMode = signal<GraphLayout>('tree');
   readonly loading = signal(true);
@@ -44,6 +64,7 @@ export class TreeGraphService {
   readonly searchTerm = signal('');
   readonly nodeCount = signal(0);
   readonly hasCustomLayout = signal(false);
+  readonly compact = signal(false);
 
   readonly isFiltered = computed(() => this.searchTerm().trim().length > 0);
 
@@ -52,8 +73,14 @@ export class TreeGraphService {
 
     // Repaint on theme change instead of rebuilding the whole graph.
     effect(() => {
-      const dark = this.theme.dark();
-      this.cy?.style(stylesheet(dark));
+      this.theme.dark();
+      this.refreshTheme();
+    });
+
+    // The stylesheet picks the image/size per node by the compact flag.
+    effect(() => {
+      this.compact();
+      this.cy?.style(this.stylesheet());
     });
 
     // Dimming is derived from selection + search; recompute on either.
@@ -81,18 +108,20 @@ export class TreeGraphService {
 
     this.cy?.destroy();
     this.lineage = indexLineage(rels);
+    this.personsById = new Map(persons.map(p => [p.id ?? '', p]));
 
-    const { nodes, edges } = buildElements(persons, rels);
+    this.nodeTheme = readNodeTheme();
+    const { nodes, edges } = buildElements(persons, rels, this.nodeTheme);
     this.nodeCount.set(persons.length);
 
     this.cy = cytoscape({
       container,
       elements: { nodes, edges },
-      style: stylesheet(this.theme.dark()),
+      style: this.stylesheet(),
       layout: { name: 'preset' },
       wheelSensitivity: 0.25,
-      minZoom: 0.1,
-      maxZoom: 3,
+      minZoom: 0.2,
+      maxZoom: 2.5,
       textureOnViewport: persons.length > 150,
       hideEdgesOnViewport: persons.length > 300
     });
@@ -116,14 +145,28 @@ export class TreeGraphService {
       this.callbacks?.onOpen(evt.target.id());
     });
 
+    // cytoscape's one-finger long press on touch emits 'taphold', not
+    // 'cxttap' (that needs a two-finger tap), so both must open the menu.
+    this.cy.on('cxttap', 'node', this.onNodeContext);
+    this.cy.on('taphold', 'node', this.onNodeContext);
+
+    this.cy.on('zoom', () => this.compact.set((this.cy?.zoom() ?? 1) < 0.45));
+
     // Tapping empty canvas clears the selection.
     this.cy.on('tap', evt => {
       if (evt.target === this.cy) this.selectedId.set(null);
     });
 
+    // A reload (e.g. after deleting the selected person) can leave `selectedId`
+    // pointing at a person no longer in the tree; without this, applyEmphasis
+    // treats it as a real selection with an empty lineage and dims everything.
+    const sel = this.selectedId();
+    if (sel && !this.personsById.has(sel)) this.select(null);
+
     this.observeResize(container);
     this.runLayout();
     this.applyEmphasis();
+    this.compact.set(this.cy.zoom() < 0.45);
     this.loading.set(false);
   }
 
@@ -137,13 +180,34 @@ export class TreeGraphService {
   private observeResize(container: HTMLElement) {
     this.resizeObserver?.disconnect();
     if (typeof ResizeObserver === 'undefined') return;
-    this.resizeObserver = new ResizeObserver(() => this.cy?.resize());
+    this.resizeObserver = new ResizeObserver(() => this.onContainerResize());
     this.resizeObserver.observe(container);
+  }
+
+  /**
+   * The canvas shrinks when the selection panel opens (or the sidenav toggles),
+   * which can leave the selected node partly or fully outside the new viewport.
+   * Re-centre on it only when needed, so an unrelated resize doesn't yank the
+   * view away from wherever the user has it.
+   */
+  private onContainerResize() {
+    const cy = this.cy;
+    if (!cy) return;
+    cy.resize();
+
+    const id = this.selectedId();
+    if (!id) return;
+    const node = cy.getElementById(id);
+    if (!node.nonempty()) return;
+
+    const box = node.renderedBoundingBox();
+    const inView = box.x1 >= 0 && box.y1 >= 0 && box.x2 <= cy.width() && box.y2 <= cy.height();
+    if (!inView) cy.animate({ center: { eles: node }, duration: 200 });
   }
 
   // ── Viewport controls ───────────────────────────────────────────────────────
 
-  fit() { this.cy?.fit(undefined, 50); }
+  fit() { this.cy?.fit(undefined, 40); }
 
   zoomIn() { this.zoomBy(1.25); }
   zoomOut() { this.zoomBy(1 / 1.25); }
@@ -173,7 +237,7 @@ export class TreeGraphService {
     const uri = this.cy.png({
       full: true,
       scale: 2,
-      bg: this.theme.dark() ? '#0f172a' : '#ffffff'
+      bg: cssVar('--mat-sys-surface', '#ffffff')
     });
     const a = document.createElement('a');
     a.href = uri;
@@ -181,16 +245,32 @@ export class TreeGraphService {
     a.click();
   }
 
+  /** Re-read the palette from CSS custom properties and repaint node images + stylesheet. */
+  refreshTheme() {
+    if (!this.cy) return;
+    this.nodeTheme = readNodeTheme();
+    const cy = this.cy;
+    cy.batch(() => {
+      cy.nodes('[!coupleNode]').forEach(n => {
+        const p = this.personsById.get(n.id());
+        if (p) { n.data('image', renderNodeSvg(p, this.nodeTheme)); n.data('imageCompact', renderCompactNodeSvg(p, this.nodeTheme)); }
+      });
+    });
+    cy.style(this.stylesheet());
+  }
+
   // ── Selection & emphasis ────────────────────────────────────────────────────
 
   select(personId: string | null) {
     this.selectedId.set(personId);
+    // Clear the cytoscape selection border even when unselecting (Escape,
+    // closing the panel) — the early returns below only skip re-selecting.
+    this.cy?.$(':selected').unselect();
     if (!personId || !this.cy) return;
 
     const node = this.cy.getElementById(personId);
     if (!node.nonempty()) return;
 
-    this.cy.$(':selected').unselect();
     node.select();
     this.cy.animate({ center: { eles: node }, duration: 250 });
   }
@@ -281,7 +361,7 @@ export class TreeGraphService {
       this.alignCoupleRows();
       this.equalizeSiblingRows();
       this.savePositions();
-      cy.fit(undefined, 60);
+      cy.fit(undefined, 40);
     });
 
     try {
@@ -289,12 +369,21 @@ export class TreeGraphService {
     } catch {
       // Never leave the graph unrendered if dagre fails.
       const fallback = cy.layout({ name: 'breadthfirst', directed: true, spacingFactor: 1.3 });
-      fallback.on('layoutstop', () => cy.fit(undefined, 60));
+      fallback.on('layoutstop', () => cy.fit(undefined, 40));
       fallback.run();
     }
   }
 
-  /** Marriage bars must be perfectly horizontal, dot centred between spouses. */
+  /**
+   * Marriage bars must be perfectly horizontal, dot centred between spouses.
+   *
+   * dagre's rank ordering doesn't reliably give a two-node rank the full
+   * `nodeSep` on both sides of the dot between them (it's tuned for chains of
+   * many same-rank nodes, not this couple/dot/couple triple), so spouse cards
+   * can end up overlapping. Nudge them apart afterwards instead of trying to
+   * coax dagre into it — this only ever moves cards outward, so a pair dagre
+   * already spaced well enough is left untouched.
+   */
   private alignCoupleRows() {
     this.cy?.nodes('[?coupleNode]').forEach(dot => {
       const spouseEdges = edgesOf(dot, '[ek = "marriage"]');
@@ -308,6 +397,13 @@ export class TreeGraphService {
 
       dot.position({ x: avgX, y: avgY });
       spouses.forEach(s => s.position('y', avgY));
+
+      if (spouses.length === 2) {
+        const [left, right] = spouses[0].position('x') <= spouses[1].position('x')
+          ? spouses : [spouses[1], spouses[0]];
+        if (avgX - left.position('x') < MIN_SPOUSE_HALF_SPAN) left.position('x', avgX - MIN_SPOUSE_HALF_SPAN);
+        if (right.position('x') - avgX < MIN_SPOUSE_HALF_SPAN) right.position('x', avgX + MIN_SPOUSE_HALF_SPAN);
+      }
     });
   }
 
@@ -371,6 +467,17 @@ export class TreeGraphService {
     }
     this.hasCustomLayout.set(false);
   }
+
+  // ── Stylesheet ──────────────────────────────────────────────────────────────
+
+  /** Token-driven; node visuals come from the pre-rendered SVG images, not cytoscape drawing. */
+  private stylesheet(): StylesheetStyle[] {
+    return graphStylesheet(this.compact(), {
+      selected: cssVar('--qs-graph-selected', '#2f5d50'),
+      marriage: cssVar('--qs-graph-marriage', '#8a6d3b'),
+      descent: cssVar('--qs-graph-descent', '#8a8177')
+    });
+  }
 }
 
 // ── Module loading ────────────────────────────────────────────────────────────
@@ -410,135 +517,3 @@ function edgesOf(node: NodeSingular, selector?: string): EdgeSingular[] {
 }
 
 
-// ── Stylesheet ────────────────────────────────────────────────────────────────
-
-function stylesheet(isDark: boolean): StylesheetStyle[] {
-  const lineCol = isDark ? '#64748b' : '#94a3b8';
-
-  return [
-    {
-      selector: 'node',
-      style: {
-        label: 'data(label)',
-        'text-valign': 'center',
-        'text-halign': 'center',
-        'text-wrap': 'wrap',
-        'text-max-width': '112px',
-        color: isDark ? '#e2e8f0' : '#0f172a',
-        'font-size': 11,
-        'font-weight': 600,
-        'font-family': 'system-ui, -apple-system, sans-serif',
-        width: 130,
-        height: 62,
-        shape: 'roundrectangle',
-        'background-color': isDark ? '#1e293b' : '#fafafa',
-        'border-width': 1,
-        'border-color': isDark ? '#334155' : '#e2e8f0',
-        'transition-property': 'opacity background-color border-color border-width',
-        'transition-duration': 150
-      }
-    },
-    {
-      selector: 'node[sex = "Male"]',
-      style: {
-        'background-color': isDark ? '#0c1a35' : '#eff6ff',
-        'border-color': isDark ? '#3b82f6' : '#93c5fd',
-        'border-width': 1.5,
-        color: isDark ? '#93c5fd' : '#1e40af'
-      }
-    },
-    {
-      selector: 'node[sex = "Female"]',
-      style: {
-        'background-color': isDark ? '#200a2a' : '#fdf4ff',
-        'border-color': isDark ? '#a855f7' : '#d946ef',
-        'border-width': 1.5,
-        color: isDark ? '#d8b4fe' : '#7e22ce'
-      }
-    },
-    {
-      selector: 'node:selected',
-      style: {
-        'border-width': 3,
-        'border-color': '#7c3aed',
-        'background-color': isDark ? '#2e1065' : '#f5f3ff',
-        color: isDark ? '#c4b5fd' : '#5b21b6'
-      }
-    },
-    { selector: 'node:active', style: { 'overlay-opacity': 0.08 } },
-    {
-      selector: 'node[?avatarUrl]',
-      style: {
-        'background-image': 'data(avatarUrl)',
-        'background-fit': 'cover',
-        'background-clip': 'node',
-        width: 68,
-        height: 68,
-        shape: 'ellipse',
-        'text-valign': 'bottom',
-        'text-margin-y': 6,
-        'font-size': 10,
-        'text-background-color': isDark ? '#1e293b' : '#ffffff',
-        'text-background-opacity': 0.92,
-        'text-background-padding': '3px',
-        'text-background-shape': 'roundrectangle',
-        color: isDark ? '#e2e8f0' : '#0f172a'
-      }
-    },
-    {
-      selector: 'node[?avatarUrl][sex = "Male"]',
-      style: { 'border-color': isDark ? '#3b82f6' : '#93c5fd', 'border-width': 2.5 }
-    },
-    {
-      selector: 'node[?avatarUrl][sex = "Female"]',
-      style: { 'border-color': isDark ? '#a855f7' : '#d946ef', 'border-width': 2.5 }
-    },
-    { selector: 'node[?avatarUrl]:selected', style: { 'border-color': '#7c3aed', 'border-width': 3 } },
-    {
-      selector: 'node[?coupleNode]',
-      style: {
-        width: 10,
-        height: 10,
-        shape: 'ellipse',
-        'background-color': lineCol,
-        'border-width': 0,
-        label: '',
-        events: 'no'
-      }
-    },
-    {
-      selector: 'edge[ek = "marriage"]',
-      style: {
-        'line-color': lineCol,
-        width: 1.5,
-        'line-style': 'solid',
-        'curve-style': 'straight',
-        'source-arrow-shape': 'none',
-        'target-arrow-shape': 'none',
-        'transition-property': 'opacity',
-        'transition-duration': 150
-      }
-    },
-    {
-      selector: 'edge[ek = "descent"]',
-      style: {
-        'line-color': lineCol,
-        width: 1.5,
-        'line-style': 'solid',
-        'curve-style': 'taxi',
-        'taxi-direction': 'downward',
-        'taxi-turn': '-50px',
-        'source-arrow-shape': 'none',
-        'target-arrow-shape': 'none',
-        'transition-property': 'opacity',
-        'transition-duration': 150
-      }
-    },
-    {
-      selector: 'edge[ek = "descent"][relType = "Adoptive"]',
-      style: { 'line-style': 'dotted', 'line-color': isDark ? '#34d399' : '#10b981' }
-    },
-    { selector: '.dimmed', style: { opacity: 0.12 } },
-    { selector: 'node.lineage', style: { 'border-width': 2 } }
-  ] as StylesheetStyle[];
-}

@@ -1,0 +1,14 @@
+{
+  "$schema": "node_modules/ng-openapi-gen/ng-openapi-gen-schema.json",
+  "input": "../contracts/openapi.json",
+  "output": "src/app/core/api/generated",
+  "services": true,
+  "module": "ApiModule",
+  "promises": false,
+  "serviceSuffix": "Api",
+  "enumStyle": "alias",
+  "indexFile": true,
+  "removeStaleFiles": true,
+  "ignoreUnusedModels": false,
+  "silent": true
+}

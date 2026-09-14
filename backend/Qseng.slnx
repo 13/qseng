@@ -6,6 +6,7 @@
     <Project Path="src/Qseng.Infrastructure/Qseng.Infrastructure.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/Qseng.Api.Tests/Qseng.Api.Tests.csproj" />
     <Project Path="tests/Qseng.Application.Tests/Qseng.Application.Tests.csproj" />
     <Project Path="tests/Qseng.Domain.Tests/Qseng.Domain.Tests.csproj" />
   </Folder>

@@ -7,6 +7,7 @@ namespace Qseng.Api.Controllers;
 
 [ApiController]
 [Authorize]
+[Produces("application/json")]
 [Route("api/v1/admin")]
 public class AdminController : ControllerBase
 {
@@ -14,35 +15,43 @@ public class AdminController : ControllerBase
     public AdminController(ISender mediator) => _mediator = mediator;
 
     [HttpGet("users")]
+    [ProducesResponseType(typeof(List<UserSummaryDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> ListUsers(CancellationToken ct) =>
         (await _mediator.Send(new ListUsersQuery(), ct)).ToActionResult();
 
     [HttpPost("users")]
+    [ProducesResponseType(typeof(UserSummaryDto), StatusCodes.Status200OK)]
     public async Task<IActionResult> CreateUser([FromBody] AdminCreateUserRequest r, CancellationToken ct) =>
         (await _mediator.Send(new AdminCreateUserCommand(r.Username, r.Password, r.DisplayName, r.Email, r.IsAdmin), ct))
             .ToActionResult();
 
     [HttpPatch("users/{id:guid}/active")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> SetActive(Guid id, [FromBody] SetActiveRequest r, CancellationToken ct) =>
         (await _mediator.Send(new SetUserActiveCommand(id, r.Active), ct)).ToActionResult();
 
     [HttpPatch("users/{id:guid}/admin")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> SetAdmin(Guid id, [FromBody] SetAdminRequest r, CancellationToken ct) =>
         (await _mediator.Send(new SetUserAdminCommand(id, r.Admin), ct)).ToActionResult();
 
     [HttpPatch("users/{id:guid}/password")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> ChangePassword(Guid id, [FromBody] AdminChangePasswordRequest r, CancellationToken ct) =>
         (await _mediator.Send(new AdminChangeUserPasswordCommand(id, r.NewPassword), ct)).ToActionResult();
 
     [HttpDelete("users/{id:guid}")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> DeleteUser(Guid id, CancellationToken ct) =>
         (await _mediator.Send(new AdminDeleteUserCommand(id), ct)).ToActionResult();
 
     [HttpGet("settings")]
+    [ProducesResponseType(typeof(SiteSettingsDto), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetSettings(CancellationToken ct) =>
         (await _mediator.Send(new GetSiteSettingsQuery(), ct)).ToActionResult();
 
     [HttpPatch("settings/registration")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> SetRegistration([FromBody] SetRegistrationRequest r, CancellationToken ct) =>
         (await _mediator.Send(new SetRegistrationEnabledCommand(r.Enabled), ct)).ToActionResult();
 }

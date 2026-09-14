@@ -3,6 +3,9 @@ import { inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { catchError, switchMap, throwError } from 'rxjs';
 import { AuthService } from './auth/auth.service';
+import { I18nService } from './i18n/i18n.service';
+import { ToastService } from './ui/toast.service';
+import { problemMessage } from './api/problem-details';
 
 /** Refreshing on a 401 from these would loop. */
 const AUTH_ENDPOINTS = ['/auth/login', '/auth/register', '/auth/refresh', '/auth/logout'];
@@ -12,40 +15,38 @@ function isAuthEndpoint(req: HttpRequest<unknown>): boolean {
 }
 
 /**
- * Access tokens are short-lived, and the server rejects them outright once a
- * user is deactivated or their sessions are revoked. On a 401 we attempt exactly
- * one refresh (shared across concurrent requests) and replay; if that fails the
- * session is genuinely over.
+ * 401: one shared refresh then replay, else end the session (returnUrl kept).
+ * 403: toast. 5xx / network: toast. 400/404/409 are rethrown for the caller
+ * (forms map validation errors; resources show not-found views).
  */
 export const errorInterceptor: HttpInterceptorFn = (req, next) => {
   const router = inject(Router);
   const auth = inject(AuthService);
+  const toast = inject(ToastService);
+  const i18n = inject(I18nService);
 
   const endSession = () => {
     auth.clear();
-    void router.navigate(['/login']);
+    const current = router.url;
+    const returnUrl = current.startsWith('/login') ? undefined : current;
+    void router.navigate(['/login'], { queryParams: returnUrl ? { returnUrl } : {} });
   };
 
   return next(req).pipe(
     catchError((err: HttpErrorResponse) => {
-      if (err.status !== 401) return throwError(() => err);
-
-      if (isAuthEndpoint(req)) return throwError(() => err);
-
-      if (!auth.isAuthenticated()) {
-        endSession();
-        return throwError(() => err);
+      if (err.status === 401) {
+        if (isAuthEndpoint(req) || !auth.isAuthenticated()) {
+          if (!isAuthEndpoint(req)) endSession();
+          return throwError(() => err);
+        }
+        return auth.refreshSession().pipe(
+          switchMap(session => next(req.clone({ setHeaders: { Authorization: `Bearer ${session.accessToken}` } }))),
+          catchError(refreshErr => { endSession(); return throwError(() => refreshErr); })
+        );
       }
-
-      return auth.refreshSession().pipe(
-        switchMap(session =>
-          next(req.clone({ setHeaders: { Authorization: `Bearer ${session.accessToken}` } }))
-        ),
-        catchError(refreshErr => {
-          endSession();
-          return throwError(() => refreshErr);
-        })
-      );
+      if (err.status === 403) toast.error(problemMessage(err, i18n.t('err.forbidden')));
+      else if (err.status === 0 || err.status >= 500) toast.error(problemMessage(err, i18n.t('err.server')));
+      return throwError(() => err);
     })
   );
 };

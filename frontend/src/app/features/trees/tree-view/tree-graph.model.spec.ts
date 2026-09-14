@@ -1,9 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { Person, Relationship } from '../../../core/api/api-client.service';
+import { PersonDto as Person, RelationshipDto as Relationship } from '../../../core/api/generated';
+import { NodeTheme } from './node-svg';
 import {
   LAYOUT_VERSION, SavedLayout,
   buildElements, indexLineage, isLayoutReusable, lineageOf, personSearchText, toApiRelationship
 } from './tree-graph.model';
+
+const theme: NodeTheme = { bg: '#fff', border: '#ccc', text: '#111', muted: '#666', male: '#5b7a99', female: '#b5636f', unknown: '#999', nameFont: 'Fraunces Variable', textFont: 'Inter Variable' };
 
 function person(id: string, overrides: Partial<Person> = {}): Person {
   return {
@@ -156,7 +159,7 @@ describe('buildElements', () => {
     const persons = [person('dad'), person('mum'), person('kid')];
     const rels = [spouses('dad', 'mum', 'm1'), parentOf('dad', 'kid'), parentOf('mum', 'kid')];
 
-    const { nodes, edges } = buildElements(persons, rels);
+    const { nodes, edges } = buildElements(persons, rels, theme);
 
     const couple = nodes.filter(n => n.data['coupleNode']);
     expect(couple).toHaveLength(1);
@@ -171,7 +174,7 @@ describe('buildElements', () => {
   });
 
   it('keeps single-parent descent as a direct edge', () => {
-    const { edges } = buildElements([person('mum'), person('kid')], [parentOf('mum', 'kid')]);
+    const { edges } = buildElements([person('mum'), person('kid')], [parentOf('mum', 'kid')], theme);
 
     const descent = edges.filter(e => e.data['ek'] === 'descent');
     expect(descent).toHaveLength(1);
@@ -180,7 +183,7 @@ describe('buildElements', () => {
 
   it('does not merge a child that belongs to only one of the spouses', () => {
     const rels = [spouses('dad', 'mum', 'm1'), parentOf('dad', 'stepkid')];
-    const { edges } = buildElements([person('dad'), person('mum'), person('stepkid')], rels);
+    const { edges } = buildElements([person('dad'), person('mum'), person('stepkid')], rels, theme);
 
     const descent = edges.filter(e => e.data['ek'] === 'descent');
     expect(descent).toHaveLength(1);
@@ -191,29 +194,22 @@ describe('buildElements', () => {
     const rels: Relationship[] = [
       { id: 'r', treeId: 't', fromPersonId: 'guardian', toPersonId: 'kid', type: 'Adoptive' }
     ];
-    const { edges } = buildElements([person('guardian'), person('kid')], rels);
+    const { edges } = buildElements([person('guardian'), person('kid')], rels, theme);
     expect(edges[0].data['relType']).toBe('Adoptive');
   });
 
-  it('labels a person with their lifespan', () => {
+  it('renders node images for full and compact variants', () => {
     const [node] = buildElements(
       [person('p', { firstName: 'Ada', lastName: 'Lovelace', birth: { year: 1815 }, death: { year: 1852 } })],
-      []
+      [],
+      theme
     ).nodes;
-    expect(node.data['label']).toBe('Ada Lovelace\n1815 – 1852');
-  });
-
-  it('labels a living person with a birth year only', () => {
-    const [node] = buildElements(
-      [person('p', { firstName: 'Ada', lastName: 'Lovelace', birth: { year: 1815 } })],
-      []
-    ).nodes;
-    expect(node.data['label']).toBe('Ada Lovelace\n* 1815');
-  });
-
-  it('omits dates entirely when the birth year is unknown', () => {
-    const [node] = buildElements([person('p', { firstName: 'Ada', lastName: 'Lovelace' })], []).nodes;
-    expect(node.data['label']).toBe('Ada Lovelace');
+    const image = node.data['image'] as string;
+    const imageCompact = node.data['imageCompact'] as string;
+    expect(image.startsWith('data:image/svg+xml')).toBe(true);
+    expect(decodeURIComponent(image)).toContain('Ada Lovelace');
+    expect(imageCompact.startsWith('data:image/svg+xml')).toBe(true);
+    expect(decodeURIComponent(imageCompact)).toContain('Lovelace');
   });
 });
 
@@ -225,5 +221,11 @@ describe('personSearchText', () => {
     expect(text).toContain('marie');
     expect(text).toContain('smith');
     expect(text).toContain('bregenz');
+  });
+
+  it('also matches death place and notes', () => {
+    const text = personSearchText(person('p', { deathPlace: 'Vienna', notes: 'Emigrated in 1920' }));
+    expect(text).toContain('vienna');
+    expect(text).toContain('emigrated');
   });
 });
