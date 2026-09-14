@@ -45,6 +45,7 @@ export type TranslationKey =
   | 'admin.table.user'
   | 'admin.title'
   | 'auth.hidePassword'
+  | 'auth.language'
   | 'auth.showPassword'
   | 'back'
   | 'cancel'
@@ -348,6 +349,7 @@ export const TRANSLATION_KEYS: readonly TranslationKey[] = [
   'admin.table.user',
   'admin.title',
   'auth.hidePassword',
+  'auth.language',
   'auth.showPassword',
   'back',
   'cancel',

@@ -27,7 +27,7 @@ export function safeReturnUrl(raw: string | null): string {
       <form [formGroup]="form" (ngSubmit)="submit()" class="qs-auth-form" novalidate>
         <mat-form-field>
           <mat-label>{{ 'login.username' | translate }}</mat-label>
-          <input matInput formControlName="username" autocomplete="username" autofocus>
+          <input matInput formControlName="username" autocomplete="username">
           <mat-error>{{ form.controls.username.errors | formErrors }}</mat-error>
         </mat-form-field>
 
@@ -52,7 +52,7 @@ export function safeReturnUrl(raw: string | null): string {
       </form>
 
       <mat-chip-set class="qs-auth-demo" [attr.aria-label]="'login.demo' | translate">
-        <mat-chip (click)="useDemo()" (keydown.enter)="useDemo()" role="button" tabindex="0">
+        <mat-chip (click)="useDemo()" (keydown.enter)="useDemo()" (keydown.space)="useDemo(); $event.preventDefault()" role="button" tabindex="0">
           <mat-icon matChipAvatar>science</mat-icon>{{ 'login.demoFill' | translate }}
         </mat-chip>
       </mat-chip-set>

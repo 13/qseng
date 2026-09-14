@@ -44,6 +44,7 @@
   "admin.table.user": "User",
   "admin.title": "User Management",
   "auth.hidePassword": "Hide password",
+  "auth.language": "Language",
   "auth.showPassword": "Show password",
   "back": "Back",
   "cancel": "Cancel",

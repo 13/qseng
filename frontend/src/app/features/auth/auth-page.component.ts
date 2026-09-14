@@ -3,11 +3,12 @@ import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { I18nService, Lang } from '../../core/i18n/i18n.service';
+import { TranslatePipe } from '../../core/i18n/translate.pipe';
 
 /** Centered card with brand header and language toggle; login/register project their form into it. */
 @Component({
   selector: 'qs-auth-page',
-  imports: [MatCardModule, MatIconModule, MatButtonToggleModule],
+  imports: [MatCardModule, MatIconModule, MatButtonToggleModule, TranslatePipe],
   template: `
     <div class="qs-auth">
       <mat-card appearance="outlined" class="qs-auth__card">
@@ -22,7 +23,7 @@ import { I18nService, Lang } from '../../core/i18n/i18n.service';
 
         <mat-button-toggle-group class="qs-auth__lang" hideSingleSelectionIndicator
                                  [value]="i18n.lang()" (change)="setLang($event.value)"
-                                 aria-label="Language">
+                                 [attr.aria-label]="'auth.language' | translate">
           <mat-button-toggle value="de">DE</mat-button-toggle>
           <mat-button-toggle value="en">EN</mat-button-toggle>
         </mat-button-toggle-group>
