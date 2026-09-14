@@ -98,7 +98,7 @@ public class TimelineOwnershipTests
         var (db, ev, ownerId) = await SetupAsync();
         var handler = new DeleteTimelineEventHandler(db, FakeUser(ownerId));
 
-        var result = await handler.Handle(new DeleteTimelineEventCommand(ev.Id), CancellationToken.None);
+        var result = await handler.Handle(new DeleteTimelineEventCommand(ev.PersonId, ev.Id), CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
     }
@@ -109,7 +109,7 @@ public class TimelineOwnershipTests
         var (db, ev, _) = await SetupAsync();
         var handler = new DeleteTimelineEventHandler(db, FakeUser(Guid.NewGuid()));
 
-        var result = await handler.Handle(new DeleteTimelineEventCommand(ev.Id), CancellationToken.None);
+        var result = await handler.Handle(new DeleteTimelineEventCommand(ev.PersonId, ev.Id), CancellationToken.None);
 
         result.IsSuccess.Should().BeFalse();
         result.StatusCode.Should().Be(403);

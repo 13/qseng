@@ -5,7 +5,7 @@ using Qseng.Application.Common;
 
 namespace Qseng.Application.Timeline.DeleteTimelineEvent;
 
-public record DeleteTimelineEventCommand(Guid Id) : IRequest<Result<bool>>;
+public record DeleteTimelineEventCommand(Guid PersonId, Guid Id) : IRequest<Result<bool>>;
 
 public class DeleteTimelineEventHandler : IRequestHandler<DeleteTimelineEventCommand, Result<bool>>
 {
@@ -18,7 +18,7 @@ public class DeleteTimelineEventHandler : IRequestHandler<DeleteTimelineEventCom
     public async Task<Result<bool>> Handle(DeleteTimelineEventCommand cmd, CancellationToken ct)
     {
         var ev = await _db.TimelineEvents.FirstOrDefaultAsync(e => e.Id == cmd.Id, ct);
-        if (ev is null) return Result<bool>.NotFound("Event not found.");
+        if (ev is null || ev.PersonId != cmd.PersonId) return Result<bool>.NotFound("Event not found.");
 
         var person = await _db.Persons.FirstOrDefaultAsync(p => p.Id == ev.PersonId, ct);
         var tree = person is null ? null : await _db.Trees.FindAsync([person.TreeId], ct);
