@@ -105,6 +105,7 @@ export class App {
   private readonly destroyRef = inject(DestroyRef);
 
   private readonly navigating = signal(false);
+  private lastPath: string | null = null;
   readonly layout = signal<'auth' | 'app'>('app');
   readonly busy = computed(() => this.navigating() || this.pending.busy());
 
@@ -117,7 +118,13 @@ export class App {
       if (e instanceof NavigationEnd || e instanceof NavigationCancel || e instanceof NavigationError) {
         this.navigating.set(false);
         this.layout.set(this.deepestData()['layout'] === 'auth' ? 'auth' : 'app');
-        queueMicrotask(() => (document.querySelector('main h1') as HTMLElement | null)?.focus?.());
+        if (e instanceof NavigationEnd) {
+          const path = e.urlAfterRedirects.split(/[?#]/)[0];
+          if (path !== this.lastPath) {
+            this.lastPath = path;
+            queueMicrotask(() => (document.querySelector('main h1') as HTMLElement | null)?.focus?.());
+          }
+        }
       }
     });
   }
