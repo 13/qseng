@@ -1,5 +1,5 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { DatePipe } from '@angular/common';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
@@ -95,6 +95,8 @@ export class TreeListComponent implements OnInit {
   private readonly toast = inject(ToastService);
   private readonly i18n = inject(I18nService);
   private readonly crumbs = inject(BreadcrumbService);
+  private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
 
   readonly trees = signal<TreeDto[]>([]);
   readonly loading = signal(true);
@@ -103,6 +105,13 @@ export class TreeListComponent implements OnInit {
   ngOnInit() {
     this.crumbs.set([{ label: this.i18n.t('trees.title') }]);
     this.load();
+    // One-shot: the command palette's "New tree" action navigates here with ?new=1 to open
+    // the create dialog, then this clears the flag so a refresh doesn't reopen it.
+    firstValueFrom(this.route.queryParamMap).then(params => {
+      if (params.get('new') !== '1') return;
+      void this.openCreate();
+      void this.router.navigate([], { queryParams: {}, replaceUrl: true });
+    });
   }
 
   load() {

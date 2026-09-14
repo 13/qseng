@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { App } from './app';
 import { AuthService } from './core/auth/auth.service';
 import { I18nService } from './core/i18n/i18n.service';
+import { PaletteService } from './core/ui/palette.service';
 import { UserApi } from './core/api/generated';
 
 @Component({ template: '<h1 tabindex="-1">page</h1>' }) class Dummy {}
@@ -21,7 +22,10 @@ function setup(authenticated: boolean) {
       ]),
       { provide: AuthService, useValue: { isAuthenticated: () => authenticated, isAdmin: () => false, displayName: () => 'Demo Admin', username: () => 'demo', logout: vi.fn() } },
       { provide: I18nService, useValue: { t: (k: string) => k, dynamic: (k: string) => k, lang: () => 'en', setLang: vi.fn() } },
-      { provide: UserApi, useValue: userApi }
+      { provide: UserApi, useValue: userApi },
+      // Real PaletteService eagerly constructs PersonsApi/TreesApi (HttpClient); this spec
+      // never opens the palette, so a stub avoids pulling HTTP providers in just for that.
+      { provide: PaletteService, useValue: { open: vi.fn() } }
     ]
   });
   return { fixture: TestBed.createComponent(App), userApi };

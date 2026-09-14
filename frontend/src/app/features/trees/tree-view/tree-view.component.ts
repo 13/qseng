@@ -233,7 +233,9 @@ export class TreeViewComponent {
     });
 
     effect(() => {
-      this.store.load(this.treeId());
+      const id = this.treeId();
+      this.store.load(id);
+      try { sessionStorage.setItem('qs.lastTree', id); } catch { /* private browsing etc.: the palette just won't preselect a tree */ }
       untracked(() => { const q = this.q(); if (q) this.store.setFilter(q); });
     });
   }

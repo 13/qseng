@@ -11,11 +11,12 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { AuthService } from './core/auth/auth.service';
 import { ThemeService } from './core/theme/theme.service';
 import { I18nService, Lang } from './core/i18n/i18n.service';
+import { LangPreferenceService } from './core/i18n/lang-preference.service';
 import { TranslatePipe } from './core/i18n/translate.pipe';
 import { PendingRequestsService } from './core/ui/pending-requests.service';
 import { BreadcrumbService } from './core/ui/breadcrumb.service';
-import { ToastService } from './core/ui/toast.service';
-import { UserApi } from './core/api/generated';
+import { PaletteService } from './core/ui/palette.service';
+import { ShortcutService } from './core/ui/shortcut.service';
 
 @Component({
   selector: 'app-root',
@@ -43,6 +44,10 @@ import { UserApi } from './core/api/generated';
         </nav>
 
         <span class="qs-spacer"></span>
+
+        <button matIconButton (click)="palette.open()" [matTooltip]="'nav.search' | translate" [attr.aria-label]="'nav.search' | translate">
+          <mat-icon>search</mat-icon>
+        </button>
 
         <button matIconButton (click)="theme.cycle()" [matTooltip]="themeLabel()" [attr.aria-label]="themeLabel()">
           <mat-icon>{{ themeIcon() }}</mat-icon>
@@ -106,8 +111,9 @@ export class App {
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
   private readonly injector = inject(Injector);
-  private readonly userApi = inject(UserApi);
-  private readonly toast = inject(ToastService);
+  private readonly langPref = inject(LangPreferenceService);
+  private readonly shortcuts = inject(ShortcutService);
+  readonly palette = inject(PaletteService);
 
   private readonly navigating = signal(false);
   private lastPath: string | null = null;
@@ -119,6 +125,8 @@ export class App {
   readonly themeLabel = computed(() => this.i18n.t(({ auto: 'nav.theme.auto', light: 'nav.theme.light', dark: 'nav.theme.dark' } as const)[this.theme.mode()]));
 
   constructor() {
+    this.shortcuts.register('mod+k', () => void this.palette.open());
+
     this.router.events.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(e => {
       if (e instanceof NavigationStart) this.navigating.set(true);
       if (e instanceof NavigationEnd || e instanceof NavigationCancel || e instanceof NavigationError) {
@@ -151,12 +159,7 @@ export class App {
   }
 
   setLang(lang: Lang) {
-    this.i18n.setLang(lang);
-    if (this.auth.isAuthenticated()) {
-      this.userApi.userChangeLanguage({ body: { language: lang } }).subscribe({
-        error: e => this.toast.errorFrom(e, this.i18n.t('err.save'))
-      });
-    }
+    this.langPref.set(lang);
   }
 
   logout() {

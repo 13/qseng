@@ -41,6 +41,10 @@ a:hover { text-decoration: underline; }
 .qs-page-header__actions { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
 .qs-form-error { margin: 0 0 8px; color: var(--mat-sys-error); font-size: .9rem; }
 .qs-dialog-form { display: flex; flex-direction: column; gap: 4px; min-width: min(440px, 100%); }
+
+// The command palette draws its own padding/layout; the dialog surface's default padding
+// would double up with it.
+.qs-palette-panel .mat-mdc-dialog-surface { padding: 0; }
 .qs-empty { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 8px; padding: 48px 16px; }
 .qs-empty__icon { font-size: 56px; width: 56px; height: 56px; color: var(--mat-sys-primary); }
 .qs-empty__actions { display: flex; gap: 8px; margin-top: 8px; }

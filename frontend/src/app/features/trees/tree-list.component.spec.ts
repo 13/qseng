@@ -1,5 +1,5 @@
 import { TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
+import { ActivatedRoute, Router, convertToParamMap, provideRouter } from '@angular/router';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { MatDialog } from '@angular/material/dialog';
 import { of } from 'rxjs';
@@ -15,7 +15,7 @@ const trees = [
   { id: 't2', name: 'Smith', description: null, createdAt: '2026-09-02T00:00:00Z', personCount: 0 }
 ];
 
-function setup(list = trees, dialogResult: unknown = undefined, confirmResult = true) {
+function setup(list = trees, dialogResult: unknown = undefined, confirmResult = true, queryParams: Record<string, string> = {}) {
   const api = {
     treesGetAll: vi.fn(() => of(list)),
     treesCreate: vi.fn(() => of({ id: 't3', name: 'New', personCount: 0, createdAt: '2026-09-03T00:00:00Z' })),
@@ -25,6 +25,7 @@ function setup(list = trees, dialogResult: unknown = undefined, confirmResult = 
   const dialog = { open: vi.fn(() => ({ afterClosed: () => of(dialogResult) })) };
   const confirm = { confirm: vi.fn(async () => confirmResult) };
   const toast = { success: vi.fn(), error: vi.fn(), info: vi.fn(), errorFrom: vi.fn() };
+  const route = { queryParamMap: of(convertToParamMap(queryParams)) };
   // Reset first: the "deletes only after confirmation" test calls setup() twice
   // in one `it`, and TestBed forbids reconfiguring after it's been instantiated.
   TestBed.resetTestingModule();
@@ -36,12 +37,15 @@ function setup(list = trees, dialogResult: unknown = undefined, confirmResult = 
       { provide: MatDialog, useValue: dialog },
       { provide: ConfirmDialogService, useValue: confirm },
       { provide: ToastService, useValue: toast },
-      { provide: I18nService, useValue: { t: (k: string) => k, dynamic: (k: string) => k, lang: () => 'en' } }
+      { provide: I18nService, useValue: { t: (k: string) => k, dynamic: (k: string) => k, lang: () => 'en' } },
+      { provide: ActivatedRoute, useValue: route }
     ]
   });
+  const router = TestBed.inject(Router);
+  vi.spyOn(router, 'navigate').mockResolvedValue(true);
   const fixture = TestBed.createComponent(TreeListComponent);
   fixture.detectChanges();
-  return { fixture, api, dialog, confirm, toast, cmp: fixture.componentInstance };
+  return { fixture, api, dialog, confirm, toast, router, cmp: fixture.componentInstance };
 }
 
 describe('TreeListComponent', () => {
@@ -65,6 +69,19 @@ describe('TreeListComponent', () => {
     expect(api.treesCreate).not.toHaveBeenCalled();
     expect(api.treesGetAll).toHaveBeenCalledTimes(2);
     expect(toast.success).toHaveBeenCalledWith('trees.created.toast');
+  });
+
+  it('opens the create dialog once for ?new=1, then clears the query param', async () => {
+    const { dialog, router } = setup(trees, { id: 't3', name: 'New', description: null }, true, { new: '1' });
+    await Promise.resolve(); await Promise.resolve();
+    expect(dialog.open).toHaveBeenCalledTimes(1);
+    expect(router.navigate).toHaveBeenCalledWith([], { queryParams: {}, replaceUrl: true });
+  });
+
+  it('does not open the create dialog without ?new=1', async () => {
+    const { dialog } = setup();
+    await Promise.resolve(); await Promise.resolve();
+    expect(dialog.open).not.toHaveBeenCalled();
   });
 
   it('deletes only after confirmation', async () => {

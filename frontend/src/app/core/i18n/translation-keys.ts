@@ -137,6 +137,7 @@ export type TranslationKey =
   | 'media.uploading'
   | 'nav.account'
   | 'nav.logout'
+  | 'nav.search'
   | 'nav.settings'
   | 'nav.skip'
   | 'nav.theme.auto'
@@ -144,6 +145,26 @@ export type TranslationKey =
   | 'nav.theme.light'
   | 'nav.users'
   | 'optional'
+  | 'palette.action.addPerson'
+  | 'palette.action.addRelation'
+  | 'palette.action.import'
+  | 'palette.action.langDe'
+  | 'palette.action.langEn'
+  | 'palette.action.logout'
+  | 'palette.action.newTree'
+  | 'palette.action.settings'
+  | 'palette.action.shortcuts'
+  | 'palette.action.themeAuto'
+  | 'palette.action.themeDark'
+  | 'palette.action.themeLight'
+  | 'palette.action.trees'
+  | 'palette.action.users'
+  | 'palette.group.actions'
+  | 'palette.group.people'
+  | 'palette.group.trees'
+  | 'palette.noResults'
+  | 'palette.placeholder'
+  | 'palette.results'
   | 'pd.birth'
   | 'pd.causeOfDeath'
   | 'pd.death'
@@ -476,6 +497,7 @@ export const TRANSLATION_KEYS: readonly TranslationKey[] = [
   'media.uploading',
   'nav.account',
   'nav.logout',
+  'nav.search',
   'nav.settings',
   'nav.skip',
   'nav.theme.auto',
@@ -483,6 +505,26 @@ export const TRANSLATION_KEYS: readonly TranslationKey[] = [
   'nav.theme.light',
   'nav.users',
   'optional',
+  'palette.action.addPerson',
+  'palette.action.addRelation',
+  'palette.action.import',
+  'palette.action.langDe',
+  'palette.action.langEn',
+  'palette.action.logout',
+  'palette.action.newTree',
+  'palette.action.settings',
+  'palette.action.shortcuts',
+  'palette.action.themeAuto',
+  'palette.action.themeDark',
+  'palette.action.themeLight',
+  'palette.action.trees',
+  'palette.action.users',
+  'palette.group.actions',
+  'palette.group.people',
+  'palette.group.trees',
+  'palette.noResults',
+  'palette.placeholder',
+  'palette.results',
   'pd.birth',
   'pd.causeOfDeath',
   'pd.death',
