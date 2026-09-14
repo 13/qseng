@@ -333,3 +333,32 @@ Playwright, screenshots saved to `docs/superpowers/specs/assets/p1/`.
 - All checklist items in §4 ticked.
 - Lighthouse accessibility ≥ 95 on trees, tree view, person detail.
 - Demo tree readable at fit zoom on 1400px and 400px widths.
+
+### P1e results (2026-09-14, branch `feat/material-rewrite`)
+
+- Bundle: raw initial 781.6 kB / 181.6 kB estimated transfer (gzip). The "≤ 600 kB gzipped"
+  target above refers to transfer size and is met with margin; `angular.json` budgets are raw
+  sizes and are set to 800 kB (warning) / 1100 kB (error) to catch regressions. `MatDialog`
+  left the initial bundle (the unsaved-changes guard loads the confirm dialog lazily);
+  Cytoscape remains a lazy chunk. Remaining eager weight is Angular + Material core, the shell
+  and the route-level `PersonStore`/`TreeStore` providers (~10 kB).
+- Gates: `npm run gates --prefix frontend` (`frontend/scripts/check-gates.mjs`) enforces the
+  grep gates (emoji, `ngModel`, `window.confirm/alert/prompt`, legacy `ApiClient`, `autofocus`,
+  legacy stylesheet) and the i18n invariants (sorted, identical key sets, no empty or emoji
+  values, no unused keys). Bare `confirm(`/`alert(` calls are caught by eslint `no-alert`.
+  Dynamic i18n prefixes the unused-key check whitelists: `sex.`, `event.`, `rel.`, `admin.confirm.`.
+- Accessibility: Lighthouse accessibility 100 on `/login` and `/register`; authenticated
+  screens cannot be audited by Lighthouse without a login flow, so every screen was audited
+  with axe-core (WCAG 2.1 AA rulesets) at 1400 px and 400 px, light and dark: 0 violations.
+  Evidence and screenshots: `assets/p1/README.md`.
+- Legacy removed: `core/api/api-client.service.ts`, `styles/_legacy.scss`, `ngModel` in the
+  confirm dialog, 75 orphaned dictionary keys (400 → 325).
+
+### Accepted deviations carried from P1d
+
+- Graph compact mode (zoom < 0.45) keeps the full-card couple spacing: node positions are
+  shared by both variants, so the clamp is sized for the 180 px card.
+- Cytoscape `wheelSensitivity: 0.25` is kept (the default is too fast on trackpads); the
+  console warning it triggers is informational.
+- The search route `/trees/:id/search` redirects into the tree view with `?q=`; the filter
+  re-seeds only when the tree changes (the retired search page has no remaining entry point).
