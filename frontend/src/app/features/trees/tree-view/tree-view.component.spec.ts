@@ -19,10 +19,13 @@ import { I18nService } from '../../../core/i18n/i18n.service';
 const people = [{ id: 'a', treeId: 't1', firstName: 'Konrad', lastName: 'Smith', sex: 'Male' as const }];
 
 function setup(handset = false, withPeople = true) {
+  const selectedId = signal<string | null>(null);
   const store = {
     load: vi.fn(), reload: vi.fn(), tree: signal({ id: 't1', name: 'Familie' }), persons: signal(withPeople ? people : []), relationships: signal([]),
-    loading: signal(false), error: signal(''), selectedId: signal<string | null>(null), filter: signal(''), sort: signal('birth'),
-    filteredPersons: signal(withPeople ? people : []), selectedPerson: signal(null), select: vi.fn(), setFilter: vi.fn(), setSort: vi.fn(),
+    loading: signal(false), error: signal(''), selectedId, filter: signal(''), sort: signal('birth'),
+    filteredPersons: signal(withPeople ? people : []), selectedPerson: signal(null),
+    // Wired to the signal (not a bare spy) so tests can tell a real revert from a no-op call.
+    select: vi.fn((id: string | null) => selectedId.set(id)), setFilter: vi.fn(), setSort: vi.fn(),
     personById: vi.fn(() => people[0]), relativesOf: vi.fn(() => ({ parents: [], spouses: [], children: [] }))
   };
   const graph = { build: vi.fn(async () => undefined), select: vi.fn(), fit: vi.fn(), zoomIn: vi.fn(), zoomOut: vi.fn(), toggleLayout: vi.fn(), resetLayout: vi.fn(), exportPng: vi.fn(),
@@ -71,5 +74,32 @@ describe('TreeViewComponent', () => {
     await cmp.deletePerson(people[0]);
     expect(persons.personsDelete).toHaveBeenCalledWith({ id: 'a' });
     expect(store.reload).toHaveBeenCalled();
+  });
+
+  it('reloads the store when the route treeId changes', () => {
+    const { fixture, store } = setup();
+    expect(store.load).toHaveBeenCalledWith('t1');
+    fixture.componentRef.setInput('treeId', 't2');
+    fixture.detectChanges();
+    expect(store.load).toHaveBeenCalledWith('t2');
+    expect(store.load).toHaveBeenCalledTimes(2);
+  });
+
+  it('a store-driven selection is not reverted by the graph→store sync effect', () => {
+    const { store, fixture } = setup();
+    // Select via the store directly, as the sidebar list / "focus lineage" do —
+    // the graph mock's selectedId is left at null throughout. The buggy effect
+    // read store.selectedId() as part of its own condition, so it re-ran on
+    // this write and wrote the graph's stale null straight back.
+    store.select('a');
+    fixture.detectChanges();
+    expect(store.selectedId()).toBe('a');
+  });
+
+  it('"focus lineage" in the context menu selects in both store and graph', () => {
+    const { cmp, store, graph } = setup();
+    cmp.onSelected('a');
+    expect(store.select).toHaveBeenCalledWith('a');
+    expect(graph.select).toHaveBeenCalledWith('a');
   });
 });

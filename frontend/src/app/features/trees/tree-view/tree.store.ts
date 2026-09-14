@@ -51,6 +51,7 @@ export class TreeStore {
   readonly selectedPerson = computed(() => { const id = this._selectedId(); return id ? this.personById(id) ?? null : null; });
 
   load(treeId: string) {
+    if (treeId !== this.treeId) { this._filter.set(''); this._selectedId.set(null); }
     this.treeId = treeId;
     this._loading.set(true);
     this._error.set('');
@@ -63,6 +64,9 @@ export class TreeStore {
         this._tree.set(r.trees.find(t => t.id === treeId) ?? null);
         this._persons.set([...r.persons].sort(byBirth));
         this._relationships.set(r.rels);
+        // A reload (e.g. after deleting the selected person) can leave the
+        // selection pointing at someone no longer in the tree.
+        if (this._selectedId() && !r.persons.some(p => p.id === this._selectedId())) this._selectedId.set(null);
         this._loading.set(false);
       },
       error: e => { this._error.set(problemMessage(e, this.i18n.t('err.load'))); this._loading.set(false); }

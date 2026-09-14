@@ -104,7 +104,7 @@ export function isLayoutReusable(saved: SavedLayout | null, currentIds: string[]
 }
 
 export function personSearchText(p: Person): string {
-  return `${p.firstName ?? ''} ${p.lastName ?? ''} ${p.maidenName ?? ''} ${p.birthPlace ?? ''}`.toLowerCase();
+  return `${p.firstName ?? ''} ${p.lastName ?? ''} ${p.maidenName ?? ''} ${p.birthPlace ?? ''} ${p.deathPlace ?? ''} ${p.notes ?? ''}`.toLowerCase();
 }
 
 /**

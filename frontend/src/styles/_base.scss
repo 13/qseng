@@ -81,3 +81,13 @@ h1[tabindex="-1"]:focus, h1[tabindex="-1"]:focus-visible { outline: none; }
     min-height: 0;
   }
 }
+
+// The selection sheet's content (an identity card, not a scrolling list)
+// should hug its own height instead of stretching to the people sheet's 70dvh.
+.qs-sheet--auto {
+  height: auto;
+
+  .mat-bottom-sheet-container {
+    flex: initial;
+  }
+}

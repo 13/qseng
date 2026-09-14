@@ -67,4 +67,15 @@ describe('TreeStore', () => {
     expect(store.error()).toBe('err.load');
     expect(store.loading()).toBe(false);
   });
+
+  it('clears a stale selection when a reload no longer contains that person', () => {
+    const { store, personsApi } = setup();
+    store.load('t1');
+    store.select('kid');
+    expect(store.selectedId()).toBe('kid');
+
+    personsApi.personsGetByTree.mockReturnValue(of(persons.filter(p => p.id !== 'kid')));
+    store.load('t1');
+    expect(store.selectedId()).toBeNull();
+  });
 });

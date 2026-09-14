@@ -1,5 +1,5 @@
 import { DestroyRef, Injectable, computed, effect, inject, signal } from '@angular/core';
-import type { Core, EdgeSingular, NodeSingular, StylesheetStyle } from 'cytoscape';
+import type { Core, EdgeSingular, EventObjectNode, NodeSingular, StylesheetStyle } from 'cytoscape';
 import { PersonDto as Person, RelationshipDto as Relationship } from '../../../core/api/generated';
 import { ThemeService } from '../../../core/theme/theme.service';
 import { NodeTheme, NODE_W, cssVar, readNodeTheme, renderCompactNodeSvg, renderNodeSvg } from './node-svg';
@@ -46,6 +46,14 @@ export class TreeGraphService {
 
   private treeId = '';
   private lineage: LineageIndex = indexLineage([]);
+
+  /** Shared by the 'cxttap' (right-click / two-finger tap) and 'taphold' (one-finger long press) node handlers. */
+  private readonly onNodeContext = (evt: EventObjectNode) => {
+    if (evt.target.data('coupleNode')) return;
+    const { x, y } = evt.renderedPosition ?? { x: 0, y: 0 };
+    const rect = this.container?.getBoundingClientRect();
+    this.callbacks?.onContext(evt.target.id(), (rect?.left ?? 0) + x, (rect?.top ?? 0) + y);
+  };
 
   readonly layoutMode = signal<GraphLayout>('tree');
   readonly loading = signal(true);
@@ -134,12 +142,10 @@ export class TreeGraphService {
       this.callbacks?.onOpen(evt.target.id());
     });
 
-    this.cy.on('cxttap', 'node', evt => {
-      if (evt.target.data('coupleNode')) return;
-      const { x, y } = evt.renderedPosition ?? { x: 0, y: 0 };
-      const rect = container.getBoundingClientRect();
-      this.callbacks?.onContext(evt.target.id(), rect.left + x, rect.top + y);
-    });
+    // cytoscape's one-finger long press on touch emits 'taphold', not
+    // 'cxttap' (that needs a two-finger tap), so both must open the menu.
+    this.cy.on('cxttap', 'node', this.onNodeContext);
+    this.cy.on('taphold', 'node', this.onNodeContext);
 
     this.cy.on('zoom', () => this.compact.set((this.cy?.zoom() ?? 1) < 0.45));
 
@@ -153,6 +159,12 @@ export class TreeGraphService {
     this.applyEmphasis();
     this.compact.set(this.cy.zoom() < 0.45);
     this.loading.set(false);
+
+    // A reload (e.g. after deleting the selected person) can leave `selectedId`
+    // pointing at a person no longer in the tree; without this, applyEmphasis
+    // treats it as a real selection with an empty lineage and dims everything.
+    const sel = this.selectedId();
+    if (sel && !this.personsById.has(sel)) this.select(null);
   }
 
   destroy() {
@@ -248,12 +260,14 @@ export class TreeGraphService {
 
   select(personId: string | null) {
     this.selectedId.set(personId);
+    // Clear the cytoscape selection border even when unselecting (Escape,
+    // closing the panel) — the early returns below only skip re-selecting.
+    this.cy?.$(':selected').unselect();
     if (!personId || !this.cy) return;
 
     const node = this.cy.getElementById(personId);
     if (!node.nonempty()) return;
 
-    this.cy.$(':selected').unselect();
     node.select();
     this.cy.animate({ center: { eles: node }, duration: 250 });
   }
@@ -344,7 +358,7 @@ export class TreeGraphService {
       this.alignCoupleRows();
       this.equalizeSiblingRows();
       this.savePositions();
-      cy.fit(undefined, 60);
+      cy.fit(undefined, 40);
     });
 
     try {
@@ -352,7 +366,7 @@ export class TreeGraphService {
     } catch {
       // Never leave the graph unrendered if dagre fails.
       const fallback = cy.layout({ name: 'breadthfirst', directed: true, spacingFactor: 1.3 });
-      fallback.on('layoutstop', () => cy.fit(undefined, 60));
+      fallback.on('layoutstop', () => cy.fit(undefined, 40));
       fallback.run();
     }
   }

@@ -31,7 +31,7 @@ import { TreeStore } from './tree.store';
       @for (g of groups(); track g.key) {
         @if (g.items.length) {
           <p class="qs-sel__label">{{ g.key | translate }}</p>
-          <mat-chip-set>@for (r of g.items; track r.id) { <mat-chip (click)="goTo(r)" (keydown.enter)="goTo(r)" tabindex="0" role="button">{{ fullName({ firstName: r.firstName ?? '', lastName: r.lastName ?? '' }) }}</mat-chip> }</mat-chip-set>
+          <mat-chip-set>@for (r of g.items; track r.id) { <mat-chip (click)="goTo(r)" (keydown.enter)="goTo(r)" (keydown.space)="$event.preventDefault(); goTo(r)" tabindex="0" role="button">{{ fullName({ firstName: r.firstName ?? '', lastName: r.lastName ?? '' }) }}</mat-chip> }</mat-chip-set>
         }
       }
       <div class="qs-sel__actions">

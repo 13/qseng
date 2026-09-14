@@ -1,6 +1,6 @@
 import {
   Component, ElementRef, Injector, OnInit,
-  afterNextRender, computed, effect, inject, input, signal, viewChild
+  afterNextRender, computed, effect, inject, input, signal, untracked, viewChild
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Router, RouterLink } from '@angular/router';
@@ -71,11 +71,12 @@ class TreeSelectionSheetComponent {
     <div class="qs-tv">
       <header class="qs-tv__header">
         @if (!layout.handset()) {
-          <button matIconButton (click)="sidenavOpen.set(!sidenavOpen())" [attr.aria-label]="'tree.showPeople' | translate"><mat-icon>{{ sidenavOpen() ? 'left_panel_close' : 'left_panel_open' }}</mat-icon></button>
+          <button matIconButton (click)="sidenavOpen.set(!sidenavOpen())" [attr.aria-expanded]="sidenavOpen()" [attr.aria-label]="'tree.showPeople' | translate"><mat-icon>{{ sidenavOpen() ? 'left_panel_close' : 'left_panel_open' }}</mat-icon></button>
         }
         <h1 tabindex="-1" class="qs-display qs-tv__title">{{ store.tree()?.name ?? '…' }}</h1>
         <span class="qs-tv__spacer"></span>
         <a matButton [routerLink]="['/trees', treeId(), 'import']" [attr.aria-label]="'tree.import' | translate"><mat-icon>upload_file</mat-icon><span class="qs-tv__label">{{ 'tree.import' | translate }}</span></a>
+        <button matButton="outlined" (click)="addRelationFree()" [attr.aria-label]="'tree.addRel' | translate"><mat-icon>group_add</mat-icon><span class="qs-tv__label">{{ 'tree.addRel' | translate }}</span></button>
         <a matButton="filled" [routerLink]="['/trees', treeId(), 'persons', 'new']" [attr.aria-label]="'tree.addPerson' | translate"><mat-icon>person_add</mat-icon><span class="qs-tv__label">{{ 'tree.addPerson' | translate }}</span></a>
       </header>
 
@@ -125,7 +126,7 @@ class TreeSelectionSheetComponent {
               <button matMiniFab (click)="exportPng()" [matTooltip]="'tree.export' | translate" [attr.aria-label]="'tree.export' | translate"><mat-icon>download</mat-icon></button>
             </div>
 
-            <div class="qs-tv__ctx" [style.left.px]="ctx()?.x ?? 0" [style.top.px]="ctx()?.y ?? 0" [matMenuTriggerFor]="ctxMenu"></div>
+            <div class="qs-tv__ctx" tabindex="-1" [style.left.px]="ctx()?.x ?? 0" [style.top.px]="ctx()?.y ?? 0" [matMenuTriggerFor]="ctxMenu" (menuClosed)="focusCanvas()"></div>
             <mat-menu #ctxMenu="matMenu">
               @if (ctxPerson(); as p) {
                 <button mat-menu-item (click)="open(p.id!)"><mat-icon>open_in_new</mat-icon>{{ 'tree.openProfile' | translate }}</button>
@@ -133,7 +134,7 @@ class TreeSelectionSheetComponent {
                 <button mat-menu-item (click)="addRelationFor(p, 'Parent')"><mat-icon>arrow_upward</mat-icon>{{ 'tree.ctx.addParent' | translate }}</button>
                 <button mat-menu-item (click)="addRelationFor(p, 'Child')"><mat-icon>arrow_downward</mat-icon>{{ 'tree.ctx.addChild' | translate }}</button>
                 <button mat-menu-item (click)="addRelationFor(p, 'Spouse')"><mat-icon>favorite</mat-icon>{{ 'tree.ctx.addSpouse' | translate }}</button>
-                <button mat-menu-item (click)="store.select(p.id!)"><mat-icon>center_focus_strong</mat-icon>{{ 'tree.ctx.focus' | translate }}</button>
+                <button mat-menu-item (click)="onSelected(p.id!)"><mat-icon>center_focus_strong</mat-icon>{{ 'tree.ctx.focus' | translate }}</button>
                 <button mat-menu-item (click)="deletePerson(p)"><mat-icon>delete</mat-icon>{{ 'tree.ctx.remove' | translate }}</button>
               }
             </mat-menu>
@@ -205,7 +206,17 @@ export class TreeViewComponent implements OnInit {
         onSelect: id => this.onSelected(id), onOpen: id => this.open(id), onContext: (id, x, y) => this.onContext(id, x, y)
       }).then(() => { const sel = this.store.selectedId(); if (sel) this.graph.select(sel); });
     });
-    effect(() => { const id = this.graph.selectedId(); if (id !== this.store.selectedId()) this.store.select(id); });
+    // One-directional: the graph is the source of truth for tap-to-select, but a
+    // store-driven selection (sidebar pick, "focus lineage", chip navigation)
+    // must not be reverted by this effect re-running on its own write-back.
+    let lastGraphSelected = this.graph.selectedId();
+    effect(() => {
+      const id = this.graph.selectedId();
+      if (id !== lastGraphSelected) {
+        lastGraphSelected = id;
+        untracked(() => this.store.select(id));
+      }
+    });
     this.filter$.pipe(debounceTime(150), takeUntilDestroyed()).subscribe(t => this.graph.searchTerm.set(t));
     effect(() => this.filter$.next(this.store.filter()));
 
@@ -214,19 +225,24 @@ export class TreeViewComponent implements OnInit {
       if (!tree) return;
       this.crumbs.set([{ label: this.i18n.t('trees.title'), link: ['/trees'] }, { label: tree.name ?? '…' }]);
     });
+
+    effect(() => this.store.load(this.treeId()));
   }
 
   ngOnInit(): void {
-    this.store.load(this.treeId());
     const q = this.q();
     if (q) this.store.setFilter(q);
+  }
+
+  focusCanvas(): void {
+    this.cyHost()?.nativeElement.focus();
   }
 
   onSelected(id: string | null): void {
     this.store.select(id);
     this.graph.select(id);
     if (id && this.layout.handset()) {
-      const ref = this.sheet.open(TreeSelectionSheetComponent, { injector: this.injector, panelClass: 'qs-sheet' });
+      const ref = this.sheet.open(TreeSelectionSheetComponent, { injector: this.injector, panelClass: ['qs-sheet', 'qs-sheet--auto'] });
       ref.afterDismissed().subscribe(result => {
         if (!result) return;
         if (result.action === 'closed') this.onSelected(null);

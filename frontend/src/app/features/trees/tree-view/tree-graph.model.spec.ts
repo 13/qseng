@@ -222,4 +222,10 @@ describe('personSearchText', () => {
     expect(text).toContain('smith');
     expect(text).toContain('bregenz');
   });
+
+  it('also matches death place and notes', () => {
+    const text = personSearchText(person('p', { deathPlace: 'Vienna', notes: 'Emigrated in 1920' }));
+    expect(text).toContain('vienna');
+    expect(text).toContain('emigrated');
+  });
 });
