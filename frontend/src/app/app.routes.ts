@@ -1,8 +1,14 @@
-import { Routes } from '@angular/router';
+import { RedirectFunction, Routes } from '@angular/router';
 import { authGuard, adminGuard } from './core/auth/auth.guard';
 import { PersonStore } from './features/persons/person.store';
 import { unsavedChangesGuard } from './features/persons/unsaved-changes.guard';
 import { TreeStore } from './features/trees/tree-view/tree.store';
+
+/** Preserves the `q` query param when redirecting the search route back to the tree view. */
+export const searchRedirect: RedirectFunction = ({ params, queryParams }) => {
+  const q = queryParams['q'];
+  return `/trees/${params['treeId']}${q ? `?q=${encodeURIComponent(q)}` : ''}`;
+};
 
 export const routes: Routes = [
   { path: '', redirectTo: '/trees', pathMatch: 'full' },
@@ -16,10 +22,7 @@ export const routes: Routes = [
     loadComponent: () => import('./features/persons/person-edit.component').then(m => m.PersonEditComponent) },
   { path: 'trees/:treeId/import', canActivate: [authGuard],
     loadComponent: () => import('./features/import/import-text.component').then(m => m.ImportTextComponent) },
-  { path: 'trees/:treeId/search', redirectTo: ({ params, queryParams }) => {
-      const q = queryParams['q'];
-      return `/trees/${params['treeId']}${q ? `?q=${encodeURIComponent(q)}` : ''}`;
-    } },
+  { path: 'trees/:treeId/search', redirectTo: searchRedirect },
   { path: 'persons/:id', canActivate: [authGuard], providers: [PersonStore],
     loadComponent: () => import('./features/persons/person-detail.component').then(m => m.PersonDetailComponent) },
   { path: 'persons/:id/edit', canActivate: [authGuard], canDeactivate: [unsavedChangesGuard], providers: [PersonStore],

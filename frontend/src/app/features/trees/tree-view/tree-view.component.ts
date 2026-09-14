@@ -71,8 +71,8 @@ class TreeSelectionSheetComponent {
         }
         <h1 tabindex="-1" class="qs-display qs-tv__title">{{ store.tree()?.name ?? '…' }}</h1>
         <span class="qs-tv__spacer"></span>
-        <a matButton [routerLink]="['/trees', treeId(), 'import']"><mat-icon>upload_file</mat-icon><span class="qs-tv__label">{{ 'tree.import' | translate }}</span></a>
-        <a matButton="filled" [routerLink]="['/trees', treeId(), 'persons', 'new']"><mat-icon>person_add</mat-icon><span class="qs-tv__label">{{ 'tree.addPerson' | translate }}</span></a>
+        <a matButton [routerLink]="['/trees', treeId(), 'import']" [attr.aria-label]="'tree.import' | translate"><mat-icon>upload_file</mat-icon><span class="qs-tv__label">{{ 'tree.import' | translate }}</span></a>
+        <a matButton="filled" [routerLink]="['/trees', treeId(), 'persons', 'new']" [attr.aria-label]="'tree.addPerson' | translate"><mat-icon>person_add</mat-icon><span class="qs-tv__label">{{ 'tree.addPerson' | translate }}</span></a>
       </header>
 
       <mat-sidenav-container class="qs-tv__body" [hasBackdrop]="layout.tablet()">
