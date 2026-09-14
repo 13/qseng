@@ -386,7 +386,8 @@ export class TreeViewComponent implements OnInit {
         if (sorted.length === 0) { this.graph.loading.set(false); return; }
         void this.graph.build(this.cyHost().nativeElement, sorted, res.rels, {
           onSelect: id => this.graph.select(id),
-          onOpen: id => this.open(id)
+          onOpen: id => this.open(id),
+          onContext: () => undefined
         });
       });
   }

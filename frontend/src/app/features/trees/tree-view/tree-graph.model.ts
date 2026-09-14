@@ -1,5 +1,6 @@
 import type { EdgeDefinition, NodeDefinition } from 'cytoscape';
 import { PersonDto as Person, RelationshipDto as Relationship, RelationshipType } from '../../../core/api/generated';
+import { NodeTheme, renderCompactNodeSvg, renderNodeSvg } from './node-svg';
 
 /** The UI offers 'Child' as a convenience; the API only knows Parent edges. */
 export type UiRelType = RelationshipType | 'Child';
@@ -106,22 +107,12 @@ export function personSearchText(p: Person): string {
   return `${p.firstName ?? ''} ${p.lastName ?? ''} ${p.maidenName ?? ''} ${p.birthPlace ?? ''}`.toLowerCase();
 }
 
-function personLabel(p: Person): string {
-  const name = `${p.firstName ?? ''} ${p.lastName ?? ''}`;
-  const dates = p.birth?.year
-    ? p.death?.year
-      ? `${p.birth.year} – ${p.death.year}`
-      : `* ${p.birth.year}`
-    : '';
-  return dates ? `${name}\n${dates}` : name;
-}
-
 /**
  * Builds the cytoscape elements. Couples get a junction node so that children
  * shared by both parents descend from a single point rather than from each
  * parent separately.
  */
-export function buildElements(persons: Person[], rels: Relationship[]) {
+export function buildElements(persons: Person[], rels: Relationship[], theme: NodeTheme) {
   const spouseRels = rels.filter(r => r.type === 'Spouse');
   const parentRels = rels.filter(r => r.type === 'Parent' || r.type === 'Adoptive');
 
@@ -171,12 +162,13 @@ export function buildElements(persons: Person[], rels: Relationship[]) {
 
   const personNodes: NodeDefinition[] = persons.map(p => ({
     data: {
-      id: p.id,
-      label: personLabel(p),
-      sex: p.sex,
+      id: p.id ?? '',
+      sex: p.sex ?? '',
       avatarUrl: p.avatarUrl ?? '',
       // Precomputed so filtering never re-derives it per keystroke.
-      search: personSearchText(p)
+      search: personSearchText(p),
+      image: renderNodeSvg(p, theme),
+      imageCompact: renderCompactNodeSvg(p, theme)
     }
   }));
 

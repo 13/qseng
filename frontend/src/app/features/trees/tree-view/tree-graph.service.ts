@@ -1,9 +1,11 @@
 import { DestroyRef, Injectable, computed, effect, inject, signal } from '@angular/core';
-import type {
-  Core, EdgeDefinition, EdgeSingular, NodeDefinition, NodeSingular, StylesheetStyle
-} from 'cytoscape';
-import { Person, Relationship } from '../../../core/api/api-client.service';
+import type { Core, EdgeSingular, NodeSingular, StylesheetStyle } from 'cytoscape';
+import { PersonDto as Person, RelationshipDto as Relationship } from '../../../core/api/generated';
 import { ThemeService } from '../../../core/theme/theme.service';
+import {
+  NodeTheme, NODE_W, NODE_H, COMPACT_W, COMPACT_H,
+  cssVar, readNodeTheme, renderCompactNodeSvg, renderNodeSvg
+} from './node-svg';
 import {
   LAYOUT_VERSION, LineageIndex, SavedLayout,
   buildElements, indexLineage, isLayoutReusable, lineageOf
@@ -18,6 +20,8 @@ export interface GraphCallbacks {
   onSelect: (personId: string) => void;
   /** Double tap — navigate to the person's profile. */
   onOpen: (personId: string) => void;
+  /** Right-click / context tap — open the context menu at the given viewport position. */
+  onContext: (personId: string, clientX: number, clientY: number) => void;
 }
 
 /**
@@ -29,11 +33,13 @@ export interface GraphCallbacks {
 @Injectable()
 export class TreeGraphService {
   private readonly theme = inject(ThemeService);
+  private nodeTheme: NodeTheme = readNodeTheme();
 
   private cy?: Core;
   private container?: HTMLElement;
   private callbacks?: GraphCallbacks;
   private resizeObserver?: ResizeObserver;
+  private personsById = new Map<string, Person>();
 
   private treeId = '';
   private lineage: LineageIndex = indexLineage([]);
@@ -44,6 +50,7 @@ export class TreeGraphService {
   readonly searchTerm = signal('');
   readonly nodeCount = signal(0);
   readonly hasCustomLayout = signal(false);
+  readonly compact = signal(false);
 
   readonly isFiltered = computed(() => this.searchTerm().trim().length > 0);
 
@@ -52,8 +59,14 @@ export class TreeGraphService {
 
     // Repaint on theme change instead of rebuilding the whole graph.
     effect(() => {
-      const dark = this.theme.dark();
-      this.cy?.style(stylesheet(dark));
+      this.theme.dark();
+      this.refreshTheme();
+    });
+
+    // The stylesheet picks the image/size per node by the compact flag.
+    effect(() => {
+      this.compact();
+      this.cy?.style(this.stylesheet());
     });
 
     // Dimming is derived from selection + search; recompute on either.
@@ -81,18 +94,20 @@ export class TreeGraphService {
 
     this.cy?.destroy();
     this.lineage = indexLineage(rels);
+    this.personsById = new Map(persons.map(p => [p.id ?? '', p]));
 
-    const { nodes, edges } = buildElements(persons, rels);
+    this.nodeTheme = readNodeTheme();
+    const { nodes, edges } = buildElements(persons, rels, this.nodeTheme);
     this.nodeCount.set(persons.length);
 
     this.cy = cytoscape({
       container,
       elements: { nodes, edges },
-      style: stylesheet(this.theme.dark()),
+      style: this.stylesheet(),
       layout: { name: 'preset' },
       wheelSensitivity: 0.25,
-      minZoom: 0.1,
-      maxZoom: 3,
+      minZoom: 0.2,
+      maxZoom: 2.5,
       textureOnViewport: persons.length > 150,
       hideEdgesOnViewport: persons.length > 300
     });
@@ -116,6 +131,15 @@ export class TreeGraphService {
       this.callbacks?.onOpen(evt.target.id());
     });
 
+    this.cy.on('cxttap', 'node', evt => {
+      if (evt.target.data('coupleNode')) return;
+      const { x, y } = evt.renderedPosition ?? { x: 0, y: 0 };
+      const rect = container.getBoundingClientRect();
+      this.callbacks?.onContext(evt.target.id(), rect.left + x, rect.top + y);
+    });
+
+    this.cy.on('zoom', () => this.compact.set((this.cy?.zoom() ?? 1) < 0.45));
+
     // Tapping empty canvas clears the selection.
     this.cy.on('tap', evt => {
       if (evt.target === this.cy) this.selectedId.set(null);
@@ -124,6 +148,7 @@ export class TreeGraphService {
     this.observeResize(container);
     this.runLayout();
     this.applyEmphasis();
+    this.compact.set(this.cy.zoom() < 0.45);
     this.loading.set(false);
   }
 
@@ -143,7 +168,7 @@ export class TreeGraphService {
 
   // ── Viewport controls ───────────────────────────────────────────────────────
 
-  fit() { this.cy?.fit(undefined, 50); }
+  fit() { this.cy?.fit(undefined, 40); }
 
   zoomIn() { this.zoomBy(1.25); }
   zoomOut() { this.zoomBy(1 / 1.25); }
@@ -173,12 +198,26 @@ export class TreeGraphService {
     const uri = this.cy.png({
       full: true,
       scale: 2,
-      bg: this.theme.dark() ? '#0f172a' : '#ffffff'
+      bg: cssVar('--mat-sys-surface', '#ffffff')
     });
     const a = document.createElement('a');
     a.href = uri;
     a.download = fileName;
     a.click();
+  }
+
+  /** Re-read the palette from CSS custom properties and repaint node images + stylesheet. */
+  refreshTheme() {
+    if (!this.cy) return;
+    this.nodeTheme = readNodeTheme();
+    const cy = this.cy;
+    cy.batch(() => {
+      cy.nodes('[!coupleNode]').forEach(n => {
+        const p = this.personsById.get(n.id());
+        if (p) { n.data('image', renderNodeSvg(p, this.nodeTheme)); n.data('imageCompact', renderCompactNodeSvg(p, this.nodeTheme)); }
+      });
+    });
+    cy.style(this.stylesheet());
   }
 
   // ── Selection & emphasis ────────────────────────────────────────────────────
@@ -371,6 +410,95 @@ export class TreeGraphService {
     }
     this.hasCustomLayout.set(false);
   }
+
+  // ── Stylesheet ──────────────────────────────────────────────────────────────
+
+  /** Token-driven; node visuals come from the pre-rendered SVG images, not cytoscape drawing. */
+  private stylesheet(): StylesheetStyle[] {
+    const compact = this.compact();
+    const selected = cssVar('--qs-graph-selected', '#2f5d50');
+    const marriage = cssVar('--qs-graph-marriage', '#8a6d3b');
+    const descent = cssVar('--qs-graph-descent', '#8a8177');
+
+    return [
+      {
+        selector: 'node',
+        style: {
+          shape: 'roundrectangle',
+          width: compact ? COMPACT_W : NODE_W,
+          height: compact ? COMPACT_H : NODE_H,
+          'background-image': compact ? 'data(imageCompact)' : 'data(image)',
+          'background-fit': 'contain',
+          'background-clip': 'none',
+          'background-opacity': 0,
+          'border-width': 0,
+          label: '',
+          'transition-property': 'opacity',
+          'transition-duration': 150
+        }
+      },
+      {
+        selector: 'node:selected',
+        style: {
+          'border-width': 2,
+          'border-color': selected,
+          'overlay-color': selected,
+          'overlay-opacity': 0.12,
+          'overlay-padding': 6
+        }
+      },
+      { selector: 'node:active', style: { 'overlay-opacity': 0.08 } },
+      {
+        selector: 'node[?coupleNode]',
+        style: {
+          width: 8,
+          height: 8,
+          shape: 'ellipse',
+          'background-color': marriage,
+          'border-width': 0,
+          label: '',
+          events: 'no'
+        }
+      },
+      {
+        selector: 'edge[ek = "marriage"]',
+        style: {
+          'line-color': marriage,
+          width: 1.5,
+          'line-style': 'solid',
+          'curve-style': 'straight',
+          'source-arrow-shape': 'none',
+          'target-arrow-shape': 'none',
+          'transition-property': 'opacity',
+          'transition-duration': 150
+        }
+      },
+      {
+        selector: 'edge[ek = "descent"]',
+        style: {
+          'line-color': descent,
+          width: 1.5,
+          'line-style': 'solid',
+          'curve-style': 'taxi',
+          'taxi-direction': 'downward',
+          'taxi-turn': '-40px',
+          'source-arrow-shape': 'none',
+          'target-arrow-shape': 'none',
+          'transition-property': 'opacity',
+          'transition-duration': 150
+        }
+      },
+      {
+        selector: 'edge[ek = "descent"][relType = "Adoptive"]',
+        style: { 'line-style': 'dashed', 'line-color': descent }
+      },
+      { selector: '.dimmed', style: { opacity: 0.15 } },
+      {
+        selector: 'node.lineage',
+        style: { 'border-width': 2, 'border-color': selected, 'border-opacity': 0.6 }
+      }
+    ] as StylesheetStyle[];
+  }
 }
 
 // ── Module loading ────────────────────────────────────────────────────────────
@@ -410,135 +538,3 @@ function edgesOf(node: NodeSingular, selector?: string): EdgeSingular[] {
 }
 
 
-// ── Stylesheet ────────────────────────────────────────────────────────────────
-
-function stylesheet(isDark: boolean): StylesheetStyle[] {
-  const lineCol = isDark ? '#64748b' : '#94a3b8';
-
-  return [
-    {
-      selector: 'node',
-      style: {
-        label: 'data(label)',
-        'text-valign': 'center',
-        'text-halign': 'center',
-        'text-wrap': 'wrap',
-        'text-max-width': '112px',
-        color: isDark ? '#e2e8f0' : '#0f172a',
-        'font-size': 11,
-        'font-weight': 600,
-        'font-family': 'system-ui, -apple-system, sans-serif',
-        width: 130,
-        height: 62,
-        shape: 'roundrectangle',
-        'background-color': isDark ? '#1e293b' : '#fafafa',
-        'border-width': 1,
-        'border-color': isDark ? '#334155' : '#e2e8f0',
-        'transition-property': 'opacity background-color border-color border-width',
-        'transition-duration': 150
-      }
-    },
-    {
-      selector: 'node[sex = "Male"]',
-      style: {
-        'background-color': isDark ? '#0c1a35' : '#eff6ff',
-        'border-color': isDark ? '#3b82f6' : '#93c5fd',
-        'border-width': 1.5,
-        color: isDark ? '#93c5fd' : '#1e40af'
-      }
-    },
-    {
-      selector: 'node[sex = "Female"]',
-      style: {
-        'background-color': isDark ? '#200a2a' : '#fdf4ff',
-        'border-color': isDark ? '#a855f7' : '#d946ef',
-        'border-width': 1.5,
-        color: isDark ? '#d8b4fe' : '#7e22ce'
-      }
-    },
-    {
-      selector: 'node:selected',
-      style: {
-        'border-width': 3,
-        'border-color': '#7c3aed',
-        'background-color': isDark ? '#2e1065' : '#f5f3ff',
-        color: isDark ? '#c4b5fd' : '#5b21b6'
-      }
-    },
-    { selector: 'node:active', style: { 'overlay-opacity': 0.08 } },
-    {
-      selector: 'node[?avatarUrl]',
-      style: {
-        'background-image': 'data(avatarUrl)',
-        'background-fit': 'cover',
-        'background-clip': 'node',
-        width: 68,
-        height: 68,
-        shape: 'ellipse',
-        'text-valign': 'bottom',
-        'text-margin-y': 6,
-        'font-size': 10,
-        'text-background-color': isDark ? '#1e293b' : '#ffffff',
-        'text-background-opacity': 0.92,
-        'text-background-padding': '3px',
-        'text-background-shape': 'roundrectangle',
-        color: isDark ? '#e2e8f0' : '#0f172a'
-      }
-    },
-    {
-      selector: 'node[?avatarUrl][sex = "Male"]',
-      style: { 'border-color': isDark ? '#3b82f6' : '#93c5fd', 'border-width': 2.5 }
-    },
-    {
-      selector: 'node[?avatarUrl][sex = "Female"]',
-      style: { 'border-color': isDark ? '#a855f7' : '#d946ef', 'border-width': 2.5 }
-    },
-    { selector: 'node[?avatarUrl]:selected', style: { 'border-color': '#7c3aed', 'border-width': 3 } },
-    {
-      selector: 'node[?coupleNode]',
-      style: {
-        width: 10,
-        height: 10,
-        shape: 'ellipse',
-        'background-color': lineCol,
-        'border-width': 0,
-        label: '',
-        events: 'no'
-      }
-    },
-    {
-      selector: 'edge[ek = "marriage"]',
-      style: {
-        'line-color': lineCol,
-        width: 1.5,
-        'line-style': 'solid',
-        'curve-style': 'straight',
-        'source-arrow-shape': 'none',
-        'target-arrow-shape': 'none',
-        'transition-property': 'opacity',
-        'transition-duration': 150
-      }
-    },
-    {
-      selector: 'edge[ek = "descent"]',
-      style: {
-        'line-color': lineCol,
-        width: 1.5,
-        'line-style': 'solid',
-        'curve-style': 'taxi',
-        'taxi-direction': 'downward',
-        'taxi-turn': '-50px',
-        'source-arrow-shape': 'none',
-        'target-arrow-shape': 'none',
-        'transition-property': 'opacity',
-        'transition-duration': 150
-      }
-    },
-    {
-      selector: 'edge[ek = "descent"][relType = "Adoptive"]',
-      style: { 'line-style': 'dotted', 'line-color': isDark ? '#34d399' : '#10b981' }
-    },
-    { selector: '.dimmed', style: { opacity: 0.12 } },
-    { selector: 'node.lineage', style: { 'border-width': 2 } }
-  ] as StylesheetStyle[];
-}
