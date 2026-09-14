@@ -162,8 +162,8 @@ Feature parity checklist. Each item must be ticked before P1 is done.
 
 ### Person detail
 - [ ] Two columns desktop, stacked handset.
-- [ ] Left card: large avatar, name, maiden name, lifespan, birth/death + place,
-      cause of death, notes.
+- [ ] Left card: large avatar, maiden name, lifespan, birth/death + place,
+      cause of death, notes (the page `h1` carries the name; not repeated in the card).
 - [ ] Family: Parents / Spouses (with year) / Children chips, remove via X + confirm,
       Add relation opens the shared dialog.
 - [ ] Right `mat-tab-group`: Timeline | Photos & documents.
@@ -186,7 +186,8 @@ Feature parity checklist. Each item must be ticked before P1 is done.
 
 ### Import
 - [ ] Step 1 paste textarea with collapsible format guide.
-- [ ] Step 2 preview: `mat-table` of persons and relationships.
+- [ ] Step 2 preview: counts of persons and relationships plus the warning list
+      (the import API returns aggregate counts only; a row preview needs a backend change, deferred to P2).
 - [ ] Commit → summary (persons, relationships created) + "Open tree".
 
 ### Settings
