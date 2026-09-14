@@ -7,6 +7,7 @@ export type TranslationKey =
   | 'admin.action.makeAdmin'
   | 'admin.action.password'
   | 'admin.action.removeAdmin'
+  | 'admin.actions'
   | 'admin.confirm.delete'
   | 'admin.confirm.makeAdmin'
   | 'admin.confirm.removeAdmin'
@@ -20,20 +21,25 @@ export type TranslationKey =
   | 'admin.create.submitting'
   | 'admin.create.title'
   | 'admin.create.username'
+  | 'admin.created.toast'
+  | 'admin.deleted.toast'
   | 'admin.err.load'
   | 'admin.loading'
   | 'admin.me'
   | 'admin.pw.cancel'
   | 'admin.pw.placeholder'
   | 'admin.pw.save'
+  | 'admin.pw.saved'
   | 'admin.pw.saving'
   | 'admin.pw.title'
+  | 'admin.reg.hint'
   | 'admin.reg.off'
   | 'admin.reg.on'
   | 'admin.registered'
   | 'admin.registration'
   | 'admin.role.admin'
   | 'admin.role.user'
+  | 'admin.saved.toast'
   | 'admin.status.active'
   | 'admin.status.inactive'
   | 'admin.table.actions'
@@ -331,6 +337,7 @@ export const TRANSLATION_KEYS: readonly TranslationKey[] = [
   'admin.action.makeAdmin',
   'admin.action.password',
   'admin.action.removeAdmin',
+  'admin.actions',
   'admin.confirm.delete',
   'admin.confirm.makeAdmin',
   'admin.confirm.removeAdmin',
@@ -344,20 +351,25 @@ export const TRANSLATION_KEYS: readonly TranslationKey[] = [
   'admin.create.submitting',
   'admin.create.title',
   'admin.create.username',
+  'admin.created.toast',
+  'admin.deleted.toast',
   'admin.err.load',
   'admin.loading',
   'admin.me',
   'admin.pw.cancel',
   'admin.pw.placeholder',
   'admin.pw.save',
+  'admin.pw.saved',
   'admin.pw.saving',
   'admin.pw.title',
+  'admin.reg.hint',
   'admin.reg.off',
   'admin.reg.on',
   'admin.registered',
   'admin.registration',
   'admin.role.admin',
   'admin.role.user',
+  'admin.saved.toast',
   'admin.status.active',
   'admin.status.inactive',
   'admin.table.actions',
