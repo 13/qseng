@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Qseng.Application.Media;
 using Qseng.Application.Media.DeleteMedia;
 using Qseng.Application.Media.GetPersonMedia;
+using Qseng.Application.Media.RestoreMedia;
 using Qseng.Application.Media.SetAvatar;
 using Qseng.Application.Media.UploadMedia;
 using Qseng.Domain.Enums;
@@ -52,4 +53,11 @@ public class MediaController : ControllerBase
     [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> Delete(Guid personId, Guid mediaId, CancellationToken ct) =>
         (await _mediator.Send(new DeleteMediaCommand(personId, mediaId), ct)).ToActionResult();
+
+    [HttpPost("persons/{personId:guid}/media/{mediaId:guid}/restore")]
+    [ProducesResponseType(typeof(MediaDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> Restore(Guid personId, Guid mediaId, CancellationToken ct) =>
+        (await _mediator.Send(new RestoreMediaCommand(personId, mediaId), ct)).ToActionResult();
 }

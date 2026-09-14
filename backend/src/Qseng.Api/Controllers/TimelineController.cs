@@ -5,6 +5,7 @@ using Qseng.Application.Timeline;
 using Qseng.Application.Timeline.AddTimelineEvent;
 using Qseng.Application.Timeline.DeleteTimelineEvent;
 using Qseng.Application.Timeline.GetPersonTimeline;
+using Qseng.Application.Timeline.RestoreTimelineEvent;
 using Qseng.Application.Timeline.UpdateTimelineEvent;
 using Qseng.Domain.Enums;
 using Qseng.Domain.ValueObjects;
@@ -41,6 +42,13 @@ public class TimelineController : ControllerBase
     [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> Delete(Guid personId, Guid id, CancellationToken ct) =>
         (await _mediator.Send(new DeleteTimelineEventCommand(id), ct)).ToActionResult();
+
+    [HttpPost("{id:guid}/restore")]
+    [ProducesResponseType(typeof(TimelineEventDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> Restore(Guid personId, Guid id, CancellationToken ct) =>
+        (await _mediator.Send(new RestoreTimelineEventCommand(personId, id), ct)).ToActionResult();
 }
 
 public record TimelineEventRequest(
