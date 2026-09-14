@@ -17,10 +17,9 @@ public class DbSeeder
 
     public async Task SeedAsync(CancellationToken ct = default)
     {
-        if (_db.Database.ProviderName?.Contains("Npgsql", StringComparison.OrdinalIgnoreCase) == true)
-            await _db.Database.MigrateAsync(ct);
-        else
-            await _db.Database.EnsureCreatedAsync(ct);
+        // Both providers migrate. EnsureCreated used to be the SQLite path, which
+        // let the dev schema drift away from the migrated production one.
+        await _db.Database.MigrateAsync(ct);
 
         // Seed singleton site settings
         var settings = await _db.SiteSettings.FindAsync([SiteSettings.SettingsId], ct);

@@ -96,7 +96,7 @@ export class PersonDetailComponent implements OnInit {
     const id = this.route.snapshot.paramMap.get('id')!;
     this.api.getPerson(id).subscribe(p => this.person.set(p));
     this.api.getPersonMedia(id).subscribe(media => {
-      const photo = media.find(m => m.kind === 'Photo');
+      const photo = media.find(m => m.isAvatar) ?? media.find(m => m.kind === 'Photo');
       if (photo) this.avatarUrl.set(photo.url);
     });
   }

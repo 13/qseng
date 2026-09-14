@@ -1,7 +1,8 @@
 import { Component, input, OnInit, output, signal, computed, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
-import { ApiClient, Person, PersonRelation, RelationshipType } from '../../core/api/api-client.service';
+import { ApiClient, Person, PersonRelation } from '../../core/api/api-client.service';
+import { UI_REL_TYPES, UiRelType, toApiRelationship } from '../trees/tree-view/tree-graph.model';
 import { I18nService } from '../../core/i18n/i18n.service';
 import { TranslatePipe } from '../../core/i18n/translate.pipe';
 import { PartialDateInputComponent, PartialDateValue } from '../../shared/ui/partial-date-input.component';
@@ -33,9 +34,10 @@ interface RelGroup { label: string; icon: string; relations: PersonRelation[]; }
             </select>
           </label>
 
-          @if (newType === 'Spouse')  { <p class="hint-text">{{ 'fam.spouse.hint'  | translate }}</p> }
-          @if (newType === 'Parent')  { <p class="hint-text">{{ 'fam.parent.hint'  | translate }}</p> }
-          @if (newType === 'Child')   { <p class="hint-text">{{ 'fam.child.hint'   | translate }}</p> }
+          @if (newType === 'Spouse')   { <p class="hint-text">{{ 'fam.spouse.hint'   | translate }}</p> }
+          @if (newType === 'Parent')   { <p class="hint-text">{{ 'fam.parent.hint'   | translate }}</p> }
+          @if (newType === 'Child')    { <p class="hint-text">{{ 'fam.child.hint'    | translate }}</p> }
+          @if (newType === 'Adoptive') { <p class="hint-text">{{ 'fam.adoptive.hint' | translate }}</p> }
 
           <label class="field-lbl">
             {{ 'fam.search' | translate }}
@@ -122,11 +124,11 @@ export class PersonRelationsComponent implements OnInit {
   error           = signal('');
   selectedPerson  = signal<Person | null>(null);
 
-  newType: RelationshipType | 'Child' = 'Parent';
+  newType: UiRelType = 'Parent';
   searchTerm = signal('');
   startDate: PartialDateValue = {};
   startPlace = '';
-  uiRelTypes: (RelationshipType | 'Child')[] = ['Parent', 'Child', 'Spouse', 'Adoptive'];
+  uiRelTypes = UI_REL_TYPES;
 
   filtered = computed(() => {
     const s = this.searchTerm().toLowerCase().trim();
@@ -170,19 +172,14 @@ export class PersonRelationsComponent implements OnInit {
     const other = this.selectedPerson();
     if (!other) return;
     this.error.set('');
-    // The type names the selected person's role: 'Parent' = they are the parent
-    // of this person (from=parent, to=child); 'Child' = they are the child.
-    const isParent = this.newType === 'Parent';
-    const apiType: RelationshipType = this.newType === 'Child' ? 'Parent' : (this.newType as RelationshipType);
+    // The type names the selected person's role relative to this one.
     this.api.createRelationship(this.treeId(), {
-      fromPersonId: isParent ? other.id        : this.personId(),
-      toPersonId:   isParent ? this.personId() : other.id,
-      type: apiType,
+      ...toApiRelationship(this.newType, other.id, this.personId()),
       startYear:  this.startDate.year,
       startMonth: this.startDate.month,
       startDay:   this.startDate.day,
       notes:      this.startPlace || undefined
-    } as any).subscribe({
+    }).subscribe({
       next: () => { this.load(); this.resetForm(); this.relAdded.emit(); },
       error: (e: { error?: { error?: string } }) => this.error.set(e.error?.error ?? this.i18n.t('err.save'))
     });

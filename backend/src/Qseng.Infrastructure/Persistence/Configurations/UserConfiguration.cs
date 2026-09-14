@@ -19,5 +19,6 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
         e.Property(x => x.IsAdmin).HasDefaultValue(false).IsRequired();
         e.Property(x => x.IsActive).HasDefaultValue(true).IsRequired();
         e.Property(x => x.Language).HasMaxLength(10).HasDefaultValue("de").IsRequired();
+        e.Property(x => x.TokenVersion).HasDefaultValue(0).IsRequired();
     }
 }

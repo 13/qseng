@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Qseng.Application.Media.DeleteMedia;
 using Qseng.Application.Media.GetPersonMedia;
+using Qseng.Application.Media.SetAvatar;
 using Qseng.Application.Media.UploadMedia;
 using Qseng.Domain.Enums;
 
@@ -37,6 +38,10 @@ public class MediaController : ControllerBase
         var result = await _mediator.Send(new UploadMediaCommand(personId, file.FileName, stream, caption, mediaKind), ct);
         return result.IsSuccess ? StatusCode(201, result.Value) : result.ToActionResult();
     }
+
+    [HttpPut("persons/{personId:guid}/media/{mediaId:guid}/avatar")]
+    public async Task<IActionResult> SetAvatar(Guid personId, Guid mediaId, CancellationToken ct) =>
+        (await _mediator.Send(new SetAvatarCommand(personId, mediaId), ct)).ToActionResult();
 
     [HttpDelete("persons/{personId:guid}/media/{mediaId:guid}")]
     public async Task<IActionResult> Delete(Guid personId, Guid mediaId, CancellationToken ct) =>

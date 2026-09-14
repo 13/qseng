@@ -1,6 +1,7 @@
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using Qseng.Application.Auth.Login;
+using Qseng.Application.Auth.Refresh;
 using Qseng.Application.Auth.Register;
 
 namespace Qseng.Api.Controllers;
@@ -19,7 +20,16 @@ public class AuthController : ControllerBase
     [HttpPost("login")]
     public async Task<IActionResult> Login(LoginRequest r, CancellationToken ct) =>
         (await _mediator.Send(new LoginCommand(r.Username, r.Password), ct)).ToActionResult();
+
+    [HttpPost("refresh")]
+    public async Task<IActionResult> Refresh(RefreshRequest r, CancellationToken ct) =>
+        (await _mediator.Send(new RefreshCommand(r.RefreshToken), ct)).ToActionResult();
+
+    [HttpPost("logout")]
+    public async Task<IActionResult> Logout(RefreshRequest r, CancellationToken ct) =>
+        (await _mediator.Send(new LogoutCommand(r.RefreshToken), ct)).ToActionResult();
 }
 
 public record RegisterRequest(string Username, string Password, string? DisplayName, string? Email);
 public record LoginRequest(string Username, string Password);
+public record RefreshRequest(string RefreshToken);

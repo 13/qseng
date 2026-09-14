@@ -9,4 +9,7 @@ public class Media : Entity
     public string Url { get; set; } = "";
     public string? Caption { get; set; }
     public MediaKind Kind { get; set; }
+
+    /// <summary>At most one per person; enforced by a filtered unique index.</summary>
+    public bool IsAvatar { get; set; }
 }

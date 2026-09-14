@@ -1,11 +1,16 @@
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Qseng.Application;
 using Qseng.Application.Abstractions;
 using Qseng.Api.Middleware;
 using Qseng.Infrastructure;
+using Qseng.Infrastructure.Auth;
 using Qseng.Infrastructure.Seeding;
 using Serilog;
 
@@ -43,7 +48,15 @@ builder.Services.AddScoped<ICurrentUser, CurrentUserService>();
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
 
-var jwtKey = builder.Configuration["Jwt:Key"]!;
+builder.Services
+    .AddOptions<JwtOptions>()
+    .Bind(builder.Configuration.GetSection(JwtOptions.SectionName))
+    .ValidateOnStart();
+builder.Services.AddSingleton<IValidateOptions<JwtOptions>>(
+    new JwtOptionsValidator(builder.Environment.IsDevelopment()));
+
+var jwt = builder.Configuration.GetSection(JwtOptions.SectionName).Get<JwtOptions>() ?? new JwtOptions();
+
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(opt =>
     {
@@ -53,9 +66,45 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidateAudience = true,
             ValidateLifetime = true,
             ValidateIssuerSigningKey = true,
-            ValidIssuer = builder.Configuration["Jwt:Issuer"],
-            ValidAudience = builder.Configuration["Jwt:Audience"],
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
+            ValidIssuer = jwt.Issuer,
+            ValidAudience = jwt.Audience,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwt.Key)),
+            ClockSkew = TimeSpan.FromSeconds(30)
+        };
+
+        // A valid signature is not authorization: the account may have been
+        // deactivated, deleted, or had its sessions revoked since the token was
+        // issued. Costs one indexed primary-key lookup per request.
+        opt.Events = new JwtBearerEvents
+        {
+            OnTokenValidated = async context =>
+            {
+                var principal = context.Principal!;
+                var sub = principal.FindFirstValue(ClaimTypes.NameIdentifier)
+                          ?? principal.FindFirstValue(JwtRegisteredClaimNames.Sub);
+                if (!Guid.TryParse(sub, out var userId))
+                {
+                    context.Fail("Malformed subject claim.");
+                    return;
+                }
+
+                var db = context.HttpContext.RequestServices.GetRequiredService<IQsengDbContext>();
+                var user = await db.Users
+                    .AsNoTracking()
+                    .Where(u => u.Id == userId)
+                    .Select(u => new { u.IsActive, u.TokenVersion })
+                    .FirstOrDefaultAsync(context.HttpContext.RequestAborted);
+
+                if (user is null || !user.IsActive)
+                {
+                    context.Fail("Account is inactive or no longer exists.");
+                    return;
+                }
+
+                var rawVersion = principal.FindFirstValue(JwtTokenService.TokenVersionClaim);
+                if (!int.TryParse(rawVersion, out var version) || version != user.TokenVersion)
+                    context.Fail("Token has been revoked.");
+            }
         };
     });
 

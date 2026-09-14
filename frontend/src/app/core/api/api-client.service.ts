@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { environment } from '../../../environments/environment';
+import { AuthResponse } from '../auth/auth.service';
 
 export interface PartialDate { year?: number; month?: number; day?: number; approx?: boolean; }
 
@@ -90,6 +91,7 @@ export interface MediaItem {
   caption?: string;
   kind: 'Photo' | 'Document' | 'Audio';
   createdAt: string;
+  isAvatar: boolean;
 }
 
 export type Sex = 'Male' | 'Female';
@@ -140,8 +142,9 @@ export class ApiClient {
 
   // User profile & settings
   getProfile() { return this.http.get<UserProfile>(`${this.base}/user/profile`); }
+  /** Returns a fresh session: other devices are signed out, this one is not. */
   changePassword(currentPassword: string, newPassword: string) {
-    return this.http.patch<void>(`${this.base}/user/password`, { currentPassword, newPassword });
+    return this.http.patch<AuthResponse>(`${this.base}/user/password`, { currentPassword, newPassword });
   }
   changeLanguage(language: string) {
     return this.http.patch<void>(`${this.base}/user/language`, { language });
@@ -184,6 +187,9 @@ export class ApiClient {
     if (caption) fd.append('caption', caption);
     fd.append('kind', kind);
     return this.http.post<MediaItem>(`${this.base}/persons/${personId}/media`, fd);
+  }
+  setAvatar(personId: string, mediaId: string) {
+    return this.http.put<void>(`${this.base}/persons/${personId}/media/${mediaId}/avatar`, {});
   }
   deleteMedia(personId: string, mediaId: string) {
     return this.http.delete<void>(`${this.base}/persons/${personId}/media/${mediaId}`);

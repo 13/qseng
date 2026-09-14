@@ -7,6 +7,7 @@ namespace Qseng.Application.Abstractions;
 public interface IQsengDbContext
 {
     DbSet<User> Users { get; }
+    DbSet<RefreshToken> RefreshTokens { get; }
     DbSet<Tree> Trees { get; }
     DbSet<Person> Persons { get; }
     DbSet<Relationship> Relationships { get; }

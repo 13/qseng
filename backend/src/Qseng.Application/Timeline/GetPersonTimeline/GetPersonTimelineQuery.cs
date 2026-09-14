@@ -28,12 +28,12 @@ public class GetPersonTimelineHandler : IRequestHandler<GetPersonTimelineQuery, 
         if (tree is null) return Result<IReadOnlyList<TimelineEventDto>>.NotFound("Person not found.");
         if (tree.OwnerId != _currentUser.UserId) return Result<IReadOnlyList<TimelineEventDto>>.Fail("Forbidden.", 403);
 
+        // StartSortKey is an indexed yyyyMMdd integer; unknown dates are 0 and
+        // therefore sort last. Ordering happens in the database.
         var events = await _db.TimelineEvents
             .AsNoTracking()
             .Where(t => t.PersonId == q.PersonId)
-            .OrderByDescending(t => t.Start != null ? t.Start.Year ?? -1 : -1)
-            .ThenByDescending(t => t.Start != null ? t.Start.Month ?? -1 : -1)
-            .ThenByDescending(t => t.Start != null ? t.Start.Day ?? -1 : -1)
+            .OrderByDescending(t => t.StartSortKey)
             .Select(t => new TimelineEventDto(
                 t.Id, t.Type, t.Title, t.Description,
                 t.Start, t.End, t.Location,

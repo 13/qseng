@@ -7,11 +7,13 @@ using Qseng.Domain.Entities;
 
 namespace Qseng.Application.Auth.Register;
 
+
 public record RegisterCommand(string Username, string Password, string? DisplayName, string? Email)
     : IRequest<Result<AuthResponse>>;
 
 public record AuthResponse(
-    string? AccessToken, Guid UserId, string DisplayName, string Username, bool IsAdmin,
+    string? AccessToken, string? RefreshToken, int ExpiresIn,
+    Guid UserId, string DisplayName, string Username, bool IsAdmin,
     bool PendingActivation = false);
 
 public class RegisterValidator : AbstractValidator<RegisterCommand>
@@ -72,9 +74,9 @@ public class RegisterHandler : IRequestHandler<RegisterCommand, Result<AuthRespo
         // activation gate that LoginHandler enforces.
         if (!user.IsActive)
             return Result<AuthResponse>.Ok(new AuthResponse(
-                null, user.Id, user.DisplayName, user.Username, user.IsAdmin, PendingActivation: true));
+                null, null, 0, user.Id, user.DisplayName, user.Username, user.IsAdmin,
+                PendingActivation: true));
 
-        return Result<AuthResponse>.Ok(new AuthResponse(
-            _jwt.GenerateAccessToken(user), user.Id, user.DisplayName, user.Username, user.IsAdmin));
+        return Result<AuthResponse>.Ok(await AuthSessions.IssueAsync(_db, _jwt, user, ct));
     }
 }

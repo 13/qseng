@@ -68,12 +68,14 @@ const T: Record<Lang, Record<string, string>> = {
     'fam.spouse.hint': '💡 A wedding event is created automatically.',
     'fam.parent.hint': '💡 Select the parent of this person.',
     'fam.child.hint':  '💡 Select the child of this person.',
+    'fam.adoptive.hint': '💡 Select the adoptive parent of this person.',
     'fam.removeConfirm': 'Remove relationship with __NAME__?',
 
     // Media
     'media.title': 'Photos & Documents', 'media.add': '+ Add',
     'media.uploading': 'Uploading…', 'media.empty': 'No files uploaded yet.',
     'media.deleteConfirm': 'Delete file?', 'media.setAvatar': 'Set as profile photo',
+    'media.avatarBadge': 'Avatar',
 
     // Tree view
     'tree.back': '← Trees', 'tree.search': '🔍 Search', 'tree.import': '↑ Import',
@@ -113,7 +115,7 @@ const T: Record<Lang, Record<string, string>> = {
     'settings.password.title': 'Change password',
     'settings.password.current': 'Current password', 'settings.password.new': 'New password (min. 8 chars)',
     'settings.password.save': 'Save password', 'settings.password.saving': 'Saving…',
-    'settings.password.ok': 'Password changed.',
+    'settings.password.ok': 'Password changed. Other devices have been signed out.',
     'settings.lang.title': 'Language', 'settings.lang.hint': 'Choose your preferred display language.',
     'settings.lang.saved': 'Language saved.',
     'settings.export.title': 'Export data',
@@ -249,12 +251,14 @@ const T: Record<Lang, Record<string, string>> = {
     'fam.spouse.hint': '💡 Hochzeits-Ereignis wird automatisch erstellt.',
     'fam.parent.hint': '💡 Wähle den Elternteil dieser Person.',
     'fam.child.hint':  '💡 Wähle das Kind dieser Person.',
+    'fam.adoptive.hint': '💡 Wähle den Adoptivelternteil dieser Person.',
     'fam.removeConfirm': 'Beziehung mit __NAME__ entfernen?',
 
     // Media
     'media.title': 'Fotos & Dokumente', 'media.add': '+ Hinzufügen',
     'media.uploading': 'Lädt…', 'media.empty': 'Noch keine Dateien hochgeladen.',
     'media.deleteConfirm': 'Datei löschen?', 'media.setAvatar': 'Als Profilfoto setzen',
+    'media.avatarBadge': 'Profilfoto',
 
     // Tree view
     'tree.back': '← Stammbäume', 'tree.search': '🔍 Suchen', 'tree.import': '↑ Import',
@@ -294,7 +298,7 @@ const T: Record<Lang, Record<string, string>> = {
     'settings.password.title': 'Passwort ändern',
     'settings.password.current': 'Aktuelles Passwort', 'settings.password.new': 'Neues Passwort (mind. 8 Zeichen)',
     'settings.password.save': 'Passwort speichern', 'settings.password.saving': 'Wird gespeichert…',
-    'settings.password.ok': 'Passwort geändert.',
+    'settings.password.ok': 'Passwort geändert. Andere Geräte wurden abgemeldet.',
     'settings.lang.title': 'Sprache', 'settings.lang.hint': 'Wähle deine bevorzugte Anzeigesprache.',
     'settings.lang.saved': 'Sprache gespeichert.',
     'settings.export.title': 'Daten exportieren',

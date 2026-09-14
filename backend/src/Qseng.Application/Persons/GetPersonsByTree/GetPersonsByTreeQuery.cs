@@ -47,11 +47,16 @@ public class GetPersonsByTreeHandler : IRequestHandler<GetPersonsByTreeQuery, Re
         var personIds = persons.Select(p => p.Id).ToList();
         var rawAvatars = await _db.Media
             .Where(m => personIds.Contains(m.PersonId) && m.Kind == MediaKind.Photo)
-            .Select(m => new { m.PersonId, m.Url, m.CreatedAt })
+            .Select(m => new { m.PersonId, m.Url, m.CreatedAt, m.IsAvatar })
             .ToListAsync(ct);
+
+        // Prefer the explicitly chosen avatar; fall back to the oldest photo for
+        // people whose avatar was never set.
         var avatars = rawAvatars
             .GroupBy(m => m.PersonId)
-            .ToDictionary(g => g.Key, g => g.OrderBy(m => m.CreatedAt).First().Url);
+            .ToDictionary(
+                g => g.Key,
+                g => (g.FirstOrDefault(m => m.IsAvatar) ?? g.OrderBy(m => m.CreatedAt).First()).Url);
 
         return Result<IReadOnlyList<PersonDto>>.Ok(
             persons.Select(p => CreatePersonHandler.ToDto(p, avatars.GetValueOrDefault(p.Id))).ToList());

@@ -4,18 +4,14 @@ import type {
 } from 'cytoscape';
 import { Person, Relationship } from '../../../core/api/api-client.service';
 import { ThemeService } from '../../../core/theme/theme.service';
+import {
+  LAYOUT_VERSION, LineageIndex, SavedLayout,
+  buildElements, indexLineage, isLayoutReusable, lineageOf
+} from './tree-graph.model';
 
 export type GraphLayout = 'auto' | 'tree';
 
 const SNAP_GRID = 24;
-/** Bump when the persisted shape changes so old entries are discarded. */
-const LAYOUT_VERSION = 2;
-
-interface SavedLayout {
-  v: number;
-  ids: string[];
-  pos: Record<string, { x: number; y: number }>;
-}
 
 export interface GraphCallbacks {
   /** Single tap / sidebar click — selects without leaving the page. */
@@ -40,10 +36,7 @@ export class TreeGraphService {
   private resizeObserver?: ResizeObserver;
 
   private treeId = '';
-  /** person → direct parents / children, for lineage highlighting. */
-  private readonly parentsOf = new Map<string, Set<string>>();
-  private readonly childrenOf = new Map<string, Set<string>>();
-  private readonly spousesOf = new Map<string, Set<string>>();
+  private lineage: LineageIndex = indexLineage([]);
 
   readonly layoutMode = signal<GraphLayout>('tree');
   readonly loading = signal(true);
@@ -87,7 +80,7 @@ export class TreeGraphService {
     const cytoscape = await loadCytoscape();
 
     this.cy?.destroy();
-    this.indexLineage(rels);
+    this.lineage = indexLineage(rels);
 
     const { nodes, edges } = buildElements(persons, rels);
     this.nodeCount.set(persons.length);
@@ -221,7 +214,7 @@ export class TreeGraphService {
       const keep = new Set<string>();
 
       if (selected) {
-        for (const id of this.lineageOf(selected)) keep.add(id);
+        for (const id of lineageOf(selected, this.lineage)) keep.add(id);
       }
       if (term) {
         cy.nodes('[!coupleNode]').forEach(n => {
@@ -247,42 +240,6 @@ export class TreeGraphService {
         if (!endsLit) e.addClass('dimmed');
       });
     });
-  }
-
-  /**
-   * The selected person, every ancestor and descendant, plus their spouses —
-   * a co-parent shown dimmed next to lit children reads as a mistake.
-   */
-  private lineageOf(personId: string): Set<string> {
-    const seen = new Set<string>([personId]);
-    const walk = (start: string, edges: Map<string, Set<string>>) => {
-      const queue = [start];
-      while (queue.length) {
-        for (const next of edges.get(queue.pop()!) ?? []) {
-          if (seen.add(next)) queue.push(next);
-        }
-      }
-    };
-    walk(personId, this.parentsOf);
-    walk(personId, this.childrenOf);
-    for (const spouse of this.spousesOf.get(personId) ?? []) seen.add(spouse);
-    return seen;
-  }
-
-  private indexLineage(rels: Relationship[]) {
-    this.parentsOf.clear();
-    this.childrenOf.clear();
-    this.spousesOf.clear();
-    for (const r of rels) {
-      if (r.type === 'Spouse') {
-        addTo(this.spousesOf, r.fromPersonId, r.toPersonId);
-        addTo(this.spousesOf, r.toPersonId, r.fromPersonId);
-        continue;
-      }
-      if (r.type !== 'Parent' && r.type !== 'Adoptive') continue;
-      addTo(this.childrenOf, r.fromPersonId, r.toPersonId);
-      addTo(this.parentsOf, r.toPersonId, r.fromPersonId);
-    }
   }
 
   // ── Layout ──────────────────────────────────────────────────────────────────
@@ -372,32 +329,20 @@ export class TreeGraphService {
     return this.treeId ? `qs-layout-${this.treeId}` : null;
   }
 
-  /**
-   * Saved positions are only reusable when they cover exactly the current node
-   * set. Otherwise a newly added person would be placed at (0, 0) on top of
-   * the graph, so we discard and re-run the automatic layout.
-   */
   private loadPositions(): SavedLayout | null {
     const key = this.storageKey;
     if (!key || !this.cy) return null;
 
-    let saved: SavedLayout;
+    let saved: SavedLayout | null;
     try {
       const raw = localStorage.getItem(key);
-      if (!raw) return null;
-      saved = JSON.parse(raw) as SavedLayout;
+      saved = raw ? (JSON.parse(raw) as SavedLayout) : null;
     } catch {
       return null;
     }
 
-    if (saved?.v !== LAYOUT_VERSION || !saved.pos) return null;
-
-    const current = this.cy.nodes().map(n => n.id()).sort();
-    const stored = [...(saved.ids ?? [])].sort();
-    const identical =
-      current.length === stored.length && current.every((id, i) => id === stored[i]);
-
-    return identical ? saved : null;
+    const currentIds = this.cy.nodes().map(n => n.id());
+    return isLayoutReusable(saved, currentIds) ? saved : null;
   }
 
   private savePositions() {
@@ -457,85 +402,13 @@ function loadCytoscape(): Promise<CyFactory> {
   return cytoscapePromise;
 }
 
-// ── Element construction ──────────────────────────────────────────────────────
+// ── cytoscape helpers ─────────────────────────────────────────────────────────
 
 /** cytoscape's Collection callbacks are loosely typed; arrays are not. */
 function edgesOf(node: NodeSingular, selector?: string): EdgeSingular[] {
   return (selector ? node.connectedEdges(selector) : node.connectedEdges()).toArray();
 }
 
-function addTo(map: Map<string, Set<string>>, key: string, value: string) {
-  (map.get(key) ?? map.set(key, new Set()).get(key)!).add(value);
-}
-
-function buildElements(persons: Person[], rels: Relationship[]) {
-  const spouseRels = rels.filter(r => r.type === 'Spouse');
-  const parentRels = rels.filter(r => r.type === 'Parent' || r.type === 'Adoptive');
-
-  const childrenOf = new Map<string, Set<string>>();
-  for (const r of parentRels) addTo(childrenOf, r.fromPersonId, r.toPersonId);
-
-  const coveredEdgeIds = new Set<string>();
-  const coupleNodes: NodeDefinition[] = [];
-  const edges: EdgeDefinition[] = [];
-
-  // Route shared-child descent from a couple dot rather than each parent.
-  for (const sr of spouseRels) {
-    const aKids = childrenOf.get(sr.fromPersonId) ?? new Set<string>();
-    const bKids = childrenOf.get(sr.toPersonId) ?? new Set<string>();
-    const shared = [...aKids].filter(c => bKids.has(c));
-
-    const cid = `_c_${sr.id}`;
-    coupleNodes.push({ data: { id: cid, coupleNode: true } });
-    edges.push({ data: { id: `_ma_${cid}`, source: sr.fromPersonId, target: cid, ek: 'marriage' } });
-    edges.push({ data: { id: `_mb_${cid}`, source: sr.toPersonId, target: cid, ek: 'marriage' } });
-
-    for (const childId of shared) {
-      const parentEdges = parentRels.filter(
-        r => r.toPersonId === childId &&
-          (r.fromPersonId === sr.fromPersonId || r.fromPersonId === sr.toPersonId)
-      );
-      parentEdges.forEach(r => coveredEdgeIds.add(r.id));
-      edges.push({
-        data: {
-          id: `_d_${cid}_${childId}`,
-          source: cid,
-          target: childId,
-          ek: 'descent',
-          relType: parentEdges[0]?.type ?? 'Parent'
-        }
-      });
-    }
-  }
-
-  // Single-parent descent not covered by a couple dot.
-  for (const r of parentRels.filter(r => !coveredEdgeIds.has(r.id))) {
-    edges.push({
-      data: { id: r.id, source: r.fromPersonId, target: r.toPersonId, ek: 'descent', relType: r.type }
-    });
-  }
-
-  const personNodes: NodeDefinition[] = persons.map(p => {
-    const name = `${p.firstName} ${p.lastName}`;
-    const dates = p.birth?.year
-      ? p.death?.year
-        ? `${p.birth.year} – ${p.death.year}`
-        : `* ${p.birth.year}`
-      : '';
-    return {
-      data: {
-        id: p.id,
-        label: dates ? `${name}\n${dates}` : name,
-        sex: p.sex,
-        avatarUrl: p.avatarUrl ?? '',
-        // Precomputed so search filtering never re-derives it per keystroke.
-        search: `${name} ${p.maidenName ?? ''} ${p.birthPlace ?? ''}`.toLowerCase()
-      }
-    };
-  });
-
-  return { nodes: [...personNodes, ...coupleNodes], edges };
-}
 
 // ── Stylesheet ────────────────────────────────────────────────────────────────
 

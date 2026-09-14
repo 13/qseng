@@ -1,6 +1,8 @@
 using MediatR;
+using Microsoft.EntityFrameworkCore;
 using Qseng.Application.Abstractions;
 using Qseng.Application.Common;
+using Qseng.Domain.Enums;
 
 namespace Qseng.Application.Media.DeleteMedia;
 
@@ -30,6 +32,18 @@ public class DeleteMediaHandler : IRequestHandler<DeleteMediaCommand, Result<boo
 
         await _fileStorage.DeleteAsync(media.Url, ct);
         _db.Media.Remove(media);
+
+        // Deleting the avatar promotes the next-oldest photo rather than leaving
+        // the person without one.
+        if (media.IsAvatar)
+        {
+            var replacement = await _db.Media
+                .Where(m => m.PersonId == cmd.PersonId && m.Id != media.Id && m.Kind == MediaKind.Photo)
+                .OrderBy(m => m.CreatedAt)
+                .FirstOrDefaultAsync(ct);
+            if (replacement is not null) replacement.IsAvatar = true;
+        }
+
         await _db.SaveChangesAsync(ct);
         return Result<bool>.Ok(true);
     }

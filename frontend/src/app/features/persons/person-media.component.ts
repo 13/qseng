@@ -1,4 +1,4 @@
-import { Component, Input, OnInit, signal, inject, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, Input, OnInit, signal, inject, output } from '@angular/core';
 import { ApiClient, MediaItem } from '../../core/api/api-client.service';
 import { I18nService } from '../../core/i18n/i18n.service';
 import { TranslatePipe } from '../../core/i18n/translate.pipe';
@@ -6,6 +6,7 @@ import { TranslatePipe } from '../../core/i18n/translate.pipe';
 @Component({
   selector: 'qs-person-media',
   standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [TranslatePipe],
   template: `
     <section class="media-section">
@@ -20,7 +21,7 @@ import { TranslatePipe } from '../../core/i18n/translate.pipe';
       </div>
 
       @if (uploadErr()) {
-        <p class="error-msg small">{{ uploadErr() }}</p>
+        <p class="error-msg small" role="alert">{{ uploadErr() }}</p>
       }
 
       @if (media().length === 0 && !loading()) {
@@ -29,33 +30,36 @@ import { TranslatePipe } from '../../core/i18n/translate.pipe';
 
       <div class="media-grid">
         @for (item of media(); track item.id) {
-          <div class="media-item" [class.media-avatar]="isFirstPhoto(item)">
+          <div class="media-item" [class.media-avatar]="item.isAvatar">
             @if (isImage(item)) {
               <img [src]="item.url" [alt]="item.caption || ''" loading="lazy">
             } @else {
-              <div class="media-doc-icon">{{ docIcon(item) }}</div>
+              <div class="media-doc-icon" aria-hidden="true">{{ docIcon(item) }}</div>
             }
             <div class="media-overlay">
               @if (item.caption) {
                 <span class="media-caption">{{ item.caption }}</span>
               }
               <div class="media-overlay__actions">
-                @if (isImage(item) && !isFirstPhoto(item)) {
+                @if (isImage(item) && !item.isAvatar) {
                   <button class="media-action-btn" (click)="setAsAvatar(item)"
+                          [disabled]="settingAvatar()"
                           [title]="'media.setAvatar' | translate"
                           [attr.aria-label]="'media.setAvatar' | translate">★</button>
                 }
-                <button class="media-action-btn danger" (click)="deleteItem(item)" [title]="'delete' | translate">✕</button>
+                <button class="media-action-btn danger" (click)="deleteItem(item)"
+                        [title]="'delete' | translate"
+                        [attr.aria-label]="'delete' | translate">✕</button>
               </div>
             </div>
-            @if (isFirstPhoto(item)) {
-              <span class="media-avatar-badge">Avatar</span>
+            @if (item.isAvatar) {
+              <span class="media-avatar-badge">{{ 'media.avatarBadge' | translate }}</span>
             }
           </div>
         }
         @if (uploading()) {
           <div class="media-item media-uploading">
-            <div class="media-spinner"></div>
+            <div class="media-spinner" role="status" [attr.aria-label]="'media.uploading' | translate"></div>
           </div>
         }
       </div>
@@ -66,13 +70,14 @@ export class PersonMediaComponent implements OnInit {
   @Input({ required: true }) personId!: string;
   readonly avatarChanged = output<string>();
 
-  private api  = inject(ApiClient);
+  private readonly api = inject(ApiClient);
   readonly i18n = inject(I18nService);
 
-  media     = signal<MediaItem[]>([]);
-  loading   = signal(true);
-  uploading = signal(false);
-  uploadErr = signal('');
+  readonly media = signal<MediaItem[]>([]);
+  readonly loading = signal(true);
+  readonly uploading = signal(false);
+  readonly settingAvatar = signal(false);
+  readonly uploadErr = signal('');
 
   ngOnInit() {
     this.api.getPersonMedia(this.personId).subscribe({
@@ -100,9 +105,8 @@ export class PersonMediaComponent implements OnInit {
       this.api.uploadMedia(this.personId, file, undefined, kind).subscribe({
         next: item => {
           this.media.update(m => [...m, item]);
-          if (kind === 'Photo' && this.media().filter(x => x.kind === 'Photo').length === 1) {
-            this.avatarChanged.emit(item.url);
-          }
+          // The server marks the first photo as the avatar.
+          if (item.isAvatar) this.avatarChanged.emit(item.url);
           uploadNext(index + 1);
         },
         error: e => {
@@ -115,31 +119,35 @@ export class PersonMediaComponent implements OnInit {
   }
 
   setAsAvatar(item: MediaItem) {
-    const list = this.media();
-    const photos = list.filter(m => m.kind === 'Photo');
-    const others = photos.filter(m => m.id !== item.id);
-    const newOrder = [item, ...others, ...list.filter(m => m.kind !== 'Photo')];
-    this.media.set(newOrder);
-    this.avatarChanged.emit(item.url);
+    this.settingAvatar.set(true);
+    this.uploadErr.set('');
+    this.api.setAvatar(this.personId, item.id).subscribe({
+      next: () => {
+        this.media.update(list => list.map(m => ({ ...m, isAvatar: m.id === item.id })));
+        this.avatarChanged.emit(item.url);
+        this.settingAvatar.set(false);
+      },
+      error: e => {
+        this.uploadErr.set(e.error?.error ?? this.i18n.t('err.save'));
+        this.settingAvatar.set(false);
+      }
+    });
   }
 
   deleteItem(item: MediaItem) {
     if (!confirm(this.i18n.t('media.deleteConfirm'))) return;
     this.api.deleteMedia(this.personId, item.id).subscribe({
       next: () => {
-        const wasAvatar = this.isFirstPhoto(item);
         this.media.update(m => m.filter(x => x.id !== item.id));
-        if (wasAvatar) {
-          const next = this.media().find(m => m.kind === 'Photo');
-          this.avatarChanged.emit(next?.url ?? '');
-        }
-      },
-      error: e => alert(e.error?.error ?? this.i18n.t('err.delete'))
-    });
-  }
+        if (!item.isAvatar) return;
 
-  isFirstPhoto(item: MediaItem): boolean {
-    return this.media().find(m => m.kind === 'Photo')?.id === item.id;
+        // The server promotes the next photo; mirror that locally.
+        const next = this.media().find(m => m.kind === 'Photo');
+        if (next) this.media.update(list => list.map(m => ({ ...m, isAvatar: m.id === next.id })));
+        this.avatarChanged.emit(next?.url ?? '');
+      },
+      error: e => this.uploadErr.set(e.error?.error ?? this.i18n.t('err.delete'))
+    });
   }
 
   isImage(item: MediaItem) {

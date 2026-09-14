@@ -2,21 +2,18 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
-using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Qseng.Infrastructure.Persistence;
 
 #nullable disable
 
-namespace Qseng.Infrastructure.Persistence.Migrations
+namespace Qseng.Infrastructure.Persistence.Migrations.Postgres
 {
-    [DbContext(typeof(QsengDbContext))]
-    [Migration("20260429091030_InitialCreate")]
-    partial class InitialCreate
+    [DbContext(typeof(PostgresQsengDbContext))]
+    partial class PostgresQsengDbContextModelSnapshot : ModelSnapshot
     {
-        /// <inheritdoc />
-        protected override void BuildTargetModel(ModelBuilder modelBuilder)
+        protected override void BuildModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -54,6 +51,8 @@ namespace Qseng.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("TreeId");
+
                     b.HasIndex("UserId");
 
                     b.ToTable("import_jobs", (string)null);
@@ -72,6 +71,11 @@ namespace Qseng.Infrastructure.Persistence.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<bool>("IsAvatar")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false);
+
                     b.Property<int>("Kind")
                         .HasColumnType("integer");
 
@@ -85,7 +89,10 @@ namespace Qseng.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("PersonId");
+                    b.HasIndex("PersonId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_media_person_avatar")
+                        .HasFilter("\"IsAvatar\"");
 
                     b.ToTable("media", (string)null);
                 });
@@ -97,6 +104,9 @@ namespace Qseng.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid");
 
                     b.Property<string>("BirthPlace")
+                        .HasColumnType("text");
+
+                    b.Property<string>("CauseOfDeath")
                         .HasColumnType("text");
 
                     b.Property<DateTime>("CreatedAt")
@@ -138,6 +148,39 @@ namespace Qseng.Infrastructure.Persistence.Migrations
                     b.HasIndex("TreeId", "LastName", "FirstName");
 
                     b.ToTable("persons", (string)null);
+                });
+
+            modelBuilder.Entity("Qseng.Domain.Entities.RefreshToken", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("RevokedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("TokenHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TokenHash")
+                        .IsUnique();
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("refresh_tokens", (string)null);
                 });
 
             modelBuilder.Entity("Qseng.Domain.Entities.Relationship", b =>
@@ -184,6 +227,10 @@ namespace Qseng.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("FromPersonId");
+
+                    b.HasIndex("ToPersonId");
+
                     b.HasIndex("TreeId", "FromPersonId");
 
                     b.HasIndex("TreeId", "ToPersonId");
@@ -192,6 +239,28 @@ namespace Qseng.Infrastructure.Persistence.Migrations
                         .IsUnique();
 
                     b.ToTable("relationships", (string)null);
+                });
+
+            modelBuilder.Entity("Qseng.Domain.Entities.SiteSettings", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("RegistrationEnabled")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true);
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("SiteSettings");
                 });
 
             modelBuilder.Entity("Qseng.Domain.Entities.TimelineEvent", b =>
@@ -222,6 +291,11 @@ namespace Qseng.Infrastructure.Persistence.Migrations
                     b.Property<Guid?>("SourceRelationshipId")
                         .HasColumnType("uuid");
 
+                    b.Property<int>("StartSortKey")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0);
+
                     b.Property<string>("Title")
                         .IsRequired()
                         .HasMaxLength(300)
@@ -233,6 +307,11 @@ namespace Qseng.Infrastructure.Persistence.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("PersonId");
+
+                    b.HasIndex("SourceRelationshipId");
+
+                    b.HasIndex("PersonId", "StartSortKey")
+                        .HasDatabaseName("ix_timeline_events_person_sort");
 
                     b.ToTable("timeline_events", (string)null);
                 });
@@ -304,6 +383,11 @@ namespace Qseng.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<int>("TokenVersion")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0);
+
                     b.Property<string>("Username")
                         .IsRequired()
                         .HasMaxLength(50)
@@ -321,8 +405,38 @@ namespace Qseng.Infrastructure.Persistence.Migrations
                     b.ToTable("users", (string)null);
                 });
 
+            modelBuilder.Entity("Qseng.Domain.Entities.ImportJob", b =>
+                {
+                    b.HasOne("Qseng.Domain.Entities.Tree", null)
+                        .WithMany()
+                        .HasForeignKey("TreeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Qseng.Domain.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Qseng.Domain.Entities.Media", b =>
+                {
+                    b.HasOne("Qseng.Domain.Entities.Person", null)
+                        .WithMany()
+                        .HasForeignKey("PersonId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Qseng.Domain.Entities.Person", b =>
                 {
+                    b.HasOne("Qseng.Domain.Entities.Tree", null)
+                        .WithMany()
+                        .HasForeignKey("TreeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
                     b.OwnsOne("Qseng.Domain.ValueObjects.PartialDate", "Birth", b1 =>
                         {
                             b1.Property<Guid>("PersonId")
@@ -386,6 +500,36 @@ namespace Qseng.Infrastructure.Persistence.Migrations
                     b.Navigation("Death");
                 });
 
+            modelBuilder.Entity("Qseng.Domain.Entities.RefreshToken", b =>
+                {
+                    b.HasOne("Qseng.Domain.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Qseng.Domain.Entities.Relationship", b =>
+                {
+                    b.HasOne("Qseng.Domain.Entities.Person", null)
+                        .WithMany()
+                        .HasForeignKey("FromPersonId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Qseng.Domain.Entities.Person", null)
+                        .WithMany()
+                        .HasForeignKey("ToPersonId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Qseng.Domain.Entities.Tree", null)
+                        .WithMany()
+                        .HasForeignKey("TreeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Qseng.Domain.Entities.TimelineEvent", b =>
                 {
                     b.HasOne("Qseng.Domain.Entities.Person", null)
@@ -393,6 +537,11 @@ namespace Qseng.Infrastructure.Persistence.Migrations
                         .HasForeignKey("PersonId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.HasOne("Qseng.Domain.Entities.Relationship", null)
+                        .WithMany()
+                        .HasForeignKey("SourceRelationshipId")
+                        .OnDelete(DeleteBehavior.SetNull);
 
                     b.OwnsOne("Qseng.Domain.ValueObjects.PartialDate", "End", b1 =>
                         {
@@ -455,6 +604,15 @@ namespace Qseng.Infrastructure.Persistence.Migrations
                     b.Navigation("End");
 
                     b.Navigation("Start");
+                });
+
+            modelBuilder.Entity("Qseng.Domain.Entities.Tree", b =>
+                {
+                    b.HasOne("Qseng.Domain.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("OwnerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("Qseng.Domain.Entities.Person", b =>

@@ -29,7 +29,13 @@ public class TimelineEventConfiguration : IEntityTypeConfiguration<TimelineEvent
             p.Property(x => x.Approx).HasColumnName("end_approx");
         });
 
+        e.Property(x => x.StartSortKey).HasDefaultValue(0).IsRequired();
+
         e.HasIndex(x => x.PersonId);
+        // Covers the timeline query: filter by person, order by date descending.
+        e.HasIndex(x => new { x.PersonId, x.StartSortKey })
+            .HasDatabaseName("ix_timeline_events_person_sort");
+
         e.Ignore(x => x.SortableDate);
 
         e.HasOne<Relationship>()

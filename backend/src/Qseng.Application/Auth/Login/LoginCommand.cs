@@ -38,7 +38,6 @@ public class LoginHandler : IRequestHandler<LoginCommand, Result<AuthResponse>>
         if (!user.IsActive)
             return Result<AuthResponse>.Unauthorized("Account is pending activation by an administrator.");
 
-        return Result<AuthResponse>.Ok(new AuthResponse(
-            _jwt.GenerateAccessToken(user), user.Id, user.DisplayName, user.Username, user.IsAdmin));
+        return Result<AuthResponse>.Ok(await AuthSessions.IssueAsync(_db, _jwt, user, ct));
     }
 }

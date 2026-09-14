@@ -192,7 +192,10 @@ export class SettingsComponent implements OnInit {
   changePassword() {
     this.pwLoading.set(true); this.pwMsg.set(''); this.pwErr.set('');
     this.api.changePassword(this.pw.current, this.pw.next).subscribe({
-      next: () => {
+      next: session => {
+        // The old session was revoked server-side; adopt the replacement so this
+        // tab stays signed in while other devices are logged out.
+        this.auth.adoptSession(session);
         this.pwMsg.set(this.i18n.t('settings.password.ok'));
         this.pw = { current: '', next: '' };
         this.pwLoading.set(false);

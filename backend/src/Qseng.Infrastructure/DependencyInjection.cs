@@ -17,19 +17,18 @@ public static class DependencyInjection
         var provider = (cfg["DB_PROVIDER"] ?? cfg["Database:Provider"] ?? "sqlite").ToLowerInvariant();
         var conn = cfg["CONNECTION_STRING"] ?? cfg.GetConnectionString("Default") ?? "Data Source=qseng.db";
 
-        services.AddDbContext<QsengDbContext>(opt =>
+        // Each provider has its own context and migration chain; both are applied
+        // with Migrate() so the dev and prod schemas cannot drift apart.
+        switch (provider)
         {
-            switch (provider)
-            {
-                case "postgres":
-                case "postgresql":
-                    opt.UseNpgsql(conn, b => b.MigrationsAssembly("Qseng.Infrastructure"));
-                    break;
-                default:
-                    opt.UseSqlite(conn);
-                    break;
-            }
-        });
+            case "postgres":
+            case "postgresql":
+                services.AddDbContext<QsengDbContext, PostgresQsengDbContext>(opt => opt.UseNpgsql(conn));
+                break;
+            default:
+                services.AddDbContext<QsengDbContext, SqliteQsengDbContext>(opt => opt.UseSqlite(conn));
+                break;
+        }
 
         services.AddScoped<IQsengDbContext>(sp => sp.GetRequiredService<QsengDbContext>());
         services.AddScoped<IPasswordHasher, BcryptPasswordHasher>();

@@ -7,16 +7,12 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { NgClass } from '@angular/common';
 import { Subject, catchError, debounceTime, forkJoin, of } from 'rxjs';
-import {
-  ApiClient, Person, RelationshipType, Sex
-} from '../../../core/api/api-client.service';
+import { ApiClient, Person, Sex } from '../../../core/api/api-client.service';
 import { TreeGraphService } from './tree-graph.service';
+import { UI_REL_TYPES, UiRelType, toApiRelationship } from './tree-graph.model';
 import { I18nService } from '../../../core/i18n/i18n.service';
 import { TranslatePipe } from '../../../core/i18n/translate.pipe';
 import { PartialDatePipe } from '../../../shared/pipes/partial-date.pipe';
-
-type UiRelType = RelationshipType | 'Child';
-const UI_REL_TYPES: UiRelType[] = ['Parent', 'Child', 'Spouse', 'Adoptive'];
 
 function initials(p: Person): string {
   return ((p.firstName?.[0] ?? '') + (p.lastName?.[0] ?? '')).toUpperCase();
@@ -451,16 +447,8 @@ export class TreeViewComponent implements OnInit {
     this.relError.set('');
     this.savingRel.set(true);
 
-    // 'Child' means the picked "from" person is the child → swap so the API
-    // always receives Parent as from → to.
-    const isChild = this.relType() === 'Child';
-    const apiType: RelationshipType = isChild ? 'Parent' : (this.relType() as RelationshipType);
-
-    this.api.createRelationship(this.treeId, {
-      type: apiType,
-      fromPersonId: isChild ? to.id : from.id,
-      toPersonId: isChild ? from.id : to.id
-    }).subscribe({
+    // The type describes the "From" person's role: Parent means From is the parent of To.
+    this.api.createRelationship(this.treeId, toApiRelationship(this.relType(), from.id, to.id)).subscribe({
       next: () => {
         this.selectedFrom.set(null); this.selectedTo.set(null);
         this.fromSearch.set(''); this.toSearch.set('');

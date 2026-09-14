@@ -26,8 +26,10 @@ public class GetPersonMediaHandler : IRequestHandler<GetPersonMediaQuery, Result
 
         var media = await _db.Media
             .Where(m => m.PersonId == q.PersonId)
-            .OrderBy(m => m.CreatedAt)
-            .Select(m => new MediaDto(m.Id, m.PersonId, m.Url, m.Caption, m.Kind.ToString(), m.CreatedAt))
+            .OrderByDescending(m => m.IsAvatar)
+            .ThenBy(m => m.CreatedAt)
+            .Select(m => new MediaDto(
+                m.Id, m.PersonId, m.Url, m.Caption, m.Kind.ToString(), m.CreatedAt, m.IsAvatar))
             .ToListAsync(ct);
 
         return Result<List<MediaDto>>.Ok(media);

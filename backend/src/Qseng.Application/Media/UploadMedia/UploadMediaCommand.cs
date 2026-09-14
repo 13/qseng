@@ -1,4 +1,5 @@
 using MediatR;
+using Microsoft.EntityFrameworkCore;
 using Qseng.Application.Abstractions;
 using Qseng.Application.Common;
 using Qseng.Domain.Enums;
@@ -28,16 +29,22 @@ public class UploadMediaHandler : IRequestHandler<UploadMediaCommand, Result<Med
 
         var url = await _fileStorage.SaveAsync(cmd.PersonId, cmd.FileName, cmd.Content, ct);
 
+        // The first photo becomes the avatar; later ones must be chosen explicitly.
+        var isFirstPhoto = cmd.Kind == MediaKind.Photo &&
+            !await _db.Media.AnyAsync(m => m.PersonId == cmd.PersonId && m.Kind == MediaKind.Photo, ct);
+
         var media = new Domain.Entities.Media
         {
             PersonId = cmd.PersonId,
             Url = url,
             Caption = cmd.Caption,
-            Kind = cmd.Kind
+            Kind = cmd.Kind,
+            IsAvatar = isFirstPhoto
         };
         _db.Media.Add(media);
         await _db.SaveChangesAsync(ct);
 
-        return Result<MediaDto>.Ok(new MediaDto(media.Id, media.PersonId, media.Url, media.Caption, media.Kind.ToString(), media.CreatedAt));
+        return Result<MediaDto>.Ok(new MediaDto(
+            media.Id, media.PersonId, media.Url, media.Caption, media.Kind.ToString(), media.CreatedAt, media.IsAvatar));
     }
 }

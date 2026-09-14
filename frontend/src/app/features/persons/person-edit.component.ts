@@ -187,7 +187,7 @@ export class PersonEditComponent implements OnInit {
         error: () => this.error.set(this.i18n.t('err.load'))
       });
       this.api.getPersonMedia(this.personId).subscribe(media => {
-        const photo = media.find(m => m.kind === 'Photo');
+        const photo = media.find(m => m.isAvatar) ?? media.find(m => m.kind === 'Photo');
         if (photo) this.avatarUrl.set(photo.url);
       });
     }

@@ -1,34 +1,44 @@
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Qseng.Application.Abstractions;
+using Qseng.Application.Auth;
+using Qseng.Application.Auth.Register;
 using Qseng.Application.Common;
 
 namespace Qseng.Application.Users;
 
 // ── Change password ───────────────────────────────────────────────────────────
 
-public record ChangePasswordCommand(string CurrentPassword, string NewPassword) : IRequest<Result<bool>>;
+public record ChangePasswordCommand(string CurrentPassword, string NewPassword)
+    : IRequest<Result<AuthResponse>>;
 
-public class ChangePasswordHandler : IRequestHandler<ChangePasswordCommand, Result<bool>>
+public class ChangePasswordHandler : IRequestHandler<ChangePasswordCommand, Result<AuthResponse>>
 {
     private readonly IQsengDbContext _db;
     private readonly ICurrentUser _cu;
     private readonly IPasswordHasher _hasher;
+    private readonly IJwtTokenService _jwt;
 
-    public ChangePasswordHandler(IQsengDbContext db, ICurrentUser cu, IPasswordHasher hasher)
-    { _db = db; _cu = cu; _hasher = hasher; }
+    public ChangePasswordHandler(IQsengDbContext db, ICurrentUser cu, IPasswordHasher hasher, IJwtTokenService jwt)
+    { _db = db; _cu = cu; _hasher = hasher; _jwt = jwt; }
 
-    public async Task<Result<bool>> Handle(ChangePasswordCommand cmd, CancellationToken ct)
+    public async Task<Result<AuthResponse>> Handle(ChangePasswordCommand cmd, CancellationToken ct)
     {
         var user = await _db.Users.FindAsync([_cu.UserId], ct);
-        if (user is null) return Result<bool>.NotFound("User not found.");
+        if (user is null) return Result<AuthResponse>.NotFound("User not found.");
         if (!_hasher.Verify(cmd.CurrentPassword, user.PasswordHash))
-            return Result<bool>.Fail("Current password is incorrect.");
+            return Result<AuthResponse>.Fail("Current password is incorrect.");
         if (cmd.NewPassword.Length < 8)
-            return Result<bool>.Fail("New password must be at least 8 characters.");
+            return Result<AuthResponse>.Fail("New password must be at least 8 characters.");
+
         user.PasswordHash = _hasher.Hash(cmd.NewPassword);
+
+        // Every existing session dies, including this one; the caller is then
+        // handed a fresh session so only *other* devices are signed out.
+        await AuthSessions.RevokeAllSessionsAsync(_db, user, ct);
         await _db.SaveChangesAsync(ct);
-        return Result<bool>.Ok(true);
+
+        return Result<AuthResponse>.Ok(await AuthSessions.IssueAsync(_db, _jwt, user, ct));
     }
 }
 
@@ -159,23 +169,34 @@ public class ExportDataHandler : IRequestHandler<ExportDataQuery, Result<ExportD
         var user = await _db.Users.FindAsync([_cu.UserId], ct);
         if (user is null) return Result<ExportDto>.NotFound("User not found.");
 
-        var trees = await _db.Trees.Where(t => t.OwnerId == _cu.UserId).ToListAsync(ct);
-        var exportTrees = new List<ExportTreeDto>();
+        var trees = await _db.Trees.AsNoTracking()
+            .Where(t => t.OwnerId == _cu.UserId)
+            .ToListAsync(ct);
 
-        foreach (var tree in trees)
-        {
-            var persons = await _db.Persons.Where(p => p.TreeId == tree.Id).ToListAsync(ct);
-            var rels = await _db.Relationships.Where(r => r.TreeId == tree.Id).ToListAsync(ct);
+        var treeIds = trees.Select(t => t.Id).ToList();
 
-            exportTrees.Add(new ExportTreeDto(
-                tree.Id, tree.Name, tree.Description,
-                persons.Select(p => new ExportPersonDto(p.Id, p.FirstName, p.LastName, p.MaidenName,
-                    p.Sex.ToString(), p.Birth?.Year, p.Birth?.Month, p.Birth?.Day, p.BirthPlace,
-                    p.Death?.Year, p.Death?.Month, p.Death?.Day, p.DeathPlace, p.Notes)).ToList(),
-                rels.Select(r => new ExportRelDto(r.FromPersonId, r.ToPersonId, r.Type.ToString(),
-                    r.StartYear, r.EndYear)).ToList()
-            ));
-        }
+        // Three queries total, regardless of how many trees the user owns.
+        var personsByTree = (await _db.Persons.AsNoTracking()
+                .Where(p => treeIds.Contains(p.TreeId))
+                .ToListAsync(ct))
+            .GroupBy(p => p.TreeId)
+            .ToDictionary(g => g.Key, g => g.ToList());
+
+        var relsByTree = (await _db.Relationships.AsNoTracking()
+                .Where(r => treeIds.Contains(r.TreeId))
+                .ToListAsync(ct))
+            .GroupBy(r => r.TreeId)
+            .ToDictionary(g => g.Key, g => g.ToList());
+
+        var exportTrees = trees.Select(tree => new ExportTreeDto(
+            tree.Id, tree.Name, tree.Description,
+            (personsByTree.GetValueOrDefault(tree.Id) ?? []).Select(p => new ExportPersonDto(
+                p.Id, p.FirstName, p.LastName, p.MaidenName,
+                p.Sex.ToString(), p.Birth?.Year, p.Birth?.Month, p.Birth?.Day, p.BirthPlace,
+                p.Death?.Year, p.Death?.Month, p.Death?.Day, p.DeathPlace, p.Notes)).ToList(),
+            (relsByTree.GetValueOrDefault(tree.Id) ?? []).Select(r => new ExportRelDto(
+                r.FromPersonId, r.ToPersonId, r.Type.ToString(), r.StartYear, r.EndYear)).ToList()
+        )).ToList();
 
         return Result<ExportDto>.Ok(new ExportDto(user.Username, DateTime.UtcNow, exportTrees));
     }

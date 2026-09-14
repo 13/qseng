@@ -1,6 +1,7 @@
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Qseng.Application.Abstractions;
+using Qseng.Application.Auth;
 using Qseng.Application.Common;
 using Qseng.Domain.Entities;
 
@@ -51,7 +52,13 @@ public class SetUserActiveHandler : IRequestHandler<SetUserActiveCommand, Result
         if (!_cu.IsAdmin) return Result<bool>.Fail("Forbidden.", 403);
         var user = await _db.Users.FindAsync([cmd.TargetId], ct);
         if (user is null) return Result<bool>.NotFound("User not found.");
+        if (user.Id == _cu.UserId && !cmd.Active)
+            return Result<bool>.Fail("Cannot deactivate your own account.", 400);
+
         user.IsActive = cmd.Active;
+        // Deactivation must take effect now, not whenever their access token expires.
+        if (!cmd.Active) await AuthSessions.RevokeAllSessionsAsync(_db, user, ct);
+
         await _db.SaveChangesAsync(ct);
         return Result<bool>.Ok(true);
     }
@@ -74,7 +81,12 @@ public class SetUserAdminHandler : IRequestHandler<SetUserAdminCommand, Result<b
         if (user is null) return Result<bool>.NotFound("User not found.");
         if (user.Id == _cu.UserId && !cmd.Admin)
             return Result<bool>.Fail("Cannot remove your own admin rights.", 400);
+
         user.IsAdmin = cmd.Admin;
+        // Their access token carries a stale isAdmin claim; invalidate it. Their
+        // refresh token still works, so the client silently picks up the new role.
+        AuthSessions.BumpTokenVersion(user);
+
         await _db.SaveChangesAsync(ct);
         return Result<bool>.Ok(true);
     }
@@ -166,7 +178,11 @@ public class AdminChangeUserPasswordHandler : IRequestHandler<AdminChangeUserPas
         if (cmd.NewPassword.Length < 8) return Result<bool>.Fail("Password must be at least 8 characters.");
         var user = await _db.Users.FindAsync([cmd.TargetId], ct);
         if (user is null) return Result<bool>.NotFound("User not found.");
+
         user.PasswordHash = _hasher.Hash(cmd.NewPassword);
+        // An admin-forced password reset logs the user out everywhere.
+        await AuthSessions.RevokeAllSessionsAsync(_db, user, ct);
+
         await _db.SaveChangesAsync(ct);
         return Result<bool>.Ok(true);
     }
