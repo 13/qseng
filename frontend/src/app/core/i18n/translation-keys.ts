@@ -44,6 +44,8 @@ export type TranslationKey =
   | 'admin.table.status'
   | 'admin.table.user'
   | 'admin.title'
+  | 'auth.hidePassword'
+  | 'auth.showPassword'
   | 'back'
   | 'cancel'
   | 'date.clear'
@@ -109,6 +111,7 @@ export type TranslationKey =
   | 'import.title'
   | 'loading'
   | 'login.demo'
+  | 'login.demoFill'
   | 'login.demoPass'
   | 'login.demoUser'
   | 'login.error'
@@ -118,6 +121,7 @@ export type TranslationKey =
   | 'login.submit'
   | 'login.submitting'
   | 'login.tagline'
+  | 'login.title'
   | 'login.username'
   | 'media.add'
   | 'media.avatarBadge'
@@ -343,6 +347,8 @@ export const TRANSLATION_KEYS: readonly TranslationKey[] = [
   'admin.table.status',
   'admin.table.user',
   'admin.title',
+  'auth.hidePassword',
+  'auth.showPassword',
   'back',
   'cancel',
   'date.clear',
@@ -408,6 +414,7 @@ export const TRANSLATION_KEYS: readonly TranslationKey[] = [
   'import.title',
   'loading',
   'login.demo',
+  'login.demoFill',
   'login.demoPass',
   'login.demoUser',
   'login.error',
@@ -417,6 +424,7 @@ export const TRANSLATION_KEYS: readonly TranslationKey[] = [
   'login.submit',
   'login.submitting',
   'login.tagline',
+  'login.title',
   'login.username',
   'media.add',
   'media.avatarBadge',
