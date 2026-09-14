@@ -27,7 +27,7 @@ describe('ThemeService', () => {
     theme.cycle(); expect(theme.mode()).toBe('auto');
   });
 
-  it('re-applies the legacy data-theme attribute when the OS preference changes in auto mode', () => {
+  it('tracks the OS preference in auto mode via isDark(), without touching color-scheme', () => {
     let handler: ((e: { matches: boolean }) => void) | undefined;
     vi.stubGlobal('matchMedia', vi.fn(() => ({
       matches: false,
@@ -35,11 +35,13 @@ describe('ThemeService', () => {
     })));
     const theme = TestBed.inject(ThemeService);
     expect(theme.mode()).toBe('auto');
-    expect(document.documentElement.getAttribute('data-theme')).toBe('light');
+    expect(theme.isDark()).toBe(false);
+    expect(document.documentElement.getAttribute('data-color-scheme')).toBe('light dark');
 
     handler!({ matches: true });
 
     expect(theme.isDark()).toBe(true);
-    expect(document.documentElement.getAttribute('data-theme')).toBe('dark');
+    // 'auto' always writes the light-dark() color-scheme; the OS switch only flips isDark().
+    expect(document.documentElement.getAttribute('data-color-scheme')).toBe('light dark');
   });
 });

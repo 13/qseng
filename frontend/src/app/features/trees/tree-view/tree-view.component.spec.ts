@@ -9,7 +9,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { TreeViewComponent } from './tree-view.component';
 import { TreeStore } from './tree.store';
 import { TreeGraphService } from './tree-graph.service';
-import { PersonsApi, RelationshipsApi, TreesApi } from '../../../core/api/generated';
+import { PersonDto, PersonsApi, RelationshipsApi, TreesApi } from '../../../core/api/generated';
 import { LayoutService } from '../../../core/ui/layout.service';
 import { ConfirmDialogService } from '../../../core/ui/confirm-dialog.service';
 import { ToastService } from '../../../core/ui/toast.service';
@@ -26,7 +26,9 @@ function setup(handset = false, withPeople = true) {
     filteredPersons: signal(withPeople ? people : []), selectedPerson: signal(null),
     // Wired to the signal (not a bare spy) so tests can tell a real revert from a no-op call.
     select: vi.fn((id: string | null) => selectedId.set(id)), setFilter: vi.fn(), setSort: vi.fn(),
-    personById: vi.fn(() => people[0]), relativesOf: vi.fn(() => ({ parents: [], spouses: [], children: [] }))
+    personById: vi.fn(() => people[0]),
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars -- id kept so tests can reassign relativesOf to an id-aware mock
+    relativesOf: vi.fn((id: string): { parents: PersonDto[]; spouses: PersonDto[]; children: PersonDto[] } => ({ parents: [], spouses: [], children: [] }))
   };
   const graph = { build: vi.fn(async () => undefined), select: vi.fn(), fit: vi.fn(), zoomIn: vi.fn(), zoomOut: vi.fn(), toggleLayout: vi.fn(), resetLayout: vi.fn(), exportPng: vi.fn(),
     layoutMode: signal('tree'), loading: signal(false), selectedId: signal<string | null>(null), searchTerm: signal(''), hasCustomLayout: signal(false), compact: signal(false), destroy: vi.fn() };
@@ -101,6 +103,33 @@ describe('TreeViewComponent', () => {
     cmp.onSelected('a');
     expect(store.select).toHaveBeenCalledWith('a');
     expect(graph.select).toHaveBeenCalledWith('a');
+  });
+
+  it('ArrowRight twice cycles from a person to their second spouse', () => {
+    const { cmp, store } = setup();
+    const s1 = { id: 's1', treeId: 't1', firstName: 'Bea', lastName: 'Smith', sex: 'Female' as const };
+    const s2 = { id: 's2', treeId: 't1', firstName: 'Cleo', lastName: 'Smith', sex: 'Female' as const };
+    // Only 'a' (the anchor) has spouses in the mock lineage index — same shape as the real
+    // TreeStore, where a spouse's own spousesOf set doesn't include their co-spouse.
+    store.relativesOf = vi.fn((id: string) => ({ parents: [], children: [], spouses: id === 'a' ? [s1, s2] : [] }));
+    store.select('a');
+
+    cmp.onKey({ key: 'ArrowRight', preventDefault: vi.fn() } as unknown as KeyboardEvent);
+    expect(store.selectedId()).toBe('s1');
+
+    cmp.onKey({ key: 'ArrowRight', preventDefault: vi.fn() } as unknown as KeyboardEvent);
+    expect(store.selectedId()).toBe('s2');
+  });
+
+  it('ArrowLeft from the anchor wraps to the last spouse', () => {
+    const { cmp, store } = setup();
+    const s1 = { id: 's1', treeId: 't1', firstName: 'Bea', lastName: 'Smith', sex: 'Female' as const };
+    const s2 = { id: 's2', treeId: 't1', firstName: 'Cleo', lastName: 'Smith', sex: 'Female' as const };
+    store.relativesOf = vi.fn((id: string) => ({ parents: [], children: [], spouses: id === 'a' ? [s1, s2] : [] }));
+    store.select('a');
+
+    cmp.onKey({ key: 'ArrowLeft', preventDefault: vi.fn() } as unknown as KeyboardEvent);
+    expect(store.selectedId()).toBe('s2');
   });
 
   // Regression: the seeding effect used to run in ngOnInit, before the constructor's

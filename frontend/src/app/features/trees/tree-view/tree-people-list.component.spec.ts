@@ -29,7 +29,8 @@ describe('TreePeopleListComponent', () => {
     fixture.detectChanges();
     const el: HTMLElement = fixture.nativeElement;
     expect(el.textContent).toContain('Smith, Konrad');
-    expect(el.querySelector('[data-person-id="a"]')?.getAttribute('aria-selected')).toBe('true');
+    expect(el.querySelector('[data-person-id="a"]')?.getAttribute('aria-current')).toBe('true');
+    expect(el.querySelector('[data-person-id="b"]')?.getAttribute('aria-current')).toBeNull();
   });
   it('names both sort toggles on the inner radio button, not just the host', async () => {
     const { fixture } = setup();

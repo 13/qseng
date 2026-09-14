@@ -46,7 +46,7 @@ const SEXES: Sex[] = ['Male', 'Female'];
           <div class="qs-pe__avatar-wrap">
             <button type="button" class="qs-pe__avatar-btn" (click)="avatarInput.click()" [disabled]="avatarUploading()" [attr.aria-label]="'pe.avatarHint' | translate">
               @if (avatarPreview(); as url) { <img [src]="url" [alt]="''"> }
-              @else { <span [class]="'qs-pe__initials qs-sex-' + sexClass(form.controls.sex.value)">{{ initialsNow() }}</span> }
+              @else { <span [class]="'qs-avatar qs-avatar--88 qs-avatar__initials qs-sex-' + sexClass(form.controls.sex.value)">{{ initialsNow() }}</span> }
             </button>
             <mat-icon class="qs-pe__avatar-icon" aria-hidden="true">photo_camera</mat-icon>
           </div>
@@ -107,7 +107,6 @@ const SEXES: Sex[] = ['Male', 'Female'];
     .qs-pe__avatar-wrap { position: relative; width: 88px; height: 88px; flex: 0 0 auto; }
     .qs-pe__avatar-btn { width: 88px; height: 88px; border-radius: 50%; border: 0; padding: 0; overflow: hidden; cursor: pointer; background: var(--mat-sys-surface-container); }
     .qs-pe__avatar-btn img { width: 100%; height: 100%; object-fit: cover; }
-    .qs-pe__initials { display: grid; place-items: center; width: 100%; height: 100%; font-size: 1.8rem; font-weight: 600; color: #fff; }
     .qs-pe__avatar-icon { position: absolute; right: 0; bottom: 0; background: var(--mat-sys-primary); color: var(--mat-sys-on-primary); border-radius: 50%; padding: 3px; font-size: 18px; width: 18px; height: 18px; pointer-events: none; }
     .qs-pe__avatar-title { font-weight: 500; }
     .qs-pe__grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 4px 16px; align-items: start; }

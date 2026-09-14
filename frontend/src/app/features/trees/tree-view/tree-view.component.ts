@@ -1,5 +1,5 @@
 import {
-  Component, ElementRef, Injector,
+  Component, DestroyRef, ElementRef, Injector,
   afterNextRender, computed, effect, inject, input, signal, untracked, viewChild
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -188,6 +188,7 @@ export class TreeViewComponent {
   private readonly crumbs = inject(BreadcrumbService);
   private readonly i18n = inject(I18nService);
   private readonly injector = inject(Injector);
+  private readonly destroyRef = inject(DestroyRef);
 
   readonly sidenavOpen = signal(true);
   readonly skeletonRows = [0, 1, 2, 3, 4, 5];
@@ -214,7 +215,7 @@ export class TreeViewComponent {
       const id = this.graph.selectedId();
       if (id !== lastGraphSelected) {
         lastGraphSelected = id;
-        untracked(() => this.store.select(id));
+        untracked(() => { this.spouseCycleAnchor = null; this.store.select(id); });
       }
     });
     this.filter$.pipe(debounceTime(150), takeUntilDestroyed()).subscribe(t => this.graph.searchTerm.set(t));
@@ -237,11 +238,12 @@ export class TreeViewComponent {
   }
 
   onSelected(id: string | null): void {
+    this.spouseCycleAnchor = null;
     this.store.select(id);
     this.graph.select(id);
     if (id && this.layout.handset()) {
       const ref = this.sheet.open(TreeSelectionSheetComponent, { injector: this.injector, panelClass: ['qs-sheet', 'qs-sheet--auto'] });
-      ref.afterDismissed().subscribe(result => {
+      ref.afterDismissed().pipe(takeUntilDestroyed(this.destroyRef)).subscribe(result => {
         if (!result) return;
         if (result.action === 'closed') this.onSelected(null);
         else if (result.action === 'navigate') this.onSelected(result.id);
@@ -256,7 +258,7 @@ export class TreeViewComponent {
 
   openPeopleSheet(): void {
     const ref = this.sheet.open(TreePeopleSheetComponent, { injector: this.injector, panelClass: 'qs-sheet' });
-    ref.afterDismissed().subscribe(result => {
+    ref.afterDismissed().pipe(takeUntilDestroyed(this.destroyRef)).subscribe(result => {
       if (!result) return;
       if (result.open) this.open(result.id);
       else this.onSelected(result.id);
@@ -294,7 +296,7 @@ export class TreeViewComponent {
       confirmLabel: this.i18n.t('delete'), destructive: true
     });
     if (ok !== true) return;
-    this.personsApi.personsDelete({ id: person.id }).subscribe({
+    this.personsApi.personsDelete({ id: person.id }).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: () => { this.toast.success(this.i18n.t('tree.deleted.toast')); this.store.reload(); },
       error: e => this.toast.errorFrom(e, this.i18n.t('err.delete'))
     });
@@ -308,7 +310,8 @@ export class TreeViewComponent {
       case 'Escape': this.onSelected(null); break;
       case 'ArrowUp': this.moveSelection('parents'); break;
       case 'ArrowDown': this.moveSelection('children'); break;
-      case 'ArrowLeft': case 'ArrowRight': this.moveSelection('spouses'); break;
+      case 'ArrowLeft': this.moveSelection('spouses', -1); break;
+      case 'ArrowRight': this.moveSelection('spouses', +1); break;
       case 'Enter': { const id = this.store.selectedId(); if (id) this.open(id); break; }
       default: return;
     }
@@ -319,10 +322,25 @@ export class TreeViewComponent {
     this.graph.exportPng(`${this.store.tree()?.name || 'family-tree'}.png`);
   }
 
-  private moveSelection(kind: 'parents' | 'children' | 'spouses'): void {
+  // Tracks who the arrow keys are cycling spouses *of*, since after the first
+  // press `store.selectedId()` becomes a spouse rather than the original
+  // person — and that spouse's own spousesOf list is a different set.
+  private spouseCycleAnchor: string | null = null;
+
+  private moveSelection(kind: 'parents' | 'children' | 'spouses', step = 1): void {
     const id = this.store.selectedId();
     if (!id) return;
-    const target = this.store.relativesOf(id)[kind][0];
-    if (target?.id) this.onSelected(target.id);
+    if (kind !== 'spouses') { const target = this.store.relativesOf(id)[kind][0]; if (target?.id) this.onSelected(target.id); return; }
+
+    const anchor = this.spouseCycleAnchor && this.store.relativesOf(this.spouseCycleAnchor).spouses.some(p => p.id === id)
+      ? this.spouseCycleAnchor
+      : id;
+    const list = this.store.relativesOf(anchor).spouses;
+    if (!list.length) return;
+    const idx = list.findIndex(p => p.id === id);
+    const target = idx === -1 ? (step > 0 ? list[0] : list[list.length - 1]) : list[(idx + step + list.length) % list.length];
+    if (!target?.id) return;
+    this.onSelected(target.id);
+    this.spouseCycleAnchor = anchor;
   }
 }

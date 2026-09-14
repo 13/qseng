@@ -15,8 +15,8 @@ import { TreeStore } from './tree.store';
   template: `
     <div class="qs-sel">
       <div class="qs-sel__head">
-        @if (person().avatarUrl) { <img class="qs-sel__avatar" [src]="person().avatarUrl" alt=""> }
-        @else { <span [class]="'qs-sel__avatar qs-sel__initials qs-sex-' + sexClass(person().sex)" aria-hidden="true">{{ initials({ firstName: person().firstName ?? '', lastName: person().lastName ?? '' }) }}</span> }
+        @if (person().avatarUrl) { <img class="qs-avatar qs-avatar--56" [src]="person().avatarUrl" alt=""> }
+        @else { <span [class]="'qs-avatar qs-avatar--56 qs-avatar__initials qs-sex-' + sexClass(person().sex)" aria-hidden="true">{{ initials({ firstName: person().firstName ?? '', lastName: person().lastName ?? '' }) }}</span> }
         <div class="qs-sel__id">
           <div class="qs-display qs-sel__name">{{ name() }}</div>
           @if (person().maidenName) { <div class="qs-muted">{{ 'pd.maiden' | translate }} {{ person().maidenName }}</div> }
@@ -44,8 +44,6 @@ import { TreeStore } from './tree.store';
   styles: [`
     .qs-sel { display: flex; flex-direction: column; gap: 10px; padding: 16px; }
     .qs-sel__head { display: flex; align-items: center; gap: 12px; }
-    .qs-sel__avatar { width: 56px; height: 56px; border-radius: 50%; object-fit: cover; flex: 0 0 auto; }
-    .qs-sel__initials { display: grid; place-items: center; font-weight: 600; color: #fff; }
     .qs-sel__id { flex: 1; min-width: 0; }
     .qs-sel__name { font-size: 1.25rem; }
     .qs-sel__dl { display: grid; grid-template-columns: max-content 1fr; gap: 4px 10px; margin: 0; }

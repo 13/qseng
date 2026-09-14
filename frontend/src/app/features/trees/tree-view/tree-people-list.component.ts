@@ -28,16 +28,16 @@ import { PeopleSort, TreeStore } from './tree.store';
           <mat-button-toggle value="name" [matTooltip]="'tree.sort.name' | translate" [aria-label]="'tree.sort.name' | translate"><mat-icon>sort_by_alpha</mat-icon></mat-button-toggle>
         </mat-button-toggle-group>
       </div>
-      <cdk-virtual-scroll-viewport itemSize="56" class="qs-people__viewport" role="listbox" [attr.aria-label]="'tree.peopleList' | translate">
-        <button *cdkVirtualFor="let p of store.filteredPersons(); trackBy: trackId" type="button" class="qs-people__row" role="option"
-                [attr.data-person-id]="p.id" [attr.aria-selected]="store.selectedId() === p.id" [class.qs-people__row--active]="store.selectedId() === p.id"
+      <cdk-virtual-scroll-viewport itemSize="56" class="qs-people__viewport" [attr.aria-label]="'tree.peopleList' | translate">
+        <button *cdkVirtualFor="let p of store.filteredPersons(); trackBy: trackId" type="button" class="qs-people__row"
+                [attr.data-person-id]="p.id" [attr.aria-current]="store.selectedId() === p.id ? 'true' : null" [class.qs-people__row--active]="store.selectedId() === p.id"
                 (click)="pick(p)" (dblclick)="openPerson(p)">
-          @if (p.avatarUrl) { <img class="qs-people__avatar" [src]="p.avatarUrl" alt="" loading="lazy"> }
-          @else { <span [class]="'qs-people__avatar qs-people__initials qs-sex-' + sexClass(p.sex)" aria-hidden="true">{{ initials({ firstName: p.firstName ?? '', lastName: p.lastName ?? '' }) }}</span> }
+          @if (p.avatarUrl) { <img class="qs-avatar qs-avatar--32" [src]="p.avatarUrl" alt="" loading="lazy"> }
+          @else { <span [class]="'qs-avatar qs-avatar--32 qs-avatar__initials qs-sex-' + sexClass(p.sex)" aria-hidden="true">{{ initials({ firstName: p.firstName ?? '', lastName: p.lastName ?? '' }) }}</span> }
           <span class="qs-people__name">{{ p.lastName }}, {{ p.firstName }}</span>
           <span class="qs-muted qs-people__span">{{ lifespan({ firstName: '', lastName: '', birth: p.birth, death: p.death }) }}</span>
         </button>
-        @if (!store.filteredPersons().length) { <p class="qs-muted qs-people__empty">{{ 'tree.noResults' | translate }}</p> }
+        @if (!store.filteredPersons().length) { <p class="qs-empty qs-empty--compact qs-muted">{{ 'tree.noResults' | translate }}</p> }
       </cdk-virtual-scroll-viewport>
     </div>
   `,
@@ -49,11 +49,8 @@ import { PeopleSort, TreeStore } from './tree.store';
     .qs-people__row { display: flex; align-items: center; gap: 10px; width: 100%; height: 56px; padding: 0 12px; border: 0; background: transparent; text-align: left; font: inherit; color: var(--mat-sys-on-surface); cursor: pointer; border-radius: var(--mat-sys-corner-small); }
     .qs-people__row:hover { background: var(--mat-sys-surface-container); }
     .qs-people__row--active { background: var(--mat-sys-secondary-container); color: var(--mat-sys-on-secondary-container); }
-    .qs-people__avatar { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; flex: 0 0 auto; }
-    .qs-people__initials { display: grid; place-items: center; font-size: .75rem; font-weight: 600; color: #fff; }
     .qs-people__name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .qs-people__span { font-size: .8rem; }
-    .qs-people__empty { padding: 12px; }
   `]
 })
 export class TreePeopleListComponent {

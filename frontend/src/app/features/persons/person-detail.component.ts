@@ -34,9 +34,9 @@ import { PersonMediaComponent } from './person-media.component';
           <mat-card appearance="outlined" class="qs-identity">
             <div class="qs-identity__hero" [class.qs-identity__hero--solo]="!(p.maidenName || span())">
               @if (store.avatarUrl(); as url) {
-                <img class="qs-identity__photo" [src]="url" [alt]="store.fullName()">
+                <img class="qs-avatar qs-avatar--72" [src]="url" [alt]="store.fullName()">
               } @else {
-                <div class="qs-identity__initials" [class]="'qs-identity__initials qs-sex-' + sexClass(p.sex)" aria-hidden="true">{{ initials({ firstName: p.firstName ?? '', lastName: p.lastName ?? '' }) }}</div>
+                <div [class]="'qs-avatar qs-avatar--72 qs-avatar__initials qs-sex-' + sexClass(p.sex)" aria-hidden="true">{{ initials({ firstName: p.firstName ?? '', lastName: p.lastName ?? '' }) }}</div>
               }
               @if (p.maidenName || span()) {
                 <div>
@@ -75,8 +75,6 @@ import { PersonMediaComponent } from './person-media.component';
     .qs-person { display: grid; grid-template-columns: minmax(280px, 360px) 1fr; gap: 24px; align-items: start; }
     .qs-identity__hero { display: flex; gap: 16px; align-items: center; margin-bottom: 12px; }
     .qs-identity__hero--solo { justify-content: center; }
-    .qs-identity__photo, .qs-identity__initials { width: 72px; height: 72px; border-radius: 50%; object-fit: cover; flex: 0 0 auto; }
-    .qs-identity__initials { display: grid; place-items: center; font-weight: 600; font-size: 1.4rem; color: #fff; }
     .qs-dl { display: grid; grid-template-columns: max-content 1fr; gap: 6px 12px; margin: 0; }
     .qs-dl dt { color: var(--mat-sys-on-surface-variant); font-size: .8rem; text-transform: uppercase; letter-spacing: .04em; }
     .qs-dl dd { margin: 0; }

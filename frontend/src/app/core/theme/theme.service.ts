@@ -48,7 +48,5 @@ export class ThemeService {
     // The CSS property drives Material's light-dark(); the attribute mirrors it (jsdom drops unknown style props).
     html.style.setProperty('color-scheme', scheme);
     html.setAttribute('data-color-scheme', scheme);
-    // Legacy stylesheet still keys off this attribute until P1e removes it.
-    html.setAttribute('data-theme', this.isDark() ? 'dark' : 'light');
   }
 }

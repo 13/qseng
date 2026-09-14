@@ -49,7 +49,7 @@ import { UserApi } from './core/api/generated';
         </button>
 
         <button matButton [matMenuTriggerFor]="userMenu" class="qs-user" aria-haspopup="menu">
-          <span class="qs-user__avatar" aria-hidden="true">{{ initials() }}</span>
+          <span class="qs-avatar qs-avatar--28 qs-avatar__initials qs-user__avatar" aria-hidden="true">{{ initials() }}</span>
           <span class="qs-user__name">{{ auth.displayName() }}</span>
           <mat-icon aria-hidden="true">expand_more</mat-icon>
         </button>
@@ -88,7 +88,7 @@ import { UserApi } from './core/api/generated';
     .qs-crumbs__item--current { color: var(--mat-sys-on-surface); font-weight: 500; }
     .qs-spacer { flex: 1; }
     .qs-user { display: inline-flex; align-items: center; gap: 8px; }
-    .qs-user__avatar { display: inline-grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; background: var(--mat-sys-primary); color: var(--mat-sys-on-primary); font-size: .75rem; font-weight: 600; }
+    .qs-user__avatar { background: var(--mat-sys-primary); color: var(--mat-sys-on-primary); }
     .qs-menu-header { padding: 8px 16px; }
     .qs-menu-header__name { font-weight: 500; }
     .qs-progress { position: sticky; top: var(--qs-toolbar-h); z-index: 99; opacity: 0; transition: opacity .15s; }
