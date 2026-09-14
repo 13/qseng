@@ -1,6 +1,8 @@
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Qseng.Infrastructure.Options;
 
 namespace Qseng.Api.RateLimiting;
@@ -18,6 +20,9 @@ public static class AuthRateLimitPolicy
         o.OnRejected = (ctx, ct) =>
         {
             var retry = ctx.Lease.TryGetMetadata(MetadataName.RetryAfter, out var after) ? after : TimeSpan.FromSeconds(limit.WindowSeconds);
+            var partitionKey = ctx.HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+            var logger = ctx.HttpContext.RequestServices.GetRequiredService<ILoggerFactory>().CreateLogger(typeof(AuthRateLimitPolicy).FullName!);
+            logger.LogWarning("Auth rate limit exceeded for {PartitionKey} on {Path}", partitionKey, ctx.HttpContext.Request.Path);
             return new ValueTask(WriteRejectionAsync(ctx.HttpContext, retry, ct));
         };
     }

@@ -26,12 +26,14 @@ services:
       Jwt__Key: "change-me-in-prod-please-32+chars-long-key!"
       Cors__AllowedOrigins__0: "http://localhost:8081"
       Uploads__Path: /app/uploads
-      ForwardedHeaders__KnownNetworks__0: "172.16.0.0/12"
+      ForwardedHeaders__KnownNetworks__0: "172.28.0.0/16"
     depends_on:
       postgres:
         condition: service_healthy
-    ports:
-      - "8080:8080"
+    # nginx (the frontend service) proxies /api/ and /uploads/, so the api container
+    # need not publish a host port. Uncomment for local debugging only:
+    # ports:
+    #   - "127.0.0.1:8080:8080"
     volumes:
       - uploads:/app/uploads
 
@@ -48,3 +50,9 @@ services:
 volumes:
   pgdata:
   uploads:
+
+networks:
+  default:
+    ipam:
+      config:
+        - subnet: 172.28.0.0/16

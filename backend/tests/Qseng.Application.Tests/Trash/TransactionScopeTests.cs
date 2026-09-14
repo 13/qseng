@@ -11,6 +11,20 @@ namespace Qseng.Application.Tests.Trash;
 public class TransactionScopeTests
 {
     [Fact]
+    public async Task DisposeAsync_swallows_a_failing_rollback_instead_of_throwing()
+    {
+        var db = TestDb.Create();
+        var scope = await db.BeginTransactionAsync();
+        // Force the implicit RollbackAsync (CompleteAsync was never called) to fail by closing
+        // the connection out from under the still-open transaction.
+        await db.Database.GetDbConnection().CloseAsync();
+
+        var act = async () => await scope.DisposeAsync();
+
+        await act.Should().NotThrowAsync();
+    }
+
+    [Fact]
     public async Task SetAvatar_is_all_or_nothing()
     {
         var (db, owner, a, _, _, _, media) = await TrashFixtures.SeedFamilyAsync();   // media is the avatar

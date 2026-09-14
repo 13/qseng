@@ -8,6 +8,7 @@ using Qseng.Application.Users;
 using Qseng.Domain.Enums;
 using Xunit;
 using MediaEntity = Qseng.Domain.Entities.Media;
+using RefreshTokenEntity = Qseng.Domain.Entities.RefreshToken;
 
 namespace Qseng.Application.Tests.Users;
 
@@ -49,6 +50,7 @@ public class DeleteOwnDataFilesTests
             DeletedAt = DateTime.UtcNow, DeletionBatchId = Guid.NewGuid()
         };
         db.Media.Add(old);
+        db.RefreshTokens.Add(new RefreshTokenEntity { UserId = owner, TokenHash = new string('a', 64), ExpiresAt = DateTime.UtcNow.AddDays(30) });
         await db.SaveChangesAsync();
 
         var user = TrashFixtures.FakeUser(owner);
@@ -63,5 +65,7 @@ public class DeleteOwnDataFilesTests
         await storage.Received(1).DeleteAsync("/u/a.jpg", Arg.Any<CancellationToken>());
         await storage.Received(1).DeleteAsync("/u/old.jpg", Arg.Any<CancellationToken>());
         (await db.Trees.CountAsync()).Should().Be(0);
+        (await db.Users.AnyAsync(u => u.Id == owner)).Should().BeFalse();
+        (await db.RefreshTokens.AnyAsync(t => t.UserId == owner)).Should().BeFalse();
     }
 }

@@ -154,9 +154,16 @@ builder.Services.Configure<ForwardedHeadersOptions>(o =>
         o.KnownIPNetworks.Add(network);
 });
 
+// Rooted once here (against ContentRootPath, same as the static-files block below) so the
+// health check and the static file provider always agree on the same directory, however
+// Uploads:Path is configured.
+var uploadsPath = builder.Configuration["Uploads:Path"];
+if (uploadsPath is null || !Path.IsPathRooted(uploadsPath))
+    uploadsPath = Path.Combine(builder.Environment.ContentRootPath, uploadsPath ?? "uploads");
+
 builder.Services.AddHealthChecks()
     .AddDbContextCheck<QsengDbContext>("database")
-    .AddCheck("uploads", new UploadsWritableCheck(builder.Configuration["Uploads:Path"] ?? "uploads"));
+    .AddCheck("uploads", new UploadsWritableCheck(uploadsPath));
 
 var app = builder.Build();
 
@@ -170,9 +177,6 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-var uploadsPath = builder.Configuration["Uploads:Path"];
-if (uploadsPath is null || !Path.IsPathRooted(uploadsPath))
-    uploadsPath = Path.Combine(builder.Environment.ContentRootPath, uploadsPath ?? "uploads");
 Directory.CreateDirectory(uploadsPath);
 
 app.UseCors();

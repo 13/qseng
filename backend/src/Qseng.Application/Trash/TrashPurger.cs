@@ -5,7 +5,8 @@ using Qseng.Domain.Entities;
 
 namespace Qseng.Application.Trash;
 
-/// <summary>Hard-deletes trashed rows older than a cutoff. Media files are removed first so a crash leaves orphans, never dangling rows.</summary>
+/// <summary>Hard-deletes trashed rows older than a cutoff. Rows are removed (and the delete committed) before
+/// their media files, so a crash between the two leaves orphaned files, never dangling rows.</summary>
 public class TrashPurger
 {
     private readonly IQsengDbContext _db;
@@ -16,7 +17,6 @@ public class TrashPurger
     public async Task<int> PurgeAsync(DateTime cutoffUtc, CancellationToken ct)
     {
         var media = await _db.Media.IgnoreQueryFilters().Where(m => m.DeletedAt != null && m.DeletedAt < cutoffUtc).ToListAsync(ct);
-        await DeleteFilesAsync(media, ct);
         var events = await _db.TimelineEvents.IgnoreQueryFilters().Where(e => e.DeletedAt != null && e.DeletedAt < cutoffUtc).ToListAsync(ct);
         var rels = await _db.Relationships.IgnoreQueryFilters().Where(r => r.DeletedAt != null && r.DeletedAt < cutoffUtc).ToListAsync(ct);
         var persons = await _db.Persons.IgnoreQueryFilters().Where(p => p.DeletedAt != null && p.DeletedAt < cutoffUtc).ToListAsync(ct);
@@ -25,6 +25,7 @@ public class TrashPurger
         _db.Relationships.RemoveRange(rels);
         _db.Persons.RemoveRange(persons);
         await _db.SaveChangesAsync(ct);
+        await DeleteFilesAsync(media, ct);
         var n = media.Count + events.Count + rels.Count + persons.Count;
         _log.LogInformation("Trash purge removed {Count} rows older than {Cutoff:u}", n, cutoffUtc);
         return n;
@@ -34,10 +35,13 @@ public class TrashPurger
     /// with their deletion batch, the relationships that touch them, and the person row itself.</summary>
     public async Task<int> PurgeBatchAsync(Person person, CancellationToken ct)
     {
+        // A null batch means the person was trashed without going through the normal soft-delete
+        // path (e.g. seeded directly); matching it against DeletionBatchId == null would then sweep
+        // up every other live row too, since untouched rows also default to a null batch id.
+        var batch = person.DeletionBatchId;
         var media = await _db.Media.IgnoreQueryFilters().Where(m => m.PersonId == person.Id).ToListAsync(ct);
-        await DeleteFilesAsync(media, ct);
         var events = await _db.TimelineEvents.IgnoreQueryFilters()
-            .Where(e => e.PersonId == person.Id || e.DeletionBatchId == person.DeletionBatchId).ToListAsync(ct);
+            .Where(e => e.PersonId == person.Id || (batch != null && e.DeletionBatchId == batch)).ToListAsync(ct);
         var rels = await _db.Relationships.IgnoreQueryFilters()
             .Where(r => r.FromPersonId == person.Id || r.ToPersonId == person.Id).ToListAsync(ct);
         _db.Media.RemoveRange(media);
@@ -45,6 +49,7 @@ public class TrashPurger
         _db.Relationships.RemoveRange(rels);
         _db.Persons.Remove(person);
         await _db.SaveChangesAsync(ct);
+        await DeleteFilesAsync(media, ct);
         var n = media.Count + events.Count + rels.Count + 1;
         _log.LogInformation("Trash purge removed {Count} rows for person {PersonId}", n, person.Id);
         return n;

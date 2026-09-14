@@ -85,7 +85,15 @@ public abstract class QsengDbContext : DbContext, IQsengDbContext
 
         public async ValueTask DisposeAsync()
         {
-            if (!_done) await tx.RollbackAsync();
+            // No ILogger is available in this private helper; a rollback failure here means the
+            // connection is already gone (e.g. the process is tearing down), so there is nothing
+            // actionable to do beyond not letting it mask the original exception propagating out
+            // of the `await using` block.
+            if (!_done)
+            {
+                try { await tx.RollbackAsync(); }
+                catch (Exception) { /* swallow: see comment above */ }
+            }
             await tx.DisposeAsync();
         }
     }
