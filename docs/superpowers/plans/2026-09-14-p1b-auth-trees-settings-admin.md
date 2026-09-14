@@ -1863,9 +1863,9 @@ import { UserPasswordDialogComponent } from './user-password-dialog.component';
 
     <ng-template #chips let-u>
       <mat-chip-set>
-        <mat-chip disabled [class.qs-chip-active]="u.isActive">{{ (u.isActive ? 'admin.status.active' : 'admin.status.inactive') | translate }}</mat-chip>
-        <mat-chip disabled [class.qs-chip-admin]="u.isAdmin">{{ (u.isAdmin ? 'admin.role.admin' : 'admin.role.user') | translate }}</mat-chip>
-        <mat-chip disabled>{{ u.language }}</mat-chip>
+        <mat-chip [class.qs-chip-active]="u.isActive">{{ (u.isActive ? 'admin.status.active' : 'admin.status.inactive') | translate }}</mat-chip>
+        <mat-chip [class.qs-chip-admin]="u.isAdmin">{{ (u.isAdmin ? 'admin.role.admin' : 'admin.role.user') | translate }}</mat-chip>
+        <mat-chip>{{ u.language }}</mat-chip>
       </mat-chip-set>
     </ng-template>
 
@@ -1896,8 +1896,8 @@ import { UserPasswordDialogComponent } from './user-password-dialog.component';
     .qs-avatar { display: inline-grid; place-items: center; width: 36px; height: 36px; border-radius: 50%; background: var(--mat-sys-primary-container); color: var(--mat-sys-on-primary-container); font-weight: 600; font-size: .8rem; }
     .qs-me { color: var(--mat-sys-on-surface-variant); font-size: .85rem; }
     .qs-col-actions { width: 56px; text-align: right; }
-    .qs-chip-active { --mat-chip-disabled-label-text-color: var(--mat-sys-on-primary-container); --mat-chip-elevated-disabled-container-color: var(--mat-sys-primary-container); }
-    .qs-chip-admin { --mat-chip-disabled-label-text-color: var(--mat-sys-on-tertiary-container); --mat-chip-elevated-disabled-container-color: var(--mat-sys-tertiary-container); }
+    .qs-chip-active { --mat-chip-label-text-color: var(--mat-sys-on-primary-container); --mat-chip-elevated-container-color: var(--mat-sys-primary-container); }
+    .qs-chip-admin { --mat-chip-label-text-color: var(--mat-sys-on-tertiary-container); --mat-chip-elevated-container-color: var(--mat-sys-tertiary-container); }
     .qs-user-cards { display: grid; gap: 12px; }
     .qs-row-menu { margin-left: auto; }
     .qs-form-error { color: var(--mat-sys-error); }
