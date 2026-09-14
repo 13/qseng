@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { renderCompactNodeSvg, renderNodeSvg, NodeTheme } from './node-svg';
+import { pickLightDark, renderCompactNodeSvg, renderNodeSvg, NodeTheme } from './node-svg';
 
 const theme: NodeTheme = { bg: '#fff', border: '#ccc', text: '#111', muted: '#666', male: '#5b7a99', female: '#b5636f', unknown: '#999', nameFont: 'Fraunces Variable', textFont: 'Inter Variable' };
 const decode = (uri: string) => decodeURIComponent(uri.replace('data:image/svg+xml;utf8,', ''));
@@ -24,5 +24,20 @@ describe('renderNodeSvg', () => {
     expect(svg).toContain('width="120"');
     expect(svg).toContain('>Smith<');
     expect(svg).not.toContain('Konrad');
+  });
+});
+
+describe('pickLightDark', () => {
+  it('picks the light or dark branch of a light-dark() value', () => {
+    expect(pickLightDark('light-dark(#ffffff, #120d07)', false)).toBe('#ffffff');
+    expect(pickLightDark('light-dark(#ffffff, #120d07)', true)).toBe('#120d07');
+  });
+  it('copes with nested parentheses inside a branch', () => {
+    expect(pickLightDark('light-dark(rgb(1, 2, 3), rgb(4, 5, 6))', false)).toBe('rgb(1, 2, 3)');
+    expect(pickLightDark('light-dark(rgb(1, 2, 3), rgb(4, 5, 6))', true)).toBe('rgb(4, 5, 6)');
+  });
+  it('passes non-light-dark values through unchanged', () => {
+    expect(pickLightDark('#5b7a99', true)).toBe('#5b7a99');
+    expect(pickLightDark('', false)).toBe('');
   });
 });

@@ -24,8 +24,8 @@ import { PeopleSort, TreeStore } from './tree.store';
           @if (filterCtrl.value) { <button matIconButton matSuffix type="button" (click)="filterCtrl.setValue('')" [attr.aria-label]="'cancel' | translate"><mat-icon>close</mat-icon></button> }
         </mat-form-field>
         <mat-button-toggle-group hideSingleSelectionIndicator [value]="store.sort()" (change)="setSort($event.value)" [attr.aria-label]="'tree.sort' | translate">
-          <mat-button-toggle value="birth" [matTooltip]="'tree.sort.birth' | translate" [attr.aria-label]="'tree.sort.birth' | translate"><mat-icon>cake</mat-icon></mat-button-toggle>
-          <mat-button-toggle value="name" [matTooltip]="'tree.sort.name' | translate" [attr.aria-label]="'tree.sort.name' | translate"><mat-icon>sort_by_alpha</mat-icon></mat-button-toggle>
+          <mat-button-toggle value="birth" [matTooltip]="'tree.sort.birth' | translate" [aria-label]="'tree.sort.birth' | translate"><mat-icon>cake</mat-icon></mat-button-toggle>
+          <mat-button-toggle value="name" [matTooltip]="'tree.sort.name' | translate" [aria-label]="'tree.sort.name' | translate"><mat-icon>sort_by_alpha</mat-icon></mat-button-toggle>
         </mat-button-toggle-group>
       </div>
       <cdk-virtual-scroll-viewport itemSize="56" class="qs-people__viewport" role="listbox" [attr.aria-label]="'tree.peopleList' | translate">

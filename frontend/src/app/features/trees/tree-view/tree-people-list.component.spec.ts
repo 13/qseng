@@ -31,6 +31,15 @@ describe('TreePeopleListComponent', () => {
     expect(el.textContent).toContain('Smith, Konrad');
     expect(el.querySelector('[data-person-id="a"]')?.getAttribute('aria-selected')).toBe('true');
   });
+  it('names both sort toggles on the inner radio button, not just the host', async () => {
+    const { fixture } = setup();
+    await Promise.resolve(); await Promise.resolve();
+    fixture.detectChanges();
+    const el: HTMLElement = fixture.nativeElement;
+    const radios = el.querySelectorAll('button[role="radio"]');
+    expect(radios.length).toBe(2);
+    radios.forEach(radio => expect(radio.getAttribute('aria-label')).toBeTruthy());
+  });
   it('selects on click and emits open on double click', () => {
     const { cmp, store } = setup();
     const opened = vi.fn(); cmp.open.subscribe(opened);

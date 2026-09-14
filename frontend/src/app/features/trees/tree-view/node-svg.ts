@@ -8,11 +8,50 @@ export interface NodeTheme {
 
 export const NODE_W = 180; export const NODE_H = 72; export const COMPACT_W = 120; export const COMPACT_H = 40;
 
-/** Reads a CSS custom property off `document.documentElement`, falling back outside a DOM (tests, SSR). */
+/**
+ * Resolves a `light-dark(light, dark)` CSS value to whichever branch matches
+ * `dark`; any other value (including a malformed one) passes through
+ * unchanged. Splits on the top-level comma only, so a nested function call
+ * (e.g. `rgb(0, 0, 0)`) inside either branch is not mistaken for the split.
+ */
+export function pickLightDark(value: string, dark: boolean): string {
+  const m = /^light-dark\((.*)\)$/s.exec(value.trim());
+  if (!m) return value;
+
+  const args: string[] = [];
+  let depth = 0, start = 0;
+  for (let i = 0; i < m[1].length; i++) {
+    const c = m[1][i];
+    if (c === '(') depth++;
+    else if (c === ')') depth--;
+    else if (c === ',' && depth === 0) { args.push(m[1].slice(start, i)); start = i + 1; }
+  }
+  args.push(m[1].slice(start));
+  if (args.length !== 2) return value;
+
+  return args[dark ? 1 : 0].trim();
+}
+
+/** True when the page is currently rendering the dark branch of `light-dark()`. */
+function isDarkScheme(): boolean {
+  const scheme = getComputedStyle(document.documentElement).colorScheme;
+  if (scheme === 'dark') return true;
+  if (scheme === 'light') return false;
+  // 'light dark' (auto) or unset: fall back to the OS preference, same as the value itself would.
+  return typeof matchMedia === 'function' && matchMedia('(prefers-color-scheme: dark)').matches;
+}
+
+/**
+ * Reads a CSS custom property off `document.documentElement`, falling back
+ * outside a DOM (tests, SSR). Resolves `light-dark()` values: cytoscape (and
+ * the standalone SVG documents used for node images) don't evaluate that CSS
+ * function themselves, so it must be picked apart here.
+ */
 export function cssVar(name: string, fallback: string): string {
   if (typeof getComputedStyle !== 'function') return fallback;
   const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
-  return v || fallback;
+  if (!v) return fallback;
+  return pickLightDark(v, isDarkScheme());
 }
 
 /** Resolve the graph palette from the active theme's custom properties. */

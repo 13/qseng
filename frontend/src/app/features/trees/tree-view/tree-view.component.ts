@@ -34,7 +34,9 @@ interface CtxState { id: string; x: number; y: number; }
 @Component({
   selector: 'qs-tree-people-sheet',
   imports: [TreePeopleListComponent],
-  template: `<qs-tree-people-list (picked)="ref.dismiss({ id: $event, open: false })" (open)="ref.dismiss({ id: $event, open: true })" />`
+  template: `<qs-tree-people-list (picked)="ref.dismiss({ id: $event, open: false })" (open)="ref.dismiss({ id: $event, open: true })" />`,
+  // Fills the qs-sheet panel's flex height so the virtual-scroll viewport inside gets a real height.
+  styles: [`:host { display: flex; flex-direction: column; flex: 1; min-height: 0; }`]
 })
 class TreePeopleSheetComponent {
   readonly ref = inject(MatBottomSheetRef<TreePeopleSheetComponent, { id: string; open: boolean }>);
@@ -51,7 +53,9 @@ class TreePeopleSheetComponent {
         (navigate)="ref.dismiss({ action: 'navigate', id: $event })"
         (addRelation)="ref.dismiss({ action: 'addRelation', person: $event })" />
     }
-  `
+  `,
+  // Shorter than the people list — clear content height instead of stretching to the full panel.
+  styles: [`:host { display: flex; flex-direction: column; max-height: 85dvh; min-height: 0; }`]
 })
 class TreeSelectionSheetComponent {
   readonly store = inject(TreeStore);
@@ -83,7 +87,7 @@ class TreeSelectionSheetComponent {
         }
         <mat-sidenav-content class="qs-tv__content">
           <div class="qs-tv__canvas-wrap">
-            <div #cyHost class="qs-tv__canvas" tabindex="0" role="application" [attr.aria-label]="'tree.graphLabel' | translate" (keydown)="onKey($event)"></div>
+            <div #cyHost class="qs-tv__canvas" tabindex="0" role="application" [attr.aria-label]="'tree.graphLabel' | translate" [attr.data-compact]="graph.compact()" (keydown)="onKey($event)"></div>
 
             @if (store.error()) {
               <div class="qs-tv__overlay qs-empty" role="alert">

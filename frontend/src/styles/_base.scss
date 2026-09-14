@@ -60,3 +60,24 @@ h1[tabindex="-1"]:focus, h1[tabindex="-1"]:focus-visible { outline: none; }
 .qs-toast-info { --mat-snack-bar-container-color: var(--mat-sys-inverse-surface); --mat-snack-bar-supporting-text-color: var(--mat-sys-inverse-on-surface); --mat-snack-bar-button-color: var(--mat-sys-inverse-primary); }
 
 .qs-main--app { max-width: var(--qs-page-max); margin: 0 auto; padding: 24px var(--qs-gutter) 48px; }
+
+// MatBottomSheet's overlay pane sits outside component style encapsulation, so
+// the sheet panelClass has to be styled globally. Without an explicit height a
+// flex child (e.g. cdk-virtual-scroll-viewport) inside it collapses to 0.
+// The panelClass lands on the cdk-overlay-pane; the visible box is its child
+// mat-bottom-sheet-container, which otherwise just hugs its content height and
+// never passes the pane's height down to our component.
+.qs-sheet {
+  display: flex;
+  flex-direction: column;
+  height: 70dvh;
+  max-height: 85dvh;
+  padding: 0;
+
+  .mat-bottom-sheet-container {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+  }
+}

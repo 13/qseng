@@ -2,10 +2,8 @@ import { DestroyRef, Injectable, computed, effect, inject, signal } from '@angul
 import type { Core, EdgeSingular, NodeSingular, StylesheetStyle } from 'cytoscape';
 import { PersonDto as Person, RelationshipDto as Relationship } from '../../../core/api/generated';
 import { ThemeService } from '../../../core/theme/theme.service';
-import {
-  NodeTheme, NODE_W, NODE_H, COMPACT_W, COMPACT_H,
-  cssVar, readNodeTheme, renderCompactNodeSvg, renderNodeSvg
-} from './node-svg';
+import { NodeTheme, NODE_W, cssVar, readNodeTheme, renderCompactNodeSvg, renderNodeSvg } from './node-svg';
+import { COUPLE_DOT_SIZE, graphStylesheet } from './graph-stylesheet';
 import {
   LAYOUT_VERSION, LineageIndex, SavedLayout,
   buildElements, indexLineage, isLayoutReusable, lineageOf
@@ -14,6 +12,11 @@ import {
 export type GraphLayout = 'auto' | 'tree';
 
 const SNAP_GRID = 24;
+
+/** Minimum clearance between a spouse card's inner edge and the couple dot. */
+const MIN_SPOUSE_GAP = 12;
+/** Half the space a couple pair needs either side of its dot's centre. */
+const MIN_SPOUSE_HALF_SPAN = NODE_W / 2 + COUPLE_DOT_SIZE / 2 + MIN_SPOUSE_GAP;
 
 export interface GraphCallbacks {
   /** Single tap / sidebar click — selects without leaving the page. */
@@ -162,8 +165,29 @@ export class TreeGraphService {
   private observeResize(container: HTMLElement) {
     this.resizeObserver?.disconnect();
     if (typeof ResizeObserver === 'undefined') return;
-    this.resizeObserver = new ResizeObserver(() => this.cy?.resize());
+    this.resizeObserver = new ResizeObserver(() => this.onContainerResize());
     this.resizeObserver.observe(container);
+  }
+
+  /**
+   * The canvas shrinks when the selection panel opens (or the sidenav toggles),
+   * which can leave the selected node partly or fully outside the new viewport.
+   * Re-centre on it only when needed, so an unrelated resize doesn't yank the
+   * view away from wherever the user has it.
+   */
+  private onContainerResize() {
+    const cy = this.cy;
+    if (!cy) return;
+    cy.resize();
+
+    const id = this.selectedId();
+    if (!id) return;
+    const node = cy.getElementById(id);
+    if (!node.nonempty()) return;
+
+    const box = node.renderedBoundingBox();
+    const inView = box.x1 >= 0 && box.y1 >= 0 && box.x2 <= cy.width() && box.y2 <= cy.height();
+    if (!inView) cy.animate({ center: { eles: node }, duration: 200 });
   }
 
   // ── Viewport controls ───────────────────────────────────────────────────────
@@ -333,7 +357,16 @@ export class TreeGraphService {
     }
   }
 
-  /** Marriage bars must be perfectly horizontal, dot centred between spouses. */
+  /**
+   * Marriage bars must be perfectly horizontal, dot centred between spouses.
+   *
+   * dagre's rank ordering doesn't reliably give a two-node rank the full
+   * `nodeSep` on both sides of the dot between them (it's tuned for chains of
+   * many same-rank nodes, not this couple/dot/couple triple), so spouse cards
+   * can end up overlapping. Nudge them apart afterwards instead of trying to
+   * coax dagre into it — this only ever moves cards outward, so a pair dagre
+   * already spaced well enough is left untouched.
+   */
   private alignCoupleRows() {
     this.cy?.nodes('[?coupleNode]').forEach(dot => {
       const spouseEdges = edgesOf(dot, '[ek = "marriage"]');
@@ -347,6 +380,13 @@ export class TreeGraphService {
 
       dot.position({ x: avgX, y: avgY });
       spouses.forEach(s => s.position('y', avgY));
+
+      if (spouses.length === 2) {
+        const [left, right] = spouses[0].position('x') <= spouses[1].position('x')
+          ? spouses : [spouses[1], spouses[0]];
+        if (avgX - left.position('x') < MIN_SPOUSE_HALF_SPAN) left.position('x', avgX - MIN_SPOUSE_HALF_SPAN);
+        if (right.position('x') - avgX < MIN_SPOUSE_HALF_SPAN) right.position('x', avgX + MIN_SPOUSE_HALF_SPAN);
+      }
     });
   }
 
@@ -415,89 +455,11 @@ export class TreeGraphService {
 
   /** Token-driven; node visuals come from the pre-rendered SVG images, not cytoscape drawing. */
   private stylesheet(): StylesheetStyle[] {
-    const compact = this.compact();
-    const selected = cssVar('--qs-graph-selected', '#2f5d50');
-    const marriage = cssVar('--qs-graph-marriage', '#8a6d3b');
-    const descent = cssVar('--qs-graph-descent', '#8a8177');
-
-    return [
-      {
-        selector: 'node',
-        style: {
-          shape: 'roundrectangle',
-          width: compact ? COMPACT_W : NODE_W,
-          height: compact ? COMPACT_H : NODE_H,
-          'background-image': compact ? 'data(imageCompact)' : 'data(image)',
-          'background-fit': 'contain',
-          'background-clip': 'none',
-          'background-opacity': 0,
-          'border-width': 0,
-          label: '',
-          'transition-property': 'opacity',
-          'transition-duration': 150
-        }
-      },
-      {
-        selector: 'node:selected',
-        style: {
-          'border-width': 2,
-          'border-color': selected,
-          'overlay-color': selected,
-          'overlay-opacity': 0.12,
-          'overlay-padding': 6
-        }
-      },
-      { selector: 'node:active', style: { 'overlay-opacity': 0.08 } },
-      {
-        selector: 'node[?coupleNode]',
-        style: {
-          width: 8,
-          height: 8,
-          shape: 'ellipse',
-          'background-color': marriage,
-          'border-width': 0,
-          label: '',
-          events: 'no'
-        }
-      },
-      {
-        selector: 'edge[ek = "marriage"]',
-        style: {
-          'line-color': marriage,
-          width: 1.5,
-          'line-style': 'solid',
-          'curve-style': 'straight',
-          'source-arrow-shape': 'none',
-          'target-arrow-shape': 'none',
-          'transition-property': 'opacity',
-          'transition-duration': 150
-        }
-      },
-      {
-        selector: 'edge[ek = "descent"]',
-        style: {
-          'line-color': descent,
-          width: 1.5,
-          'line-style': 'solid',
-          'curve-style': 'taxi',
-          'taxi-direction': 'downward',
-          'taxi-turn': '-40px',
-          'source-arrow-shape': 'none',
-          'target-arrow-shape': 'none',
-          'transition-property': 'opacity',
-          'transition-duration': 150
-        }
-      },
-      {
-        selector: 'edge[ek = "descent"][relType = "Adoptive"]',
-        style: { 'line-style': 'dashed', 'line-color': descent }
-      },
-      { selector: '.dimmed', style: { opacity: 0.15 } },
-      {
-        selector: 'node.lineage',
-        style: { 'border-width': 2, 'border-color': selected, 'border-opacity': 0.6 }
-      }
-    ] as StylesheetStyle[];
+    return graphStylesheet(this.compact(), {
+      selected: cssVar('--qs-graph-selected', '#2f5d50'),
+      marriage: cssVar('--qs-graph-marriage', '#8a6d3b'),
+      descent: cssVar('--qs-graph-descent', '#8a8177')
+    });
   }
 }
 
