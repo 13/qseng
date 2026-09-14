@@ -16,10 +16,7 @@ import { PersonMediaComponent } from './person-media.component';
 class StubFamily {}
 
 @Component({ selector: 'qs-timeline', template: '' })
-class StubTimeline {
-  readonly personId = input<string>('');
-  readonly treeId = input<string>('');
-}
+class StubTimeline {}
 
 @Component({ selector: 'qs-person-media', template: '' })
 class StubMedia {

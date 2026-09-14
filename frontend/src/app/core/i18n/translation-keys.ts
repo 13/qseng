@@ -271,10 +271,17 @@ export type TranslationKey =
   | 'tl.add'
   | 'tl.addEvent'
   | 'tl.auto'
+  | 'tl.autoHint'
   | 'tl.cancel'
   | 'tl.day'
   | 'tl.deleteConfirm'
+  | 'tl.deleteTitle'
+  | 'tl.deleted.toast'
   | 'tl.desc'
+  | 'tl.dialog.add'
+  | 'tl.dialog.edit'
+  | 'tl.dialog.end'
+  | 'tl.dialog.start'
   | 'tl.endDay'
   | 'tl.endMonth'
   | 'tl.endYear'
@@ -287,6 +294,7 @@ export type TranslationKey =
   | 'tl.noEvents'
   | 'tl.place'
   | 'tl.save'
+  | 'tl.saved.toast'
   | 'tl.title'
   | 'tl.type'
   | 'tl.unknownDate'
@@ -621,10 +629,17 @@ export const TRANSLATION_KEYS: readonly TranslationKey[] = [
   'tl.add',
   'tl.addEvent',
   'tl.auto',
+  'tl.autoHint',
   'tl.cancel',
   'tl.day',
   'tl.deleteConfirm',
+  'tl.deleteTitle',
+  'tl.deleted.toast',
   'tl.desc',
+  'tl.dialog.add',
+  'tl.dialog.edit',
+  'tl.dialog.end',
+  'tl.dialog.start',
   'tl.endDay',
   'tl.endMonth',
   'tl.endYear',
@@ -637,6 +652,7 @@ export const TRANSLATION_KEYS: readonly TranslationKey[] = [
   'tl.noEvents',
   'tl.place',
   'tl.save',
+  'tl.saved.toast',
   'tl.title',
   'tl.type',
   'tl.unknownDate',
