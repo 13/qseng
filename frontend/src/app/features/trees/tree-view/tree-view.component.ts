@@ -292,7 +292,7 @@ export class TreeViewComponent {
     this.store.reload();
     if (result.created) {
       const created = result.created;
-      const key = 'rel.added.' + (data.presetType ?? result.relationship.type ?? '').toLowerCase();
+      const key = 'rel.added.' + result.uiType.toLowerCase();
       const name = fullName({ firstName: created.firstName ?? '', lastName: created.lastName ?? '' });
       this.toast.success(this.i18n.dynamic(key).replace('__NAME__', name), {
         action: this.i18n.t('rel.open'),
@@ -322,7 +322,6 @@ export class TreeViewComponent {
         this.toast.undoable(this.i18n.t('tree.deleted.undo').replace('__NAME__', name), () => firstValueFrom(this.personsApi.personsRestore({ id: person.id! })).then(() => {
           this.store.reload();
           this.onSelected(person.id!);
-          this.toast.success(this.i18n.t('restored.toast'));
         }));
       },
       error: e => {

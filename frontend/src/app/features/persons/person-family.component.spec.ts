@@ -68,7 +68,7 @@ describe('PersonFamilyComponent', () => {
   });
 
   it('addNew opens the dialog preset to new-person mode and toasts an "Open" action for the created person', async () => {
-    const { cmp, dialog, store, toast } = setup({ relationship: { id: 'r9', type: 'Parent' }, created: { id: 'n1', firstName: 'Anna', lastName: 'Ray' } });
+    const { cmp, dialog, store, toast } = setup({ relationship: { id: 'r9', type: 'Parent' }, uiType: 'Child', created: { id: 'n1', firstName: 'Anna', lastName: 'Ray' } });
     await cmp.addNew('Child');
     expect(dialog.open).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ data: expect.objectContaining({ treeId: 't1', anchor: me, presetType: 'Child', mode: 'new' }) }));
     expect(store.reloadRelations).toHaveBeenCalled();

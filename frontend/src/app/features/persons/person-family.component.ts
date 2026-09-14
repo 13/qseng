@@ -89,10 +89,10 @@ export class PersonFamilyComponent {
     const person = this.store.person();
     const treeId = person?.treeId;
     if (!person || !treeId) return;
-    await this.openDialog({ treeId, persons: this.store.treePersons(), anchor: person, presetType, mode: 'new' }, presetType);
+    await this.openDialog({ treeId, persons: this.store.treePersons(), anchor: person, presetType, mode: 'new' });
   }
 
-  private async openDialog(data: RelationshipDialogData, presetType?: UiRelType) {
+  private async openDialog(data: RelationshipDialogData) {
     const ref = this.dialog.open<RelationshipDialogComponent, RelationshipDialogData, RelationshipDialogResult | undefined>(RelationshipDialogComponent, { data, width: '520px', maxWidth: '95vw' });
     const result = await firstValueFrom(ref.afterClosed());
     if (!result) return;
@@ -100,7 +100,7 @@ export class PersonFamilyComponent {
     this.store.reloadTimeline();
     if (result.created) {
       const created = result.created;
-      const key = 'rel.added.' + (presetType ?? result.relationship.type ?? '').toLowerCase();
+      const key = 'rel.added.' + result.uiType.toLowerCase();
       const name = fullName({ firstName: created.firstName ?? '', lastName: created.lastName ?? '' });
       this.toast.success(this.i18n.dynamic(key).replace('__NAME__', name), {
         action: this.i18n.t('rel.open'),
@@ -120,7 +120,6 @@ export class PersonFamilyComponent {
         this.store.reloadRelations(); this.store.reloadTimeline();
         this.toast.undoable(this.i18n.t('fam.removed.undo'), () => firstValueFrom(this.api.relationshipsRestore({ treeId, id })).then(() => {
           this.store.reloadRelations(); this.store.reloadTimeline();
-          this.toast.success(this.i18n.t('restored.toast'));
         }));
       },
       error: e => this.toast.errorFrom(e, this.i18n.t('err.delete'))

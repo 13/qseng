@@ -108,7 +108,7 @@ describe('RelationshipDialogComponent', () => {
     await fixture.whenStable();
     expect(persons.personsCreate).toHaveBeenCalledWith({ treeId: 't1', body: expect.objectContaining({ firstName: 'Anna', lastName: 'Smith' }) });
     expect(api.relationshipsCreate).toHaveBeenCalledWith({ treeId: 't1', body: expect.objectContaining({ fromPersonId: 'me', toPersonId: 'n1', type: 'Parent' }) });
-    expect(ref.close).toHaveBeenCalledWith({ relationship: { id: 'r1' }, created: expect.objectContaining({ id: 'n1' }) });
+    expect(ref.close).toHaveBeenCalledWith({ relationship: { id: 'r1' }, uiType: 'Child', created: expect.objectContaining({ id: 'n1' }) });
   });
 
   it('rolls the created person back when linking fails and stays open', async () => {
@@ -128,5 +128,15 @@ describe('RelationshipDialogComponent', () => {
     cmp.save();
     expect(persons.personsCreate).not.toHaveBeenCalled();
     expect(cmp.newForm.controls.firstName.touched).toBe(true);
+  });
+
+  it('falls back to existing mode when sessionStorage.getItem throws (private browsing etc.)', () => {
+    const spy = vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => { throw new Error('denied'); });
+    try {
+      const { cmp } = setup();
+      expect(cmp.mode()).toBe('existing');
+    } finally {
+      spy.mockRestore();
+    }
   });
 });

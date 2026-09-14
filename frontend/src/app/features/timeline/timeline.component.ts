@@ -136,7 +136,6 @@ export class TimelineComponent {
         this.store.removeEvent(id);
         this.toast.undoable(this.i18n.t('tl.deleted.undo'), () => firstValueFrom(this.api.timelineRestore({ personId, id })).then(() => {
           this.store.reloadTimeline();
-          this.toast.success(this.i18n.t('restored.toast'));
         }));
       },
       error: err => this.toast.errorFrom(err, this.i18n.t('err.delete'))

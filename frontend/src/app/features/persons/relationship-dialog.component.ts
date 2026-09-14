@@ -32,6 +32,8 @@ export interface RelationshipDialogData {
 /** Closes with the linked relationship and, in "new person" mode, the person that was created for it. */
 export interface RelationshipDialogResult {
   relationship: RelationshipDto;
+  /** The type chosen in the dialog (`form.controls.type.value`) — use this for toast wording, not `relationship.type`. */
+  uiType: UiRelType;
   created?: PersonDto;
 }
 
@@ -84,13 +86,13 @@ function matches(p: PersonDto, term: string): boolean {
             <mat-error>{{ form.controls.person.errors | formErrors }}</mat-error>
           </mat-form-field>
         } @else {
-          <div class="qs-dialog-form" [formGroup]="newForm">
+          <div class="qs-dialog-form qs-new-person-block" [formGroup]="newForm">
             <mat-form-field><mat-label>{{ 'rel.new.firstName' | translate }}</mat-label><input matInput formControlName="firstName" maxlength="200" cdkFocusInitial><mat-error>{{ newForm.controls.firstName.errors | formErrors }}</mat-error></mat-form-field>
             <mat-form-field><mat-label>{{ 'rel.new.lastName' | translate }}</mat-label><input matInput formControlName="lastName" maxlength="200"><mat-error>{{ newForm.controls.lastName.errors | formErrors }}</mat-error></mat-form-field>
             <mat-button-toggle-group formControlName="sex" [attr.aria-label]="'rel.new.sex' | translate">
               @for (s of sexes; track s) { <mat-button-toggle [value]="s">{{ i18n.sexLabel(s) }}</mat-button-toggle> }
             </mat-button-toggle-group>
-            @if (newForm.controls.sex.invalid && newForm.controls.sex.touched) { <p class="qs-form-error">{{ 'form.invalid' | translate }}</p> }
+            @if (newForm.controls.sex.invalid && newForm.controls.sex.touched) { <p class="qs-form-error">{{ newForm.controls.sex.errors | formErrors }}</p> }
             <qs-partial-date-input formControlName="birth" [label]="'pd.birth' | translate" />
             <mat-form-field><mat-label>{{ 'rel.new.birthPlace' | translate }}</mat-label><input matInput formControlName="birthPlace" maxlength="200"></mat-form-field>
           </div>
@@ -111,7 +113,14 @@ function matches(p: PersonDto, term: string): boolean {
         <button matButton="filled" type="submit" [disabled]="saving()">{{ 'rel.dialog.submit' | translate }}</button>
       </mat-dialog-actions>
     </form>
-  `
+  `,
+  styles: [`
+    mat-dialog-content { overflow-x: hidden; }
+    mat-button-toggle-group { width: 100%; }
+    .mat-button-toggle { flex: 1; }
+    mat-dialog-content > mat-button-toggle-group { margin: 20px 0 8px; }
+    .qs-new-person-block > * { width: 100%; }
+  `]
 })
 export class RelationshipDialogComponent {
   readonly data = inject<RelationshipDialogData>(MAT_DIALOG_DATA);
@@ -210,7 +219,7 @@ export class RelationshipDialogComponent {
     this.saving.set(true);
     this.error.set('');
     this.api.relationshipsCreate({ treeId: this.data.treeId, body: this.relationshipBody(roleHolder.id, counterpart.id) }).subscribe({
-      next: rel => this.ref.close({ relationship: rel }),
+      next: rel => this.ref.close({ relationship: rel, uiType: this.form.controls.type.value }),
       error: e => {
         if (isValidationProblem(e.error)) this.error.set(setServerErrors(this.form, e.error).join(' '));
         else this.toast.errorFrom(e, this.i18n.t('tree.relErr'));
@@ -258,7 +267,7 @@ export class RelationshipDialogComponent {
     if (!created.id || !anchor.id) { this.saving.set(false); return; }
     const createdId = created.id;
     this.api.relationshipsCreate({ treeId: this.data.treeId, body: this.relationshipBody(createdId, anchor.id) }).subscribe({
-      next: rel => this.ref.close({ relationship: rel, created }),
+      next: rel => this.ref.close({ relationship: rel, uiType: this.form.controls.type.value, created }),
       error: e => {
         if (isValidationProblem(e.error)) this.error.set(setServerErrors(this.form, e.error).join(' '));
         else this.error.set(problemMessage(e, this.i18n.t('tree.relErr')));

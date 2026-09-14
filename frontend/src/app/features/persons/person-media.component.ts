@@ -160,7 +160,6 @@ export class PersonMediaComponent {
         if (wasAvatar) this.store.reloadMedia();
         this.toast.undoable(this.i18n.t('media.deleted.undo'), () => firstValueFrom(this.api.mediaRestore({ personId, mediaId })).then(() => {
           this.store.reloadMedia();
-          this.toast.success(this.i18n.t('restored.toast'));
         }));
       },
       error: e => this.toast.errorFrom(e, this.i18n.t('err.delete'))

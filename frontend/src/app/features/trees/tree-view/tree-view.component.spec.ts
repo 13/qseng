@@ -68,7 +68,7 @@ describe('TreeViewComponent', () => {
   });
   it('when the dialog creates a new person, reloads, selects it and toasts an "Open" action', async () => {
     const { cmp, dialog, store, toast } = setup();
-    dialog.open.mockReturnValueOnce({ afterClosed: () => of({ relationship: { id: 'r9', type: 'Parent' }, created: { id: 'n1', firstName: 'Anna', lastName: 'Ray' } }) } as unknown as ReturnType<typeof dialog.open>);
+    dialog.open.mockReturnValueOnce({ afterClosed: () => of({ relationship: { id: 'r9', type: 'Parent' }, uiType: 'Child', created: { id: 'n1', firstName: 'Anna', lastName: 'Ray' } }) } as unknown as ReturnType<typeof dialog.open>);
     await cmp.addRelationFor(people[0], 'Child');
     expect(store.reload).toHaveBeenCalled();
     expect(store.select).toHaveBeenCalledWith('n1');

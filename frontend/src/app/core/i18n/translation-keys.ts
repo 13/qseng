@@ -217,7 +217,6 @@ export type TranslationKey =
   | 'rel.open'
   | 'rel.parent'
   | 'rel.spouse'
-  | 'restored.toast'
   | 'retry'
   | 'save'
   | 'saving'
@@ -556,7 +555,6 @@ export const TRANSLATION_KEYS: readonly TranslationKey[] = [
   'rel.open',
   'rel.parent',
   'rel.spouse',
-  'restored.toast',
   'retry',
   'save',
   'saving',
