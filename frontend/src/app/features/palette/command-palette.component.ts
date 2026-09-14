@@ -18,8 +18,6 @@ import { PaletteAction, PaletteContext, paletteActions } from './palette-actions
 
 export interface CommandPaletteData {
   treeId: string | null;
-  treeName: string;
-  persons: PersonDto[];
 }
 
 interface PersonRow { kind: 'person'; id: string; index: number; icon: string; label: string; hint: string; personId: string; }
@@ -84,6 +82,8 @@ export class CommandPaletteComponent {
   private readonly term = toSignal(this.query.valueChanges.pipe(debounceTime(80)), { initialValue: '' });
 
   private readonly trees = signal<TreeDto[]>([]);
+  private readonly persons = signal<PersonDto[]>([]);
+  private readonly treeName = computed(() => this.trees().find(t => t.id === this.data.treeId)?.name ?? '');
   readonly active = signal(0);
 
   private readonly ctx = computed<PaletteContext>(() => ({
@@ -107,7 +107,7 @@ export class CommandPaletteComponent {
   private readonly people = computed<PersonDto[]>(() => {
     const tokens = this.term().trim().toLowerCase().split(/\s+/).filter(Boolean);
     if (!tokens.length) return [];
-    return this.data.persons.filter(p => {
+    return this.persons().filter(p => {
       const text = personSearchText(p);
       return tokens.every(t => text.includes(t));
     }).slice(0, 8);
@@ -133,7 +133,7 @@ export class CommandPaletteComponent {
       kind: 'person', id: 'p-' + (p.id ?? ''), index: i++, icon: p.sex === 'Female' ? 'woman' : p.sex === 'Male' ? 'man' : 'person',
       label: fullName({ firstName: p.firstName ?? '', lastName: p.lastName ?? '' }), hint: lifespan({ firstName: p.firstName ?? '', lastName: p.lastName ?? '', birth: p.birth, death: p.death }), personId: p.id ?? ''
     }));
-    if (personRows.length) groups.push({ key: 'people', label: this.i18n.t('palette.group.people').replace('__TREE__', this.data.treeName), rows: personRows });
+    if (personRows.length) groups.push({ key: 'people', label: this.i18n.t('palette.group.people').replace('__TREE__', this.treeName()), rows: personRows });
 
     const treeRows: TreeRow[] = this.matchingTrees().map(t => ({
       kind: 'tree', id: 't-' + (t.id ?? ''), index: i++, icon: 'forest', label: t.name ?? '', hint: '', treeId: t.id ?? ''
@@ -156,7 +156,11 @@ export class CommandPaletteComponent {
   });
 
   constructor() {
-    this.treesApi.treesGetAll().subscribe(ts => this.trees.set(ts));
+    this.treesApi.treesGetAll().subscribe({ next: ts => this.trees.set(ts), error: () => this.trees.set([]) });
+    const treeId = this.data.treeId;
+    if (treeId) {
+      this.personsApi.personsGetByTree({ treeId }).subscribe({ next: ps => this.persons.set(ps), error: () => this.persons.set([]) });
+    }
     effect(() => { this.term(); this.active.set(0); });
   }
 

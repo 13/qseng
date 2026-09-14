@@ -29,13 +29,13 @@ function key(target: Element, k: string) {
   target.dispatchEvent(new KeyboardEvent('keydown', { key: k, bubbles: true, cancelable: true }));
 }
 
-function setup(data: CommandPaletteData = { treeId: 't1', treeName: 'Demo', persons: [konrad, otto, maria] }) {
+function setup(data: CommandPaletteData = { treeId: 't1' }) {
   TestBed.resetTestingModule();
   const ref = { close: vi.fn() };
   const router = { navigate: vi.fn() };
   const dialog = { open: vi.fn() };
   const treesApi = { treesGetAll: vi.fn(() => of([{ id: 't1', name: 'Demo' }, { id: 't9', name: 'Other Tree' }])) };
-  const personsApi = { personsGetByTree: vi.fn(() => of([])) };
+  const personsApi = { personsGetByTree: vi.fn(() => of([konrad, otto, maria])) };
   const resolve = (k: string) => I18N_STRINGS[k] ?? k;
   const i18n = { t: resolve, dynamic: resolve, lang: () => 'en' as const };
   const theme = { mode: () => 'light' as const, setMode: vi.fn() };
