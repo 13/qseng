@@ -26,16 +26,22 @@ public class DeleteMediaHandler : IRequestHandler<DeleteMediaCommand, Result<boo
         if (tree is null || tree.OwnerId != _currentUser.UserId)
             return Result<bool>.Fail("Forbidden.", 403);
 
-        var media = await _db.Media.FindAsync([cmd.MediaId], ct);
+        var media = await _db.Media.FirstOrDefaultAsync(m => m.Id == cmd.MediaId, ct);
         if (media is null || media.PersonId != cmd.PersonId)
             return Result<bool>.NotFound("Media not found.");
 
-        await _fileStorage.DeleteAsync(media.Url, ct);
-        _db.Media.Remove(media);
+        // The file itself is kept; the purge job deletes it once the trash retention
+        // window elapses.
+        media.DeletedAt = DateTime.UtcNow;
+        media.DeletionBatchId = Guid.NewGuid();
 
         // Deleting the avatar promotes the next-oldest photo rather than leaving
-        // the person without one.
-        if (media.IsAvatar)
+        // the person without one. The filtered unique avatar index counts trashed
+        // rows, so the trashed media must give up IsAvatar before we set the
+        // replacement.
+        var wasAvatar = media.IsAvatar;
+        media.IsAvatar = false;
+        if (wasAvatar)
         {
             var replacement = await _db.Media
                 .Where(m => m.PersonId == cmd.PersonId && m.Id != media.Id && m.Kind == MediaKind.Photo)
