@@ -20,3 +20,11 @@ function createStorage(): Storage {
 for (const key of ['localStorage', 'sessionStorage'] as const) {
   Object.defineProperty(globalThis, key, { value: createStorage(), configurable: true, writable: true });
 }
+
+import { TestBed } from '@angular/core/testing';
+import { provideNoopAnimations } from '@angular/platform-browser/animations';
+import { beforeEach } from 'vitest';
+
+beforeEach(() => {
+  TestBed.configureTestingModule({ providers: [provideNoopAnimations()] });
+});

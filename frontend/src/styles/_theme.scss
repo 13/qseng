@@ -1,0 +1,39 @@
+@use '@angular/material' as mat;
+@use './theme-colors' as palettes;
+
+html {
+  // ThemeService sets `color-scheme` on <html>; mat.theme() defaults to
+  // theme-type: color-scheme, so every token flips with it via light-dark().
+  color-scheme: light dark;
+
+  @include mat.theme((
+    color: (
+      primary: palettes.$primary-palette,
+      tertiary: palettes.$tertiary-palette,
+    ),
+    typography: (
+      plain-family: 'Inter Variable',
+      brand-family: 'Fraunces Variable',
+      regular-weight: 400,
+      medium-weight: 500,
+      bold-weight: 600,
+    ),
+    density: 0,
+  ));
+
+  // Shape: cards 12px, inputs/small 8px, chips full.
+  @include mat.theme-overrides((
+    corner-extra-small: 6px,
+    corner-small: 8px,
+    corner-medium: 12px,
+    corner-large: 16px,
+  ));
+}
+
+// Flat cards with a hairline border; elevation reserved for overlays.
+html {
+  @include mat.card-overrides((
+    elevated-container-elevation: none,
+    outlined-outline-color: var(--mat-sys-outline-variant),
+  ));
+}

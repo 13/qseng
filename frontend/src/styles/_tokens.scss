@@ -1,0 +1,25 @@
+// Project tokens layered on top of the Material system tokens (--mat-sys-*).
+:root {
+  --qs-toolbar-h: 64px;
+  --qs-gutter: 24px;
+  --qs-page-max: 1200px;
+
+  // Person sex hues. Never the sole carrier of meaning (initials + symbol always shown).
+  --qs-sex-male: #5b7a99;
+  --qs-sex-female: #b5636f;
+  --qs-sex-unknown: var(--mat-sys-outline);
+
+  // Graph
+  --qs-graph-node-bg: var(--mat-sys-surface-container-lowest);
+  --qs-graph-node-border: var(--mat-sys-outline-variant);
+  --qs-graph-marriage: var(--mat-sys-tertiary);
+  --qs-graph-descent: var(--mat-sys-outline);
+  --qs-graph-selected: var(--mat-sys-primary);
+}
+
+@media (max-width: 599.98px) {
+  :root {
+    --qs-toolbar-h: 56px;
+    --qs-gutter: 16px;
+  }
+}

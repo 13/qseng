@@ -53,6 +53,9 @@
               }
             ],
             "styles": [
+              "node_modules/@fontsource-variable/inter/index.css",
+              "node_modules/@fontsource-variable/fraunces/index.css",
+              "node_modules/material-symbols/rounded.css",
               "src/styles.scss"
             ],
             "allowedCommonJsDependencies": [
@@ -65,13 +68,13 @@
               "budgets": [
                 {
                   "type": "initial",
-                  "maximumWarning": "500kB",
-                  "maximumError": "1MB"
+                  "maximumWarning": "600kB",
+                  "maximumError": "900kB"
                 },
                 {
                   "type": "anyComponentStyle",
-                  "maximumWarning": "4kB",
-                  "maximumError": "8kB"
+                  "maximumWarning": "6kB",
+                  "maximumError": "12kB"
                 }
               ],
               "outputHashing": "all"

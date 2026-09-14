@@ -1,0 +1,21 @@
+// Fonts are self-hosted via the @fontsource-variable css files listed in angular.json.
+body {
+  font: var(--mat-sys-body-large);
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+h1, h2, h3, h4 {
+  margin: 0;
+  font-family: 'Fraunces Variable', Georgia, serif;
+  font-weight: 500;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+}
+
+h1 { font-size: 1.9rem; }
+h2 { font-size: 1.45rem; }
+h3 { font-size: 1.15rem; }
+
+.qs-display { font-family: 'Fraunces Variable', Georgia, serif; }
+.qs-muted   { color: var(--mat-sys-on-surface-variant); }
