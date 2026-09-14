@@ -76,4 +76,12 @@ describe('AdminUsersComponent', () => {
     expect(api.adminCreateUser).toHaveBeenCalledWith({ body: { username: 'x', password: 'password1', isAdmin: false, displayName: null, email: null } });
     expect(toast.success).toHaveBeenCalledWith('admin.created.toast');
   });
+
+  it('ignores activate/admin toggles on the current user even if invoked directly', async () => {
+    const { cmp, api } = setup();
+    cmp.toggleActive(users[0]);
+    await cmp.toggleAdmin(users[0]);
+    expect(api.adminSetActive).not.toHaveBeenCalled();
+    expect(api.adminSetAdmin).not.toHaveBeenCalled();
+  });
 });

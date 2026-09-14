@@ -33,9 +33,12 @@ import { UserPasswordDialogComponent } from './user-password-dialog.component';
         <p class="qs-muted qs-page-header__sub">{{ registeredLabel() }}</p>
       </div>
       <div class="qs-page-header__actions">
-        <mat-slide-toggle [checked]="registrationEnabled()" (change)="toggleRegistration($event.checked)">
-          {{ 'admin.registration' | translate }}: {{ (registrationEnabled() ? 'admin.reg.on' : 'admin.reg.off') | translate }}
-        </mat-slide-toggle>
+        <div class="qs-reg-toggle">
+          <mat-slide-toggle [checked]="registrationEnabled()" (change)="toggleRegistration($event.checked)">
+            {{ 'admin.registration' | translate }}: {{ (registrationEnabled() ? 'admin.reg.on' : 'admin.reg.off') | translate }}
+          </mat-slide-toggle>
+          <span class="qs-muted qs-reg-toggle__hint">{{ 'admin.reg.hint' | translate }}</span>
+        </div>
         <button matButton="filled" (click)="openCreate()"><mat-icon>person_add</mat-icon>{{ 'admin.create.btn' | translate }}</button>
       </div>
     </header>
@@ -126,6 +129,8 @@ import { UserPasswordDialogComponent } from './user-password-dialog.component';
     .qs-page-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 16px; }
     .qs-page-header__sub { margin: 4px 0 0; }
     .qs-page-header__actions { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+    .qs-reg-toggle { display: flex; flex-direction: column; gap: 2px; }
+    .qs-reg-toggle__hint { font-size: .8rem; }
     .qs-table-wrap { overflow-x: auto; border: 1px solid var(--mat-sys-outline-variant); border-radius: var(--mat-sys-corner-medium); }
     .qs-users-table { width: 100%; }
     .qs-user-cell { display: flex; align-items: center; gap: 12px; padding: 6px 0; }
@@ -194,7 +199,7 @@ export class AdminUsersComponent implements OnInit {
   }
 
   toggleActive(u: UserSummaryDto) {
-    if (!u.id) return;
+    if (!u.id || this.isMe(u)) return;
     this.api.adminSetActive({ id: u.id, body: { active: !u.isActive } }).subscribe({
       next: () => { this.toast.success(this.i18n.t('admin.saved.toast')); this.load(); },
       error: e => this.toast.error(problemMessage(e, this.i18n.t('err.save')))
@@ -202,7 +207,7 @@ export class AdminUsersComponent implements OnInit {
   }
 
   async toggleAdmin(u: UserSummaryDto) {
-    if (!u.id) return;
+    if (!u.id || this.isMe(u)) return;
     const key = u.isAdmin ? 'admin.confirm.removeAdmin' : 'admin.confirm.makeAdmin';
     const ok = await this.confirm.confirm({
       title: this.i18n.t(u.isAdmin ? 'admin.action.removeAdmin' : 'admin.action.makeAdmin'),
