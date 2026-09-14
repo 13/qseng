@@ -2,6 +2,7 @@ import { Injectable, Injector, inject } from '@angular/core';
 import type { MatBottomSheetRef } from '@angular/material/bottom-sheet';
 import type { MatDialogRef } from '@angular/material/dialog';
 import type { CommandPaletteData } from '../../features/palette/command-palette.component';
+import { I18nService } from '../i18n/i18n.service';
 
 function lastTreeId(): string | null {
   try { return sessionStorage.getItem('qs.lastTree'); } catch { return null; }
@@ -16,6 +17,7 @@ function lastTreeId(): string | null {
 @Injectable({ providedIn: 'root' })
 export class PaletteService {
   private readonly injector = inject(Injector);
+  private readonly i18n = inject(I18nService);
 
   private ref: MatDialogRef<unknown> | null = null;
   private sheetRef: MatBottomSheetRef<unknown> | null = null;
@@ -52,7 +54,9 @@ export class PaletteService {
     // `ariaLabel`), so it can't be wired to the sheet's own <h2 id="qs-sc-title"> from here;
     // panelClass is the only config this version supports for that purpose.
     this.sheetRef = sheet.open(ShortcutSheetComponent, {
-      panelClass: ['qs-sheet', 'qs-sheet--auto']
+      panelClass: ['qs-sheet', 'qs-sheet--auto'],
+      // MatBottomSheetConfig has no ariaLabelledBy; the translated title names the dialog instead.
+      ariaLabel: this.i18n.t('shortcuts.title')
     });
     this.sheetRef.afterDismissed().subscribe(() => (this.sheetRef = null));
   }
