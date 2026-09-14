@@ -1,5 +1,5 @@
 import { Injectable, computed, signal } from '@angular/core';
-import { RelationshipType, Sex, TimelineEventType } from '../api/api-client.service';
+import { RelationshipType, Sex, TimelineEventType } from '../api/generated';
 import { TranslationKey } from './translation-keys';
 
 export type Lang = 'en' | 'de';

@@ -42,8 +42,7 @@ function notBlank(control: AbstractControl<string>): ValidationErrors | null {
         <button matButton="filled" type="submit" [disabled]="saving()">{{ (isRename ? 'trees.save' : 'trees.new.submit') | translate }}</button>
       </mat-dialog-actions>
     </form>
-  `,
-  styles: [`.qs-dialog-form { display: flex; flex-direction: column; gap: 4px; min-width: min(420px, 90vw); }`]
+  `
 })
 export class TreeFormDialogComponent {
   private readonly api = inject(TreesApi);

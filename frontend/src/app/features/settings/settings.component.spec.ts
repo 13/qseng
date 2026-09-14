@@ -47,6 +47,17 @@ describe('SettingsComponent', () => {
     expect((fixture.nativeElement as HTMLElement).textContent).toContain('demo');
   });
 
+  it('shows the display name above the username', () => {
+    const { fixture } = setup();
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain('Demo');
+  });
+
+  it('sets the language and calls userChangeLanguage', () => {
+    const { cmp, api } = setup();
+    cmp.setLang('en');
+    expect(api.userChangeLanguage).toHaveBeenCalledWith({ body: { language: 'en' } });
+  });
+
   it('changes the password and adopts the new session', () => {
     const { cmp, api, auth, toast } = setup();
     cmp.pwForm.setValue({ current: 'old', next: 'newpassword' });

@@ -1,14 +1,18 @@
 import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 import { Component } from '@angular/core';
+import { of } from 'rxjs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { App } from './app';
 import { AuthService } from './core/auth/auth.service';
 import { I18nService } from './core/i18n/i18n.service';
+import { UserApi } from './core/api/generated';
 
 @Component({ template: '<h1 tabindex="-1">page</h1>' }) class Dummy {}
 
 function setup(authenticated: boolean) {
+  TestBed.resetTestingModule(); // some tests call setup() twice in one `it`
+  const userApi = { userChangeLanguage: vi.fn(() => of(undefined)) };
   TestBed.configureTestingModule({
     providers: [
       provideRouter([
@@ -16,14 +20,15 @@ function setup(authenticated: boolean) {
         { path: 'trees', component: Dummy }
       ]),
       { provide: AuthService, useValue: { isAuthenticated: () => authenticated, isAdmin: () => false, displayName: () => 'Demo Admin', username: () => 'demo', logout: vi.fn() } },
-      { provide: I18nService, useValue: { t: (k: string) => k, dynamic: (k: string) => k, lang: () => 'en', setLang: vi.fn() } }
+      { provide: I18nService, useValue: { t: (k: string) => k, dynamic: (k: string) => k, lang: () => 'en', setLang: vi.fn() } },
+      { provide: UserApi, useValue: userApi }
     ]
   });
-  return TestBed.createComponent(App);
+  return { fixture: TestBed.createComponent(App), userApi };
 }
 
 describe('App shell', () => {
-  let attachedFixture: ReturnType<typeof setup> | null = null;
+  let attachedFixture: ReturnType<typeof setup>['fixture'] | null = null;
 
   afterEach(() => {
     vi.restoreAllMocks();
@@ -32,26 +37,36 @@ describe('App shell', () => {
   });
 
   it('hides the toolbar on auth-layout routes even when a session exists', async () => {
-    const fixture = setup(true);
+    const { fixture } = setup(true);
     await TestBed.inject(Router).navigateByUrl('/login');
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('mat-toolbar')).toBeNull();
   });
 
   it('renders no toolbar for an anonymous visitor on an app route', async () => {
-    const fixture = setup(false);
+    const { fixture } = setup(false);
     await TestBed.inject(Router).navigateByUrl('/trees');
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('mat-toolbar')).toBeNull();
   });
 
   it('shows toolbar, brand and user initials on app routes', async () => {
-    const fixture = setup(true);
+    const { fixture } = setup(true);
     await TestBed.inject(Router).navigateByUrl('/trees');
     fixture.detectChanges();
     const el: HTMLElement = fixture.nativeElement;
     expect(el.querySelector('mat-toolbar')).not.toBeNull();
     expect(el.querySelector('.qs-user__avatar')?.textContent?.trim()).toBe('DA');
+  });
+
+  it('calls userChangeLanguage when authenticated, but not when anonymous', () => {
+    const authed = setup(true);
+    authed.fixture.componentInstance.setLang('de');
+    expect(authed.userApi.userChangeLanguage).toHaveBeenCalledWith({ body: { language: 'de' } });
+
+    const anon = setup(false);
+    anon.fixture.componentInstance.setLang('de');
+    expect(anon.userApi.userChangeLanguage).not.toHaveBeenCalled();
   });
 
   it('focuses the page heading on a path change but not on a query-only navigation', async () => {
@@ -65,7 +80,7 @@ describe('App shell', () => {
     // below uses a real timer tick rather than a microtask to let the render (and afterNextRender)
     // run before asserting.
     const focusSpy = vi.spyOn(HTMLElement.prototype, 'focus');
-    const fixture = setup(true);
+    const { fixture } = setup(true);
     document.body.appendChild(fixture.nativeElement);
     attachedFixture = fixture;
     fixture.autoDetectChanges();

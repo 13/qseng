@@ -239,6 +239,7 @@
   "settings.password.save": "Save password",
   "settings.password.saving": "Saving…",
   "settings.password.title": "Change password",
+  "settings.profile.displayName": "Display name",
   "settings.profile.email": "E-mail",
   "settings.profile.member": "Member since",
   "settings.profile.title": "Profile",

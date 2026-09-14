@@ -14,6 +14,8 @@ import { I18nService, Lang } from './core/i18n/i18n.service';
 import { TranslatePipe } from './core/i18n/translate.pipe';
 import { PendingRequestsService } from './core/ui/pending-requests.service';
 import { BreadcrumbService } from './core/ui/breadcrumb.service';
+import { ToastService } from './core/ui/toast.service';
+import { UserApi } from './core/api/generated';
 
 @Component({
   selector: 'app-root',
@@ -104,6 +106,8 @@ export class App {
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
   private readonly injector = inject(Injector);
+  private readonly userApi = inject(UserApi);
+  private readonly toast = inject(ToastService);
 
   private readonly navigating = signal(false);
   private lastPath: string | null = null;
@@ -146,7 +150,14 @@ export class App {
     return name.split(' ').map((p: string) => p[0]).join('').slice(0, 2).toUpperCase();
   }
 
-  setLang(lang: Lang) { this.i18n.setLang(lang); }
+  setLang(lang: Lang) {
+    this.i18n.setLang(lang);
+    if (this.auth.isAuthenticated()) {
+      this.userApi.userChangeLanguage({ body: { language: lang } }).subscribe({
+        error: e => this.toast.errorFrom(e, this.i18n.t('err.save'))
+      });
+    }
+  }
 
   logout() {
     this.auth.logout();

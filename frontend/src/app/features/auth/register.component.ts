@@ -69,7 +69,6 @@ import { AuthPageComponent } from './auth-page.component';
   styles: [`
     .qs-auth-form { display: flex; flex-direction: column; gap: 4px; }
     .qs-auth-form__submit { margin-top: 8px; }
-    .qs-form-error { margin: 0 0 8px; color: var(--mat-sys-error); font-size: .9rem; }
     .qs-auth-footer { text-align: center; margin: 8px 0 0; }
     .qs-pending { display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; padding: 8px 0 16px; }
     .qs-pending mat-icon { font-size: 40px; width: 40px; height: 40px; color: var(--mat-sys-primary); }

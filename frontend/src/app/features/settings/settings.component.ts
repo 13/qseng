@@ -34,6 +34,7 @@ import { isValidationProblem } from '../../core/api/problem-details';
         <mat-card-content>
           @if (profile(); as p) {
             <dl class="qs-dl">
+              <dt>{{ 'settings.profile.displayName' | translate }}</dt><dd>{{ p.displayName }}</dd>
               <dt>{{ 'settings.profile.username' | translate }}</dt><dd>{{ p.username }}</dd>
               <dt>{{ 'settings.profile.email' | translate }}</dt><dd>{{ p.email || '–' }}</dd>
               <dt>{{ 'settings.profile.member' | translate }}</dt><dd>{{ p.createdAt | date:'mediumDate' }}</dd>
@@ -117,8 +118,7 @@ import { isValidationProblem } from '../../core/api/problem-details';
   `,
   styles: [`
     :host { display: block; }
-    .qs-page-header { margin-bottom: 20px; }
-    .qs-settings { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; max-width: 900px; }
+    .qs-settings { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; max-width: 900px; align-items: start; }
     .qs-dl { display: grid; grid-template-columns: max-content 1fr; gap: 6px 16px; margin: 0; }
     .qs-dl dt { color: var(--mat-sys-on-surface-variant); }
     .qs-dl dd { margin: 0; }
@@ -175,8 +175,12 @@ export class SettingsComponent implements OnInit {
         this.pwLoading.set(false);
       },
       error: e => {
-        if (isValidationProblem(e.error)) setServerErrors(this.pwForm, e.error);
-        else this.toast.errorFrom(e, this.i18n.t('err.save'));
+        if (isValidationProblem(e.error)) {
+          const rest = setServerErrors(this.pwForm, e.error);
+          if (rest.length) this.toast.error(rest.join(' '));
+        } else {
+          this.toast.errorFrom(e, this.i18n.t('err.save'));
+        }
         this.pwLoading.set(false);
       }
     });
@@ -207,8 +211,10 @@ export class SettingsComponent implements OnInit {
         const a = document.createElement('a');
         a.href = url;
         a.download = `qseng-export-${new Date().toISOString().slice(0, 10)}.json`;
+        document.body.appendChild(a);
         a.click();
-        URL.revokeObjectURL(url);
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 0);
         this.exporting.set(false);
         this.toast.success(this.i18n.t('settings.export.done'));
       },

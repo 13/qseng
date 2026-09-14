@@ -2,7 +2,8 @@ import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { MatDialog } from '@angular/material/dialog';
-import { of } from 'rxjs';
+import { HttpErrorResponse } from '@angular/common/http';
+import { of, throwError } from 'rxjs';
 import { describe, expect, it, vi } from 'vitest';
 import { AdminUsersComponent } from './admin-users.component';
 import { AdminApi } from '../../core/api/generated';
@@ -86,5 +87,47 @@ describe('AdminUsersComponent', () => {
     expect(api.adminSetAdmin).not.toHaveBeenCalled();
     await cmp.changePassword(users[0]);
     expect(dialog.open).not.toHaveBeenCalled();
+  });
+
+  it('shows th[mat-sort-header] on the user, email, and registered columns on desktop', () => {
+    const { fixture } = setup(false);
+    const headers = (fixture.nativeElement as HTMLElement).querySelectorAll('th[mat-sort-header]');
+    expect(headers.length).toBe(3);
+  });
+
+  it('rolls back the registration toggle and toasts on a failed save', () => {
+    const { cmp, api, toast } = setup();
+    api.adminSetRegistration.mockReturnValueOnce(throwError(() => new HttpErrorResponse({ status: 500 })));
+    expect(cmp.registrationEnabled()).toBe(true);
+    cmp.toggleRegistration(false);
+    expect(cmp.registrationEnabled()).toBe(true);
+    expect(toast.errorFrom).toHaveBeenCalled();
+  });
+
+  it('hides the registration toggle and does not throw when settings fail to load', () => {
+    TestBed.resetTestingModule();
+    const api = {
+      adminListUsers: vi.fn(() => of(users)),
+      adminGetSettings: vi.fn(() => throwError(() => new HttpErrorResponse({ status: 500 }))),
+      adminSetRegistration: vi.fn(() => of(undefined)),
+      adminCreateUser: vi.fn(() => of(users[1])),
+      adminSetActive: vi.fn(() => of(undefined)),
+      adminSetAdmin: vi.fn(() => of(undefined)),
+      adminChangePassword: vi.fn(() => of(undefined)),
+      adminDeleteUser: vi.fn(() => of(undefined))
+    };
+    TestBed.configureTestingModule({
+      providers: [
+        provideRouter([]), provideNoopAnimations(),
+        { provide: AdminApi, useValue: api }, { provide: AuthService, useValue: { userId: () => 'me' } },
+        { provide: ConfirmDialogService, useValue: { confirm: vi.fn() } }, { provide: ToastService, useValue: { success: vi.fn(), error: vi.fn(), info: vi.fn(), errorFrom: vi.fn() } },
+        { provide: MatDialog, useValue: { open: vi.fn() } }, { provide: LayoutService, useValue: { handset: () => false } },
+        { provide: I18nService, useValue: { t: (k: string) => k, dynamic: (k: string) => k, lang: () => 'en' } }
+      ]
+    });
+    const fixture = TestBed.createComponent(AdminUsersComponent);
+    fixture.detectChanges();
+    expect(fixture.componentInstance.settingsUnavailable()).toBe(true);
+    expect((fixture.nativeElement as HTMLElement).querySelector('mat-slide-toggle')).toBeNull();
   });
 });

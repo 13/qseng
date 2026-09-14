@@ -5,7 +5,6 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
-import { MatChipsModule } from '@angular/material/chips';
 import { AuthService } from '../../core/auth/auth.service';
 import { I18nService } from '../../core/i18n/i18n.service';
 import { TranslatePipe } from '../../core/i18n/translate.pipe';
@@ -21,7 +20,7 @@ export function safeReturnUrl(raw: string | null): string {
 @Component({
   selector: 'qs-login',
   imports: [ReactiveFormsModule, RouterLink, MatFormFieldModule, MatInputModule, MatButtonModule, MatIconModule,
-            MatChipsModule, TranslatePipe, FormErrorsPipe, AuthPageComponent],
+            TranslatePipe, FormErrorsPipe, AuthPageComponent],
   template: `
     <qs-auth-page [title]="'login.title' | translate" [tagline]="'login.tagline' | translate">
       <form [formGroup]="form" (ngSubmit)="submit()" class="qs-auth-form" novalidate>
@@ -51,11 +50,9 @@ export function safeReturnUrl(raw: string | null): string {
         </button>
       </form>
 
-      <mat-chip-set class="qs-auth-demo" [attr.aria-label]="'login.demo' | translate">
-        <mat-chip (click)="useDemo()" (keydown.enter)="useDemo()" (keydown.space)="useDemo(); $event.preventDefault()" role="button" tabindex="0">
-          <mat-icon matChipAvatar>science</mat-icon>{{ 'login.demoFill' | translate }}
-        </mat-chip>
-      </mat-chip-set>
+      <button matButton="outlined" type="button" class="qs-auth-demo" (click)="useDemo()">
+        <mat-icon>science</mat-icon>{{ 'login.demoFill' | translate }}
+      </button>
 
       <p class="qs-auth-footer qs-muted">
         {{ 'login.noAccount' | translate }} <a routerLink="/register">{{ 'login.register' | translate }}</a>
@@ -65,8 +62,7 @@ export function safeReturnUrl(raw: string | null): string {
   styles: [`
     .qs-auth-form { display: flex; flex-direction: column; gap: 4px; }
     .qs-auth-form__submit { margin-top: 4px; }
-    .qs-form-error { margin: 0 0 8px; color: var(--mat-sys-error); font-size: .9rem; }
-    .qs-auth-demo { justify-content: center; margin-top: 8px; }
+    .qs-auth-demo { align-self: center; margin-top: 8px; }
     .qs-auth-footer { text-align: center; margin: 8px 0 0; }
   `]
 })

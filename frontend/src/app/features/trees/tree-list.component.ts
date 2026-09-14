@@ -78,7 +78,6 @@ import { TreeFormDialogComponent, TreeFormData } from './tree-form-dialog.compon
   `,
   styles: [`
     :host { display: block; }
-    .qs-page-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
     .qs-tree-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
     .qs-tree-card { display: flex; flex-direction: column; }
     .qs-tree-card mat-card-header { align-items: flex-start; }
@@ -87,9 +86,6 @@ import { TreeFormDialogComponent, TreeFormData } from './tree-form-dialog.compon
     .qs-tree-card__desc { margin: 8px 0; color: var(--mat-sys-on-surface-variant); }
     .qs-tree-card__meta { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; font-size: .85rem; margin-top: 8px; }
     .qs-tree-card mat-card-content { flex: 1; }
-    .qs-empty { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 8px; padding: 48px 16px; }
-    .qs-empty__icon { font-size: 56px; width: 56px; height: 56px; color: var(--mat-sys-primary); }
-    .qs-empty__actions { display: flex; gap: 8px; margin-top: 8px; }
   `]
 })
 export class TreeListComponent implements OnInit {

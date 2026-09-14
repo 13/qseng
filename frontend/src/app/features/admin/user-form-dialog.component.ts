@@ -47,8 +47,7 @@ import { setServerErrors } from '../../core/forms/server-errors';
         <button matButton="filled" type="submit" [disabled]="saving()">{{ 'admin.create.submit' | translate }}</button>
       </mat-dialog-actions>
     </form>
-  `,
-  styles: [`.qs-dialog-form { display: flex; flex-direction: column; gap: 4px; min-width: min(440px, 90vw); }`]
+  `
 })
 export class UserFormDialogComponent {
   private readonly api = inject(AdminApi);

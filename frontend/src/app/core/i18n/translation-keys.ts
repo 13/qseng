@@ -240,6 +240,7 @@ export type TranslationKey =
   | 'settings.password.save'
   | 'settings.password.saving'
   | 'settings.password.title'
+  | 'settings.profile.displayName'
   | 'settings.profile.email'
   | 'settings.profile.member'
   | 'settings.profile.title'
@@ -570,6 +571,7 @@ export const TRANSLATION_KEYS: readonly TranslationKey[] = [
   'settings.password.save',
   'settings.password.saving',
   'settings.password.title',
+  'settings.profile.displayName',
   'settings.profile.email',
   'settings.profile.member',
   'settings.profile.title',
