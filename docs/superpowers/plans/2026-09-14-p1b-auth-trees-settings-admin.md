@@ -389,7 +389,7 @@ export function safeReturnUrl(raw: string | null): string {
       <form [formGroup]="form" (ngSubmit)="submit()" class="qs-auth-form" novalidate>
         <mat-form-field>
           <mat-label>{{ 'login.username' | translate }}</mat-label>
-          <input matInput formControlName="username" autocomplete="username" autofocus>
+          <input matInput formControlName="username" autocomplete="username">
           <mat-error>{{ form.controls.username.errors | formErrors }}</mat-error>
         </mat-form-field>
 
@@ -608,7 +608,7 @@ import { AuthPageComponent } from './auth-page.component';
         <form [formGroup]="form" (ngSubmit)="submit()" class="qs-auth-form" novalidate>
           <mat-form-field>
             <mat-label>{{ 'register.username' | translate }}</mat-label>
-            <input matInput formControlName="username" autocomplete="username" autofocus>
+            <input matInput formControlName="username" autocomplete="username">
             <mat-error>{{ form.controls.username.errors | formErrors }}</mat-error>
           </mat-form-field>
           <mat-form-field>
