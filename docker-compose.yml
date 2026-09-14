@@ -24,6 +24,7 @@ services:
       Jwt__Issuer: qseng
       Jwt__Audience: qseng
       Jwt__Key: "change-me-in-prod-please-32+chars-long-key!"
+      Cors__AllowedOrigins__0: "http://localhost:8081"
       Uploads__Path: /app/uploads
     depends_on:
       postgres:

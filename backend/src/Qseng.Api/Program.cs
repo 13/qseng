@@ -11,6 +11,7 @@ using Qseng.Application.Abstractions;
 using Qseng.Api.Middleware;
 using Qseng.Infrastructure;
 using Qseng.Infrastructure.Auth;
+using Qseng.Infrastructure.Options;
 using Qseng.Infrastructure.Seeding;
 using Serilog;
 
@@ -72,6 +73,10 @@ builder.Services.AddSingleton<IValidateOptions<JwtOptions>>(
 
 var jwt = builder.Configuration.GetSection(JwtOptions.SectionName).Get<JwtOptions>() ?? new JwtOptions();
 
+builder.Services.AddOptions<CorsOptions>().Bind(builder.Configuration.GetSection(CorsOptions.SectionName)).ValidateOnStart();
+builder.Services.AddSingleton<IValidateOptions<CorsOptions>>(new CorsOptionsValidator(builder.Environment.IsDevelopment()));
+var corsOrigins = (builder.Configuration.GetSection(CorsOptions.SectionName).Get<CorsOptions>() ?? new CorsOptions()).EffectiveOrigins(builder.Environment.IsDevelopment());
+
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(opt =>
     {
@@ -125,8 +130,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
 builder.Services.AddAuthorization();
 
-builder.Services.AddCors(opt => opt.AddDefaultPolicy(p =>
-    p.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod()));
+builder.Services.AddCors(opt => opt.AddDefaultPolicy(p => p.WithOrigins(corsOrigins).AllowAnyHeader().AllowAnyMethod()));
 
 var app = builder.Build();
 
