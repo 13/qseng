@@ -31,21 +31,8 @@ test.describe('import', () => {
     await page.locator('textarea.qs-import__textarea').fill(text);
     await page.getByRole('button', { name: /^(Vorschau|Preview)$/ }).click();
 
-    // The fixture's marriage line ("... oo ...") never actually links: the parser's spouse-name
-    // capture group has no required trailing token, so it lazily matches just the first two
-    // characters of the second name and the relationship link fails to resolve (see
-    // GenealogyTextParser.MarriageRx — confirmed against the real .NET regex, not just this
-    // test). The preview therefore reports 2 persons / 0 relationships plus a warning, which is
-    // exactly what's asserted below rather than the (incorrect) 1-relationship result the guide's
-    // example implies.
-    const stats = page.locator('.qs-import__stats');
-    await expect(stats).toHaveText(/^2\s+(persons|Personen)\s+·\s+0\s+(relationships|Beziehungen)$/);
-    await expect(page.getByText(/Hinweise|Warnings/)).toBeVisible();
-    await expect(page.getByText(/Could not link marriage/)).toBeVisible();
-
     await page.getByRole('button', { name: /Import übernehmen|Commit import/ }).click();
     await expect(page.getByRole('link', { name: /Stammbaum öffnen|Open tree/ })).toBeVisible();
-    await expect(stats).toHaveText(/^2\s+(persons|Personen)\s+·\s+0\s+(relationships|Beziehungen)$/);
 
     const res = await api.get(`/api/v1/trees/${treeId}/persons`);
     const persons = (await res.json()) as { firstName: string; lastName: string }[];
@@ -59,4 +46,35 @@ test.describe('import', () => {
     await expect(page.locator('.qs-people__row').filter({ hasText: 'Mustermann' })).toBeVisible();
     await expect(page.locator('.qs-people__row').filter({ hasText: 'Huber' })).toBeVisible();
   });
+
+  test.fixme(
+    'marriage line links the spouses (blocked by GenealogyTextParser.MarriageRx truncating the spouse name)',
+    async ({ demo, api }) => {
+      const page = demo;
+      const text = fs.readFileSync(SAMPLE_PATH, 'utf8');
+
+      await page.goto(`/trees/${treeId}/import`);
+
+      await page.locator('textarea.qs-import__textarea').fill(text);
+      await page.getByRole('button', { name: /^(Vorschau|Preview)$/ }).click();
+
+      // The fixture's marriage line ("... oo ...") should link the two persons it names, but
+      // never actually does: the parser's spouse-name capture group has no required trailing
+      // token, so it lazily matches just the first two characters of the second name and the
+      // relationship link fails to resolve (see GenealogyTextParser.MarriageRx — confirmed
+      // against the real .NET regex, not just this test). Once that's fixed, this should show
+      // 1 relationship and no "Could not link marriage" warning instead of today's 0.
+      const stats = page.locator('.qs-import__stats');
+      await expect(stats).toHaveText(/^2\s+(persons|Personen)\s+·\s+1\s+(relationship|Beziehung)$/);
+      await expect(page.getByText(/Could not link marriage/)).not.toBeVisible();
+
+      await page.getByRole('button', { name: /Import übernehmen|Commit import/ }).click();
+      await expect(page.getByRole('link', { name: /Stammbaum öffnen|Open tree/ })).toBeVisible();
+      await expect(stats).toHaveText(/^2\s+(persons|Personen)\s+·\s+1\s+(relationship|Beziehung)$/);
+
+      const res = await api.get(`/api/v1/trees/${treeId}/persons`);
+      const persons = (await res.json()) as { firstName: string; lastName: string }[];
+      expect(persons).toHaveLength(2);
+    },
+  );
 });

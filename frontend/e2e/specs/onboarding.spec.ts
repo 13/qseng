@@ -15,34 +15,34 @@ test.describe('onboarding', () => {
   test('hero -> stepper (tree, you, one parent) lands on the tree view with two people, "you" selected', async ({ freshUser }) => {
     const page = freshUser.page;
     await expect(page).toHaveURL(/\/trees/);
-    await expect(page.getByRole('button', { name: 'Start your family tree' })).toBeVisible();
+    await expect(page.getByRole('button', { name: /Start your family tree|Starte deinen Stammbaum/ })).toBeVisible();
     await axeCheck(page, 'onboarding-hero');
 
-    await page.getByRole('button', { name: 'Start your family tree' }).click();
+    await page.getByRole('button', { name: /Start your family tree|Starte deinen Stammbaum/ }).click();
     const dialog = page.getByRole('dialog');
     await expect(dialog).toBeVisible();
 
     // Step 1: the tree
     const treeName = `Fresh Family ${Date.now()}`;
     await dialog.locator('input[formcontrolname="name"]').fill(treeName);
-    await dialog.getByRole('button', { name: 'Next' }).click();
+    await dialog.getByRole('button', { name: /Next|Weiter/ }).click();
 
     // Step 2: you
     await dialog.locator('input[formcontrolname="firstName"]:visible').fill('Fresh');
     await dialog.locator('input[formcontrolname="lastName"]:visible').fill('Person');
-    // "Male" is matched with `exact` since Playwright's default substring matching would
-    // otherwise also pick up "Female" (it literally contains "male").
-    await dialog.getByRole('radio', { name: 'Male', exact: true }).click();
-    await dialog.getByRole('button', { name: 'Next' }).click();
+    // "Male"/"Männlich" is matched with `exact` since Playwright's default substring matching
+    // would otherwise also pick up "Female"/"Weiblich" (it literally contains "male"/"Männlich").
+    await dialog.getByRole('radio', { name: /Männlich|Male/, exact: true }).click();
+    await dialog.getByRole('button', { name: /Next|Weiter/ }).click();
 
     // Step 3: one parent (mother only)
     const mother = dialog.locator('[formgroupname="mother"]');
     await mother.locator('input[formcontrolname="firstName"]').fill('Mom');
     await mother.locator('input[formcontrolname="lastName"]').fill('Person');
-    await mother.getByRole('radio', { name: 'Female' }).click();
-    await dialog.getByRole('button', { name: 'Finish' }).click();
+    await mother.getByRole('radio', { name: /Weiblich|Female/ }).click();
+    await dialog.getByRole('button', { name: /Finish|Fertig/ }).click();
 
-    await expect(page.getByText('Your tree is ready.').first()).toBeVisible();
+    await expect(page.getByText(/Your tree is ready\.|Dein Stammbaum ist bereit\./).first()).toBeVisible();
     await expect(page).toHaveURL(/\/trees\/[^/]+\?select=/);
 
     await expect(page.locator('.qs-people__row')).toHaveCount(2);
@@ -54,18 +54,18 @@ test.describe('onboarding', () => {
 
   test('skip parents leaves a tree with just "you"', async ({ freshUser }) => {
     const page = freshUser.page;
-    await page.getByRole('button', { name: 'Start your family tree' }).click();
+    await page.getByRole('button', { name: /Start your family tree|Starte deinen Stammbaum/ }).click();
     const dialog = page.getByRole('dialog');
 
     await dialog.locator('input[formcontrolname="name"]').fill(`Fresh Family ${Date.now()}`);
-    await dialog.getByRole('button', { name: 'Next' }).click();
+    await dialog.getByRole('button', { name: /Next|Weiter/ }).click();
 
     await dialog.locator('input[formcontrolname="firstName"]:visible').fill('Solo');
     await dialog.locator('input[formcontrolname="lastName"]:visible').fill('Person');
-    await dialog.getByRole('radio', { name: 'Female' }).click();
-    await dialog.getByRole('button', { name: 'Next' }).click();
+    await dialog.getByRole('radio', { name: /Weiblich|Female/ }).click();
+    await dialog.getByRole('button', { name: /Next|Weiter/ }).click();
 
-    await dialog.getByRole('button', { name: 'Skip parents' }).click();
+    await dialog.getByRole('button', { name: /Skip parents|Eltern überspringen/ }).click();
 
     await expect(page).toHaveURL(/\/trees\/[^/]+\?select=/);
     await expect(page.locator('.qs-people__row')).toHaveCount(1);
@@ -74,15 +74,15 @@ test.describe('onboarding', () => {
 
   test('close on step 2 leaves the created tree listed (without "you")', async ({ freshUser }) => {
     const page = freshUser.page;
-    await page.getByRole('button', { name: 'Start your family tree' }).click();
+    await page.getByRole('button', { name: /Start your family tree|Starte deinen Stammbaum/ }).click();
     const dialog = page.getByRole('dialog');
 
     const treeName = `Fresh Family ${Date.now()}`;
     await dialog.locator('input[formcontrolname="name"]').fill(treeName);
-    await dialog.getByRole('button', { name: 'Next' }).click();
+    await dialog.getByRole('button', { name: /Next|Weiter/ }).click();
 
     // Step 2: close instead of continuing — the tree from step 1 must survive.
-    await dialog.getByRole('button', { name: 'Close' }).click();
+    await dialog.getByRole('button', { name: /Close|Schließen/ }).click();
 
     await expect(dialog).toBeHidden();
     await expect(page).toHaveURL(/\/trees$/);
