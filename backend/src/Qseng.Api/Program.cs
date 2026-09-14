@@ -9,6 +9,7 @@ using Microsoft.IdentityModel.Tokens;
 using Qseng.Application;
 using Qseng.Application.Abstractions;
 using Qseng.Api.Middleware;
+using Qseng.Api.RateLimiting;
 using Qseng.Infrastructure;
 using Qseng.Infrastructure.Auth;
 using Qseng.Infrastructure.Options;
@@ -132,6 +133,10 @@ builder.Services.AddAuthorization();
 
 builder.Services.AddCors(opt => opt.AddDefaultPolicy(p => p.WithOrigins(corsOrigins).AllowAnyHeader().AllowAnyMethod()));
 
+builder.Services.AddOptions<RateLimitingOptions>().Bind(builder.Configuration.GetSection(RateLimitingOptions.SectionName)).ValidateOnStart();
+var rateLimiting = builder.Configuration.GetSection(RateLimitingOptions.SectionName).Get<RateLimitingOptions>() ?? new RateLimitingOptions();
+builder.Services.AddRateLimiter(o => AuthRateLimitPolicy.Configure(o, rateLimiting.Auth));
+
 var app = builder.Build();
 
 app.UseMiddleware<ExceptionMiddleware>();
@@ -153,6 +158,7 @@ app.UseStaticFiles(new StaticFileOptions
     FileProvider = new PhysicalFileProvider(uploadsPath),
     RequestPath = "/uploads"
 });
+app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
