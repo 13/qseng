@@ -78,6 +78,7 @@ export type TranslationKey =
   | 'fam.addBtn'
   | 'fam.adoptive'
   | 'fam.adoptive.hint'
+  | 'fam.adoptiveChildren'
   | 'fam.adoptiveParents'
   | 'fam.cancel'
   | 'fam.child.hint'
@@ -427,6 +428,7 @@ export const TRANSLATION_KEYS: readonly TranslationKey[] = [
   'fam.addBtn',
   'fam.adoptive',
   'fam.adoptive.hint',
+  'fam.adoptiveChildren',
   'fam.adoptiveParents',
   'fam.cancel',
   'fam.child.hint',

@@ -57,6 +57,14 @@ describe('PersonDetailComponent', () => {
     expect(crumbs.set).toHaveBeenCalledWith([{ label: 'trees.title', link: ['/trees'] }, { label: 'Familie', link: ['/trees', 't1'] }, { label: 'Konrad Smith' }]);
   });
 
+  it('reloads the store when the route id changes', () => {
+    const { fixture, store } = setup();
+    fixture.componentRef.setInput('id', 'p2');
+    fixture.detectChanges();
+    expect(store.load).toHaveBeenCalledWith('p2');
+    expect(store.load).toHaveBeenCalledTimes(2);
+  });
+
   it('renders the identity card with lifespan, places and notes', () => {
     const { fixture } = setup();
     const text = (fixture.nativeElement as HTMLElement).textContent ?? '';

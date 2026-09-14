@@ -77,6 +77,7 @@
   "fam.addBtn": "Add relationship",
   "fam.adoptive": "Adoptive",
   "fam.adoptive.hint": "Select the adoptive parent of this person.",
+  "fam.adoptiveChildren": "Adoptive children",
   "fam.adoptiveParents": "Adoptive parents",
   "fam.cancel": "Cancel",
   "fam.child.hint": "Select the child of this person.",

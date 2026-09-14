@@ -1,6 +1,6 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { toSignal } from '@angular/core/rxjs-interop';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
@@ -54,6 +54,7 @@ function matches(p: PersonDto, term: string): boolean {
             <mat-autocomplete #fromAuto="matAutocomplete" (optionSelected)="pickFrom($event)" [displayWith]="display">
               @for (p of fromCandidates(); track p.id) { <mat-option [value]="p">{{ label(p) }}</mat-option> }
             </mat-autocomplete>
+            <mat-error>{{ form.controls.from.errors | formErrors }}</mat-error>
           </mat-form-field>
         }
 
@@ -110,6 +111,17 @@ export class RelationshipDialogComponent {
   readonly candidates = computed(() => this.filter(this.personTerm(), this.data.anchor?.id ?? this.pickedFrom()?.id));
   readonly fromCandidates = computed(() => this.filter(this.fromTerm(), this.picked()?.id));
 
+  constructor() {
+    this.form.controls.person.valueChanges.pipe(takeUntilDestroyed()).subscribe(v => {
+      const p = this.picked();
+      if (typeof v === 'string' && p && v !== this.display(p)) this.picked.set(null);
+    });
+    this.form.controls.from.valueChanges.pipe(takeUntilDestroyed()).subscribe(v => {
+      const p = this.pickedFrom();
+      if (typeof v === 'string' && p && v !== this.display(p)) this.pickedFrom.set(null);
+    });
+  }
+
   private filter(term: unknown, excludeId: string | undefined): PersonDto[] {
     if (typeof term !== 'string' || term.trim().length < 1) return [];
     return this.data.persons.filter(p => p.id !== excludeId && matches(p, term.trim())).slice(0, 8);
@@ -120,13 +132,25 @@ export class RelationshipDialogComponent {
 
   pick(p: PersonDto) { this.picked.set(p); this.form.controls.person.setValue(this.display(p)); }
   pickFromEvent(e: MatAutocompleteSelectedEvent) { this.pick(e.option.value as PersonDto); }
-  pickFrom(e: MatAutocompleteSelectedEvent) { const p = e.option.value as PersonDto; this.pickedFrom.set(p); this.form.controls.from.setValue(this.display(p)); }
+  pickFromPerson(p: PersonDto) { this.pickedFrom.set(p); this.form.controls.from.setValue(this.display(p)); }
+  pickFrom(e: MatAutocompleteSelectedEvent) { this.pickFromPerson(e.option.value as PersonDto); }
 
   save() {
+    if (this.form.invalid) { this.form.markAllAsTouched(); return; }
     const other = this.picked();
+    if (!other || !other.id) {
+      this.form.controls.person.setErrors({ required: true });
+      this.form.controls.person.markAsTouched();
+      return;
+    }
     const roleHolder = this.data.anchor ? other : this.pickedFrom();
     const counterpart = this.data.anchor ?? other;
-    if (!other || !roleHolder || !counterpart || !roleHolder.id || !counterpart.id) {
+    if (!roleHolder || !roleHolder.id) {
+      this.form.controls.from.setErrors({ required: true });
+      this.form.controls.from.markAsTouched();
+      return;
+    }
+    if (!counterpart.id) {
       this.form.controls.person.setErrors({ required: true });
       this.form.controls.person.markAsTouched();
       return;

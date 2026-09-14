@@ -35,10 +35,11 @@ function setup(confirmResult = true, dialogResult: unknown = undefined) {
 }
 
 describe('PersonFamilyComponent', () => {
-  it('groups relations into parents, spouses (with year) and children', () => {
+  it('groups relations into parents, spouses (with year), children and adoptive groups, with a real chip link', () => {
     const { cmp, fixture } = setup();
-    expect(cmp.groups().map(g => [g.key, g.items.length])).toEqual([['fam.parents', 1], ['fam.spouses', 1], ['fam.children', 1], ['fam.adoptiveParents', 0]]);
+    expect(cmp.groups().map(g => [g.key, g.items.length])).toEqual([['fam.parents', 1], ['fam.spouses', 1], ['fam.children', 1], ['fam.adoptiveParents', 0], ['fam.adoptiveChildren', 0]]);
     expect((fixture.nativeElement as HTMLElement).textContent).toContain('1872');
+    expect((fixture.nativeElement as HTMLElement).querySelector('a[href="/persons/wife"]')).not.toBeNull();
   });
 
   it('removes a relationship after confirmation and reloads relations and timeline', async () => {

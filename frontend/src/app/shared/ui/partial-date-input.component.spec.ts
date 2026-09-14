@@ -12,6 +12,12 @@ import { I18nService } from '../../core/i18n/i18n.service';
 })
 class HostComponent { ctrl = new FormControl<PartialDate | null>(null); }
 
+@Component({
+  imports: [ReactiveFormsModule, PartialDateInputComponent],
+  template: `<qs-partial-date-input label="Birth" [required]="true" [formControl]="ctrl" />`
+})
+class RequiredHostComponent { ctrl = new FormControl<PartialDate | null>(null); }
+
 function setup(initial: PartialDate | null = null) {
   TestBed.configureTestingModule({ providers: [{ provide: I18nService, useValue: { t: (k: string) => k, dynamic: (k: string) => k } }] });
   const fixture = TestBed.createComponent(HostComponent);
@@ -48,6 +54,7 @@ describe('PartialDateInputComponent', () => {
     type(input, '99.99.1900');
     fixture.detectChanges();
     expect(host.ctrl.errors).toEqual({ partialDate: true });
+    expect(fixture.nativeElement.querySelector('mat-error')).not.toBeNull();
     type(input, '');
     fixture.detectChanges();
     expect(host.ctrl.value).toBeNull();
@@ -59,5 +66,23 @@ describe('PartialDateInputComponent', () => {
     approx.click();
     fixture.detectChanges();
     expect(host.ctrl.value).toEqual({ year: 1900, approx: true });
+  });
+
+  it('resetting the outer control clears the text and any error', () => {
+    const { host, input, fixture } = setup({ year: 1900 });
+    type(input, '99.99.1900');
+    fixture.detectChanges();
+    expect(host.ctrl.errors).toEqual({ partialDate: true });
+    host.ctrl.reset();
+    fixture.detectChanges();
+    expect(input.value).toBe('');
+    expect(host.ctrl.errors).toBeNull();
+  });
+
+  it('required control without a value carries a required error', () => {
+    TestBed.configureTestingModule({ providers: [{ provide: I18nService, useValue: { t: (k: string) => k, dynamic: (k: string) => k } }] });
+    const fixture = TestBed.createComponent(RequiredHostComponent);
+    fixture.detectChanges();
+    expect(fixture.componentInstance.ctrl.errors).toEqual({ required: true });
   });
 });

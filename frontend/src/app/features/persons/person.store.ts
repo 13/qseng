@@ -1,10 +1,11 @@
 import { DestroyRef, Injectable, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { forkJoin, of } from 'rxjs';
-import { catchError } from 'rxjs/operators';
+import { Subscription, forkJoin, of } from 'rxjs';
+import { catchError, map, switchMap } from 'rxjs/operators';
 import { MediaApi, MediaDto, PersonDto, PersonRelationDto, PersonsApi, TimelineApi, TimelineEventDto, TreeDto, TreesApi } from '../../core/api/generated';
 import { I18nService } from '../../core/i18n/i18n.service';
 import { problemMessage } from '../../core/api/problem-details';
+import { ToastService } from '../../core/ui/toast.service';
 import { fullName } from '../../core/models/person-helpers';
 
 /** One source of truth for the person routes; provided per route so it dies with the page. */
@@ -15,7 +16,10 @@ export class PersonStore {
   private readonly timelineApi = inject(TimelineApi);
   private readonly mediaApi = inject(MediaApi);
   private readonly i18n = inject(I18nService);
+  private readonly toast = inject(ToastService);
   private readonly destroyRef = inject(DestroyRef);
+  private inflight?: Subscription;
+  private loadSeq = 0;
 
   private readonly _person = signal<PersonDto | null>(null);
   private readonly _tree = signal<TreeDto | null>(null);
@@ -42,34 +46,61 @@ export class PersonStore {
   });
 
   load(personId: string) {
+    this.inflight?.unsubscribe();
+    this._person.set(null);
+    this._tree.set(null);
+    this._relations.set([]);
+    this._timeline.set([]);
+    this._media.set([]);
+    this._treePersons.set([]);
     this._loading.set(true);
     this._error.set('');
-    this.personsApi.personsGetById({ id: personId }).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-      next: p => {
-        this._person.set(p);
+    const requestId = ++this.loadSeq;
+
+    this.inflight = this.personsApi.personsGetById({ id: personId }).pipe(
+      switchMap(p => {
+        if (requestId === this.loadSeq) this._person.set(p);
         const treeId = p.treeId ?? '';
-        forkJoin({
+        return forkJoin({
           trees: this.treesApi.treesGetAll().pipe(catchError(() => of([] as TreeDto[]))),
           relations: this.personsApi.personsGetRelations({ id: personId }).pipe(catchError(() => of([] as PersonRelationDto[]))),
           timeline: this.timelineApi.timelineGet({ personId }).pipe(catchError(() => of([] as TimelineEventDto[]))),
           media: this.mediaApi.mediaGetMedia({ personId }).pipe(catchError(() => of([] as MediaDto[]))),
           persons: this.personsApi.personsGetByTree({ treeId }).pipe(catchError(() => of([] as PersonDto[])))
-        }).pipe(takeUntilDestroyed(this.destroyRef)).subscribe(r => {
-          this._tree.set(r.trees.find(t => t.id === treeId) ?? null);
-          this._relations.set(r.relations);
-          this._timeline.set(r.timeline);
-          this._media.set(r.media);
-          this._treePersons.set(r.persons);
-          this._loading.set(false);
-        });
+        }).pipe(map(r => ({ p, r })));
+      }),
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe({
+      next: ({ p, r }) => {
+        if (requestId !== this.loadSeq) return;
+        const treeId = p.treeId ?? '';
+        this._tree.set(r.trees.find(t => t.id === treeId) ?? null);
+        this._relations.set(r.relations);
+        this._timeline.set(r.timeline);
+        this._media.set(r.media);
+        this._treePersons.set(r.persons);
+        this._loading.set(false);
       },
-      error: e => { this._error.set(problemMessage(e, this.i18n.t('err.load'))); this._loading.set(false); }
+      error: e => {
+        if (requestId !== this.loadSeq) return;
+        this._error.set(problemMessage(e, this.i18n.t('err.load')));
+        this._loading.set(false);
+      }
     });
   }
 
-  reloadRelations() { const id = this._person()?.id; if (id) this.personsApi.personsGetRelations({ id }).subscribe(r => this._relations.set(r)); }
-  reloadTimeline() { const personId = this._person()?.id; if (personId) this.timelineApi.timelineGet({ personId }).subscribe(t => this._timeline.set(t)); }
-  reloadMedia() { const personId = this._person()?.id; if (personId) this.mediaApi.mediaGetMedia({ personId }).subscribe(m => this._media.set(m)); }
+  reloadRelations() {
+    const id = this._person()?.id;
+    if (id) this.personsApi.personsGetRelations({ id }).subscribe({ next: r => this._relations.set(r), error: e => this.toast.errorFrom(e, this.i18n.t('err.load')) });
+  }
+  reloadTimeline() {
+    const personId = this._person()?.id;
+    if (personId) this.timelineApi.timelineGet({ personId }).subscribe({ next: t => this._timeline.set(t), error: e => this.toast.errorFrom(e, this.i18n.t('err.load')) });
+  }
+  reloadMedia() {
+    const personId = this._person()?.id;
+    if (personId) this.mediaApi.mediaGetMedia({ personId }).subscribe({ next: m => this._media.set(m), error: e => this.toast.errorFrom(e, this.i18n.t('err.load')) });
+  }
 
   setPerson(p: PersonDto) { this._person.set(p); }
   upsertEvent(e: TimelineEventDto) { this._timeline.update(list => list.some(x => x.id === e.id) ? list.map(x => (x.id === e.id ? e : x)) : [...list, e]); }

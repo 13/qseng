@@ -1,4 +1,4 @@
-import { Component, OnInit, computed, effect, inject, input } from '@angular/core';
+import { Component, computed, effect, inject, input } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
@@ -85,7 +85,7 @@ import { PersonMediaComponent } from './person-media.component';
     @media (max-width: 1023.98px) { .qs-person { grid-template-columns: 1fr; } }
   `]
 })
-export class PersonDetailComponent implements OnInit {
+export class PersonDetailComponent {
   readonly id = input.required<string>();
   readonly store = inject(PersonStore);
   private readonly crumbs = inject(BreadcrumbService);
@@ -96,6 +96,7 @@ export class PersonDetailComponent implements OnInit {
   readonly span = computed(() => { const p = this.store.person(); return p ? lifespan({ firstName: '', lastName: '', birth: p.birth, death: p.death }) : ''; });
 
   constructor() {
+    effect(() => this.store.load(this.id()));
     effect(() => {
       const p = this.store.person();
       const tree = this.store.tree();
@@ -107,6 +108,4 @@ export class PersonDetailComponent implements OnInit {
       ]);
     });
   }
-
-  ngOnInit() { this.store.load(this.id()); }
 }

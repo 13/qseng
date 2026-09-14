@@ -32,11 +32,13 @@ interface Group { key: TranslationKey; icon: string; items: PersonRelationDto[];
             <p class="qs-family__label"><mat-icon aria-hidden="true">{{ g.icon }}</mat-icon>{{ g.key | translate }}</p>
             <mat-chip-set>
               @for (r of g.items; track r.relationshipId) {
-                <mat-chip [routerLink]="['/persons', r.relatedPersonId]" class="qs-family__chip">
-                  {{ r.relatedFirstName }} {{ r.relatedLastName }}
-                  @if (r.type === 'Spouse' && r.startYear) { <span class="qs-muted">&nbsp;{{ r.startYear }}</span> }
-                  <button matChipRemove [attr.aria-label]="('fam.remove' | translate) + ': ' + r.relatedFirstName + ' ' + r.relatedLastName"
-                          (click)="remove(r); $event.stopPropagation()"><mat-icon>cancel</mat-icon></button>
+                <mat-chip class="qs-family__chip">
+                  <a class="qs-family__link" [routerLink]="['/persons', r.relatedPersonId]">
+                    {{ r.relatedFirstName }} {{ r.relatedLastName }}
+                    @if (r.type === 'Spouse' && r.startYear) { <span class="qs-muted">&nbsp;{{ r.startYear }}</span> }
+                  </a>
+                  <button matChipRemove [tabIndex]="0" [attr.aria-label]="('fam.remove' | translate) + ': ' + r.relatedFirstName + ' ' + r.relatedLastName"
+                          (click)="remove(r)"><mat-icon>cancel</mat-icon></button>
                 </mat-chip>
               }
             </mat-chip-set>
@@ -51,7 +53,7 @@ interface Group { key: TranslationKey; icon: string; items: PersonRelationDto[];
     .qs-family__group { margin-bottom: 10px; }
     .qs-family__label { display: flex; align-items: center; gap: 4px; margin: 0 0 4px; font-size: .8rem; letter-spacing: .04em; text-transform: uppercase; color: var(--mat-sys-on-surface-variant); }
     .qs-family__label mat-icon { font-size: 18px; width: 18px; height: 18px; }
-    .qs-family__chip { cursor: pointer; }
+    .qs-family__link { color: inherit; text-decoration: none; display: block; }
   `]
 })
 export class PersonFamilyComponent {
@@ -68,10 +70,11 @@ export class PersonFamilyComponent {
       { key: 'fam.parents', icon: 'family_restroom', items: rels.filter(r => r.type === 'Parent' && r.direction === 'to') },
       { key: 'fam.spouses', icon: 'favorite', items: rels.filter(r => r.type === 'Spouse') },
       { key: 'fam.children', icon: 'child_care', items: rels.filter(r => r.type === 'Parent' && r.direction === 'from') },
-      { key: 'fam.adoptiveParents', icon: 'volunteer_activism', items: rels.filter(r => r.type === 'Adoptive' && r.direction === 'to') }
+      { key: 'fam.adoptiveParents', icon: 'volunteer_activism', items: rels.filter(r => r.type === 'Adoptive' && r.direction === 'to') },
+      { key: 'fam.adoptiveChildren', icon: 'child_care', items: rels.filter(r => r.type === 'Adoptive' && r.direction === 'from') }
     ];
   });
-  readonly hasAny = computed(() => this.store.relations().length > 0);
+  readonly hasAny = computed(() => this.groups().some(g => g.items.length > 0));
 
   async openAdd() {
     const person = this.store.person();

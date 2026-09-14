@@ -67,4 +67,34 @@ describe('RelationshipDialogComponent', () => {
     expect(ref.close).not.toHaveBeenCalled();
     expect(toast.errorFrom).toHaveBeenCalled();
   });
+
+  it('picking then retyping the person field clears the pick so save() does not call the API', () => {
+    const { cmp, api } = setup();
+    cmp.form.controls.type.setValue('Parent');
+    cmp.pick(other);
+    cmp.form.controls.person.setValue('something else');
+    cmp.save();
+    expect(api.relationshipsCreate).not.toHaveBeenCalled();
+  });
+
+  it('blocks save() when the start date control is invalid', () => {
+    const { cmp, api } = setup();
+    cmp.form.controls.type.setValue('Spouse');
+    cmp.pick(other);
+    cmp.form.controls.startDate.setErrors({ partialDate: true });
+    cmp.save();
+    expect(api.relationshipsCreate).not.toHaveBeenCalled();
+  });
+
+  it('requires the from person when there is no anchor, then creates the edge once both are picked', () => {
+    const { cmp, api } = setup(false, { treeId: 't1', persons: [anchor, other] });
+    cmp.form.controls.type.setValue('Parent');
+    cmp.pick(other);
+    cmp.save();
+    expect(cmp.form.controls.from.errors).toEqual({ required: true });
+    expect(api.relationshipsCreate).not.toHaveBeenCalled();
+    cmp.pickFromPerson(anchor);
+    cmp.save();
+    expect(api.relationshipsCreate).toHaveBeenCalledWith({ treeId: 't1', body: expect.objectContaining({ type: 'Parent', fromPersonId: 'me', toPersonId: 'p2' }) });
+  });
 });
