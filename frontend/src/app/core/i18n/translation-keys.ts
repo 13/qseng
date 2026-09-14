@@ -331,7 +331,16 @@ export type TranslationKey =
   | 'tree.addPerson'
   | 'tree.addRel'
   | 'tree.back'
+  | 'tree.children'
   | 'tree.clearSelection'
+  | 'tree.closePanel'
+  | 'tree.ctx.addChild'
+  | 'tree.ctx.addParent'
+  | 'tree.ctx.addSpouse'
+  | 'tree.ctx.focus'
+  | 'tree.ctx.remove'
+  | 'tree.deleted.toast'
+  | 'tree.edit'
   | 'tree.emptyTitle'
   | 'tree.export'
   | 'tree.filter'
@@ -343,6 +352,8 @@ export type TranslationKey =
   | 'tree.layoutTree'
   | 'tree.noResults'
   | 'tree.openProfile'
+  | 'tree.parents'
+  | 'tree.people'
   | 'tree.peopleList'
   | 'tree.relAdd'
   | 'tree.relErr'
@@ -353,6 +364,11 @@ export type TranslationKey =
   | 'tree.relType'
   | 'tree.resetLayout'
   | 'tree.search'
+  | 'tree.showPeople'
+  | 'tree.sort'
+  | 'tree.sort.birth'
+  | 'tree.sort.name'
+  | 'tree.spouses'
   | 'tree.zoomIn'
   | 'tree.zoomOut'
   | 'trees.cancel'
@@ -717,7 +733,16 @@ export const TRANSLATION_KEYS: readonly TranslationKey[] = [
   'tree.addPerson',
   'tree.addRel',
   'tree.back',
+  'tree.children',
   'tree.clearSelection',
+  'tree.closePanel',
+  'tree.ctx.addChild',
+  'tree.ctx.addParent',
+  'tree.ctx.addSpouse',
+  'tree.ctx.focus',
+  'tree.ctx.remove',
+  'tree.deleted.toast',
+  'tree.edit',
   'tree.emptyTitle',
   'tree.export',
   'tree.filter',
@@ -729,6 +754,8 @@ export const TRANSLATION_KEYS: readonly TranslationKey[] = [
   'tree.layoutTree',
   'tree.noResults',
   'tree.openProfile',
+  'tree.parents',
+  'tree.people',
   'tree.peopleList',
   'tree.relAdd',
   'tree.relErr',
@@ -739,6 +766,11 @@ export const TRANSLATION_KEYS: readonly TranslationKey[] = [
   'tree.relType',
   'tree.resetLayout',
   'tree.search',
+  'tree.showPeople',
+  'tree.sort',
+  'tree.sort.birth',
+  'tree.sort.name',
+  'tree.spouses',
   'tree.zoomIn',
   'tree.zoomOut',
   'trees.cancel',
