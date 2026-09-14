@@ -86,7 +86,7 @@ function matches(p: PersonDto, term: string): boolean {
             <mat-error>{{ form.controls.person.errors | formErrors }}</mat-error>
           </mat-form-field>
         } @else {
-          <div class="qs-dialog-form qs-new-person-block" [formGroup]="newForm">
+          <div class="qs-new-person-block" [formGroup]="newForm">
             <mat-form-field><mat-label>{{ 'rel.new.firstName' | translate }}</mat-label><input matInput formControlName="firstName" maxlength="200" cdkFocusInitial><mat-error>{{ newForm.controls.firstName.errors | formErrors }}</mat-error></mat-form-field>
             <mat-form-field><mat-label>{{ 'rel.new.lastName' | translate }}</mat-label><input matInput formControlName="lastName" maxlength="200"><mat-error>{{ newForm.controls.lastName.errors | formErrors }}</mat-error></mat-form-field>
             <mat-button-toggle-group formControlName="sex" [attr.aria-label]="'rel.new.sex' | translate">
@@ -116,9 +116,11 @@ function matches(p: PersonDto, term: string): boolean {
   `,
   styles: [`
     mat-dialog-content { overflow-x: hidden; }
+    mat-dialog-content > mat-form-field, mat-dialog-content > qs-partial-date-input { width: 100%; }
     mat-button-toggle-group { width: 100%; }
     .mat-button-toggle { flex: 1; }
     mat-dialog-content > mat-button-toggle-group { margin: 20px 0 8px; }
+    .qs-new-person-block { display: flex; flex-direction: column; gap: 4px; }
     .qs-new-person-block > * { width: 100%; }
   `]
 })
