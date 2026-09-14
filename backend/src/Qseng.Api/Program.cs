@@ -2,19 +2,25 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Qseng.Application;
 using Qseng.Application.Abstractions;
+using Qseng.Api.Health;
 using Qseng.Api.Middleware;
+using Qseng.Api.Options;
 using Qseng.Api.RateLimiting;
 using Qseng.Infrastructure;
 using Qseng.Infrastructure.Auth;
 using Qseng.Infrastructure.Options;
+using Qseng.Infrastructure.Persistence;
 using Qseng.Infrastructure.Seeding;
 using Serilog;
+using Serilog.Events;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -137,7 +143,24 @@ builder.Services.AddOptions<RateLimitingOptions>().Bind(builder.Configuration.Ge
 var rateLimiting = builder.Configuration.GetSection(RateLimitingOptions.SectionName).Get<RateLimitingOptions>() ?? new RateLimitingOptions();
 builder.Services.AddRateLimiter(o => AuthRateLimitPolicy.Configure(o, rateLimiting.Auth));
 
+// The docker image sits behind nginx, which sets X-Forwarded-For/-Proto; without this the
+// per-IP rate limiter and any IP-based logic would only ever see the proxy's own address.
+// KnownNetworks defaults to empty, which means only loopback proxies are trusted.
+var knownNetworks = builder.Configuration.GetSection("ForwardedHeaders:KnownNetworks").Get<string[]>() ?? [];
+builder.Services.Configure<ForwardedHeadersOptions>(o =>
+{
+    o.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    foreach (var network in ForwardedHeadersSetup.Parse(knownNetworks))
+        o.KnownIPNetworks.Add(network);
+});
+
+builder.Services.AddHealthChecks()
+    .AddDbContextCheck<QsengDbContext>("database")
+    .AddCheck("uploads", new UploadsWritableCheck(builder.Configuration["Uploads:Path"] ?? "uploads"));
+
 var app = builder.Build();
+
+app.UseForwardedHeaders();
 
 app.UseMiddleware<ExceptionMiddleware>();
 
@@ -161,8 +184,19 @@ app.UseStaticFiles(new StaticFileOptions
 app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
+
+app.UseSerilogRequestLogging(o =>
+{
+    o.EnrichDiagnosticContext = (d, http) => d.Set("UserId", http.User.FindFirstValue(ClaimTypes.NameIdentifier));
+    o.GetLevel = (http, _, ex) => ex is not null || http.Response.StatusCode >= 500
+        ? LogEventLevel.Error
+        : http.Request.Path.StartsWithSegments("/health") ? LogEventLevel.Verbose : LogEventLevel.Information;
+});
+
 app.MapControllers();
 app.MapGet("/api/v1/health", () => Results.Ok(new { status = "ok", timestamp = DateTime.UtcNow }));
+app.MapHealthChecks("/health/live", new HealthCheckOptions { Predicate = _ => false, ResponseWriter = HealthResponseWriter.WriteAsync }).AllowAnonymous();
+app.MapHealthChecks("/health/ready", new HealthCheckOptions { ResponseWriter = HealthResponseWriter.WriteAsync }).AllowAnonymous();
 
 using (var scope = app.Services.CreateScope())
 {

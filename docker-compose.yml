@@ -26,6 +26,7 @@ services:
       Jwt__Key: "change-me-in-prod-please-32+chars-long-key!"
       Cors__AllowedOrigins__0: "http://localhost:8081"
       Uploads__Path: /app/uploads
+      ForwardedHeaders__KnownNetworks__0: "172.16.0.0/12"
     depends_on:
       postgres:
         condition: service_healthy
