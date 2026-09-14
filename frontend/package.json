@@ -15,7 +15,8 @@
     "prebuild": "npm run gen",
     "pretest": "npm run gen",
     "postinstall": "npm run gen",
-    "lint": "ng lint"
+    "lint": "ng lint",
+    "gates": "node scripts/check-gates.mjs"
   },
   "private": true,
   "packageManager": "npm@11.13.0",

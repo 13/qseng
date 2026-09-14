@@ -1,5 +1,5 @@
-import { Component, inject, signal } from '@angular/core';
-import { FormsModule } from '@angular/forms';
+import { Component, inject } from '@angular/core';
+import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -18,7 +18,7 @@ export interface ConfirmOptions {
 
 @Component({
   selector: 'qs-confirm-dialog',
-  imports: [MatDialogModule, MatButtonModule, MatFormFieldModule, MatInputModule, FormsModule, TranslatePipe],
+  imports: [MatDialogModule, MatButtonModule, MatFormFieldModule, MatInputModule, ReactiveFormsModule, TranslatePipe],
   template: `
     <h2 mat-dialog-title>{{ data.title }}</h2>
     <mat-dialog-content>
@@ -26,15 +26,14 @@ export interface ConfirmOptions {
       @if (data.requirePassword) {
         <mat-form-field style="width:100%">
           <mat-label>{{ 'login.password' | translate }}</mat-label>
-          <input matInput type="password" autocomplete="current-password"
-                 [ngModel]="password()" (ngModelChange)="password.set($event)" (keydown.enter)="confirm()">
+          <input matInput type="password" autocomplete="current-password" [formControl]="password" (keydown.enter)="confirm()">
         </mat-form-field>
       }
     </mat-dialog-content>
     <mat-dialog-actions align="end">
       <button matButton (click)="ref.close(false)">{{ data.cancelLabel ?? ('cancel' | translate) }}</button>
       <button matButton="filled" [class.qs-destructive]="data.destructive"
-              [disabled]="data.requirePassword && !password()" (click)="confirm()">
+              [disabled]="data.requirePassword && !password.value" (click)="confirm()">
         {{ data.confirmLabel ?? ('delete' | translate) }}
       </button>
     </mat-dialog-actions>
@@ -46,12 +45,12 @@ export interface ConfirmOptions {
 export class ConfirmDialogComponent {
   readonly data = inject<ConfirmOptions>(MAT_DIALOG_DATA);
   readonly ref = inject<MatDialogRef<ConfirmDialogComponent, boolean | string>>(MatDialogRef);
-  readonly password = signal('');
+  readonly password = new FormControl('', { nonNullable: true });
 
   confirm() {
     if (this.data.requirePassword) {
-      if (!this.password()) return;
-      this.ref.close(this.password());
+      if (!this.password.value) return;
+      this.ref.close(this.password.value);
     } else {
       this.ref.close(true);
     }

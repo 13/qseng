@@ -2,6 +2,3 @@
 @use './styles/tokens';
 @use './styles/base';
 @use './styles/typography';
-
-// Old global styles still used by feature screens not yet rewritten. Removed in P1e.
-@use './styles/legacy';
