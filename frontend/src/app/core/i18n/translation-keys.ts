@@ -192,9 +192,20 @@ export type TranslationKey =
   | 'register.tagline'
   | 'register.title'
   | 'register.username'
+  | 'rel.added.toast'
   | 'rel.adoptive'
   | 'rel.child'
+  | 'rel.dialog.date'
+  | 'rel.dialog.from'
+  | 'rel.dialog.person'
+  | 'rel.dialog.place'
+  | 'rel.dialog.roleHint'
+  | 'rel.dialog.submit'
+  | 'rel.dialog.title'
+  | 'rel.dialog.to'
+  | 'rel.dialog.type'
   | 'rel.parent'
+  | 'rel.removed.toast'
   | 'rel.spouse'
   | 'remove'
   | 'retry'
@@ -524,9 +535,20 @@ export const TRANSLATION_KEYS: readonly TranslationKey[] = [
   'register.tagline',
   'register.title',
   'register.username',
+  'rel.added.toast',
   'rel.adoptive',
   'rel.child',
+  'rel.dialog.date',
+  'rel.dialog.from',
+  'rel.dialog.person',
+  'rel.dialog.place',
+  'rel.dialog.roleHint',
+  'rel.dialog.submit',
+  'rel.dialog.title',
+  'rel.dialog.to',
+  'rel.dialog.type',
   'rel.parent',
+  'rel.removed.toast',
   'rel.spouse',
   'remove',
   'retry',
