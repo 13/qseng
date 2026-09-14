@@ -30,7 +30,7 @@ function setup(handset = false, confirmResult = true, dialogResult: unknown = un
     adminDeleteUser: vi.fn(() => of(undefined))
   };
   const confirm = { confirm: vi.fn(async () => confirmResult) };
-  const toast = { success: vi.fn(), error: vi.fn(), info: vi.fn() };
+  const toast = { success: vi.fn(), error: vi.fn(), info: vi.fn(), errorFrom: vi.fn() };
   const dialog = { open: vi.fn(() => ({ afterClosed: () => of(dialogResult) })) };
   TestBed.configureTestingModule({
     providers: [
@@ -70,18 +70,21 @@ describe('AdminUsersComponent', () => {
     expect(api.adminDeleteUser).toHaveBeenCalledWith({ id: 'u2' });
   });
 
-  it('creates a user from the dialog result', async () => {
-    const { cmp, api, toast } = setup(false, true, { username: 'x', password: 'password1', isAdmin: false, displayName: null, email: null });
+  it('reloads and toasts success when the dialog closes with the created user, without calling the API itself', async () => {
+    const { cmp, api, toast } = setup(false, true, { id: 'u9', username: 'x', password: 'password1', isAdmin: false, displayName: null, email: null });
     await cmp.openCreate();
-    expect(api.adminCreateUser).toHaveBeenCalledWith({ body: { username: 'x', password: 'password1', isAdmin: false, displayName: null, email: null } });
+    expect(api.adminCreateUser).not.toHaveBeenCalled();
+    expect(api.adminListUsers).toHaveBeenCalledTimes(2);
     expect(toast.success).toHaveBeenCalledWith('admin.created.toast');
   });
 
-  it('ignores activate/admin toggles on the current user even if invoked directly', async () => {
-    const { cmp, api } = setup();
+  it('ignores activate/admin toggles and the password dialog on the current user even if invoked directly', async () => {
+    const { cmp, api, dialog } = setup();
     cmp.toggleActive(users[0]);
     await cmp.toggleAdmin(users[0]);
     expect(api.adminSetActive).not.toHaveBeenCalled();
     expect(api.adminSetAdmin).not.toHaveBeenCalled();
+    await cmp.changePassword(users[0]);
+    expect(dialog.open).not.toHaveBeenCalled();
   });
 });

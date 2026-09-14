@@ -24,7 +24,7 @@ function setup(list = trees, dialogResult: unknown = undefined, confirmResult = 
   };
   const dialog = { open: vi.fn(() => ({ afterClosed: () => of(dialogResult) })) };
   const confirm = { confirm: vi.fn(async () => confirmResult) };
-  const toast = { success: vi.fn(), error: vi.fn(), info: vi.fn() };
+  const toast = { success: vi.fn(), error: vi.fn(), info: vi.fn(), errorFrom: vi.fn() };
   // Reset first: the "deletes only after confirmation" test calls setup() twice
   // in one `it`, and TestBed forbids reconfiguring after it's been instantiated.
   TestBed.resetTestingModule();
@@ -59,10 +59,10 @@ describe('TreeListComponent', () => {
     expect((fixture.nativeElement as HTMLElement).textContent).toContain('trees.emptyTitle');
   });
 
-  it('creates a tree from the dialog result and reloads', async () => {
-    const { cmp, api, toast } = setup(trees, { name: 'New', description: null });
+  it('reloads and toasts success when the dialog closes with the created tree, without calling the API itself', async () => {
+    const { cmp, api, toast } = setup(trees, { id: 't3', name: 'New', description: null });
     await cmp.openCreate();
-    expect(api.treesCreate).toHaveBeenCalledWith({ body: { name: 'New', description: null } });
+    expect(api.treesCreate).not.toHaveBeenCalled();
     expect(api.treesGetAll).toHaveBeenCalledTimes(2);
     expect(toast.success).toHaveBeenCalledWith('trees.created.toast');
   });

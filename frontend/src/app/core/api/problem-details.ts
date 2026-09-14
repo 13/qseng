@@ -22,3 +22,9 @@ export function problemMessage(err: unknown, fallback: string): string {
   if (isProblem(body)) return body.detail ?? fallback;
   return fallback;
 }
+
+/** Statuses the errorInterceptor already toasts; components must not toast these again. */
+export function isToastedGlobally(err: unknown): boolean {
+  const status = err instanceof HttpErrorResponse ? err.status : undefined;
+  return status === 403 || status === 0 || (status !== undefined && status >= 500);
+}

@@ -1,4 +1,5 @@
 import { TestBed } from '@angular/core/testing';
+import { HttpErrorResponse } from '@angular/common/http';
 import { MatSnackBar, MatSnackBarRef, TextOnlySnackBar } from '@angular/material/snack-bar';
 import { Subject } from 'rxjs';
 import { describe, expect, it, vi } from 'vitest';
@@ -26,5 +27,18 @@ describe('ToastService', () => {
     TestBed.configureTestingModule({ providers: [{ provide: MatSnackBar, useValue: snack }] });
     TestBed.inject(ToastService).success('Saved');
     expect(snack.open).toHaveBeenCalledWith('Saved', undefined, expect.objectContaining({ panelClass: 'qs-toast-success', duration: 4000 }));
+  });
+
+  it('errorFrom skips statuses the interceptor already toasted, but toasts others with the problem detail', () => {
+    const ref = { onAction: () => new Subject<void>() } as unknown as MatSnackBarRef<TextOnlySnackBar>;
+    const snack = { open: vi.fn(() => ref) };
+    TestBed.configureTestingModule({ providers: [{ provide: MatSnackBar, useValue: snack }] });
+    const toast = TestBed.inject(ToastService);
+
+    toast.errorFrom(new HttpErrorResponse({ status: 500 }), 'x');
+    expect(snack.open).not.toHaveBeenCalled();
+
+    toast.errorFrom(new HttpErrorResponse({ status: 409, error: { status: 409, title: 'Conflict', detail: 'Taken' } }), 'x');
+    expect(snack.open).toHaveBeenCalledWith('Taken', undefined, expect.objectContaining({ panelClass: 'qs-toast-error', duration: 6000 }));
   });
 });

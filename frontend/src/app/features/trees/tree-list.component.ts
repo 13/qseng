@@ -15,7 +15,7 @@ import { ConfirmDialogService } from '../../core/ui/confirm-dialog.service';
 import { ToastService } from '../../core/ui/toast.service';
 import { BreadcrumbService } from '../../core/ui/breadcrumb.service';
 import { problemMessage } from '../../core/api/problem-details';
-import { TreeFormDialogComponent, TreeFormData, TreeFormResult } from './tree-form-dialog.component';
+import { TreeFormDialogComponent, TreeFormData } from './tree-form-dialog.component';
 
 @Component({
   selector: 'qs-tree-list',
@@ -119,21 +119,17 @@ export class TreeListComponent implements OnInit {
   }
 
   async openCreate() {
-    const result = await this.openForm({});
+    const result = await this.openForm({ mode: 'create' });
     if (!result) return;
-    this.api.treesCreate({ body: result }).subscribe({
-      next: () => { this.toast.success(this.i18n.t('trees.created.toast')); this.load(); },
-      error: e => this.toast.error(problemMessage(e, this.i18n.t('trees.err.create')))
-    });
+    this.toast.success(this.i18n.t('trees.created.toast'));
+    this.load();
   }
 
   async openRename(tree: TreeDto) {
-    const result = await this.openForm({ name: tree.name ?? '', description: tree.description ?? null });
-    if (!result || !tree.id) return;
-    this.api.treesUpdate({ id: tree.id, body: result }).subscribe({
-      next: () => { this.toast.success(this.i18n.t('trees.renamed.toast')); this.load(); },
-      error: e => this.toast.error(problemMessage(e, this.i18n.t('trees.err.save')))
-    });
+    const result = await this.openForm({ mode: 'rename', tree });
+    if (!result) return;
+    this.toast.success(this.i18n.t('trees.renamed.toast'));
+    this.load();
   }
 
   async remove(tree: TreeDto) {
@@ -146,12 +142,12 @@ export class TreeListComponent implements OnInit {
     if (ok !== true || !tree.id) return;
     this.api.treesDelete({ id: tree.id }).subscribe({
       next: () => { this.toast.success(this.i18n.t('trees.deleted.toast')); this.load(); },
-      error: e => this.toast.error(problemMessage(e, this.i18n.t('trees.err.delete')))
+      error: e => this.toast.errorFrom(e, this.i18n.t('trees.err.delete'))
     });
   }
 
-  private openForm(data: TreeFormData): Promise<TreeFormResult | undefined> {
-    const ref = this.dialog.open<TreeFormDialogComponent, TreeFormData, TreeFormResult | undefined>(TreeFormDialogComponent, { data, width: '480px', maxWidth: '95vw' });
+  private openForm(data: TreeFormData): Promise<TreeDto | undefined> {
+    const ref = this.dialog.open<TreeFormDialogComponent, TreeFormData, TreeDto | undefined>(TreeFormDialogComponent, { data, width: '480px', maxWidth: '95vw' });
     return firstValueFrom(ref.afterClosed());
   }
 }

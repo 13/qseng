@@ -19,7 +19,7 @@ import { ToastService } from '../../core/ui/toast.service';
 import { BreadcrumbService } from '../../core/ui/breadcrumb.service';
 import { FormErrorsPipe } from '../../core/forms/form-errors.pipe';
 import { setServerErrors } from '../../core/forms/server-errors';
-import { isValidationProblem, problemMessage } from '../../core/api/problem-details';
+import { isValidationProblem } from '../../core/api/problem-details';
 
 @Component({
   selector: 'qs-settings',
@@ -158,7 +158,7 @@ export class SettingsComponent implements OnInit {
         if (p.language === 'de' || p.language === 'en') this.i18n.setLang(p.language);
         this.loadingProfile.set(false);
       },
-      error: e => { this.loadingProfile.set(false); this.toast.error(problemMessage(e, this.i18n.t('err.load'))); }
+      error: e => { this.loadingProfile.set(false); this.toast.errorFrom(e, this.i18n.t('err.load')); }
     });
   }
 
@@ -176,7 +176,7 @@ export class SettingsComponent implements OnInit {
       },
       error: e => {
         if (isValidationProblem(e.error)) setServerErrors(this.pwForm, e.error);
-        else this.toast.error(problemMessage(e, this.i18n.t('err.save')));
+        else this.toast.errorFrom(e, this.i18n.t('err.save'));
         this.pwLoading.set(false);
       }
     });
@@ -190,7 +190,7 @@ export class SettingsComponent implements OnInit {
     this.i18n.setLang(l);
     this.api.userChangeLanguage({ body: { language: l } }).subscribe({
       next: () => this.toast.success(this.i18n.t('settings.lang.saved')),
-      error: e => this.toast.error(problemMessage(e, this.i18n.t('err.save')))
+      error: e => this.toast.errorFrom(e, this.i18n.t('err.save'))
     });
   }
 
@@ -212,7 +212,7 @@ export class SettingsComponent implements OnInit {
         this.exporting.set(false);
         this.toast.success(this.i18n.t('settings.export.done'));
       },
-      error: e => { this.exporting.set(false); this.toast.error(problemMessage(e, this.i18n.t('err.load'))); }
+      error: e => { this.exporting.set(false); this.toast.errorFrom(e, this.i18n.t('err.load')); }
     });
   }
 
@@ -224,7 +224,7 @@ export class SettingsComponent implements OnInit {
     if (typeof password !== 'string') return;
     this.api.userDeleteData({ body: { password } }).subscribe({
       next: () => { this.toast.success(this.i18n.t('settings.deleteData.done')); void this.router.navigate(['/trees']); },
-      error: e => this.toast.error(problemMessage(e, this.i18n.t('err.delete')))
+      error: e => this.toast.errorFrom(e, this.i18n.t('err.delete'))
     });
   }
 
@@ -236,7 +236,7 @@ export class SettingsComponent implements OnInit {
     if (typeof password !== 'string') return;
     this.api.userDeleteAccount({ body: { password } }).subscribe({
       next: () => { this.auth.logout(); void this.router.navigate(['/login']); },
-      error: e => this.toast.error(problemMessage(e, this.i18n.t('err.delete')))
+      error: e => this.toast.errorFrom(e, this.i18n.t('err.delete'))
     });
   }
 }

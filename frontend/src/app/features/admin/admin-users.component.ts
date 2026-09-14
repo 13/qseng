@@ -10,7 +10,7 @@ import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatDialog } from '@angular/material/dialog';
 import { firstValueFrom } from 'rxjs';
-import { AdminApi, AdminCreateUserRequest, UserSummaryDto } from '../../core/api/generated';
+import { AdminApi, UserSummaryDto } from '../../core/api/generated';
 import { AuthService } from '../../core/auth/auth.service';
 import { I18nService } from '../../core/i18n/i18n.service';
 import { TranslatePipe } from '../../core/i18n/translate.pipe';
@@ -119,7 +119,7 @@ import { UserPasswordDialogComponent } from './user-password-dialog.component';
         <button mat-menu-item (click)="toggleAdmin(u)" [disabled]="isMe(u)">
           <mat-icon>{{ u.isAdmin ? 'remove_moderator' : 'add_moderator' }}</mat-icon>{{ (u.isAdmin ? 'admin.action.removeAdmin' : 'admin.action.makeAdmin') | translate }}
         </button>
-        <button mat-menu-item (click)="changePassword(u)"><mat-icon>key</mat-icon>{{ 'admin.action.password' | translate }}</button>
+        <button mat-menu-item (click)="changePassword(u)" [disabled]="isMe(u)"><mat-icon>key</mat-icon>{{ 'admin.action.password' | translate }}</button>
         <button mat-menu-item (click)="deleteUser(u)" [disabled]="isMe(u)"><mat-icon>delete</mat-icon>{{ 'admin.action.delete' | translate }}</button>
       </mat-menu>
     </ng-template>
@@ -184,25 +184,23 @@ export class AdminUsersComponent implements OnInit {
     this.registrationEnabled.set(enabled);
     this.api.adminSetRegistration({ body: { enabled } }).subscribe({
       next: () => this.toast.success(this.i18n.t('admin.saved.toast')),
-      error: e => { this.registrationEnabled.set(previous); this.toast.error(problemMessage(e, this.i18n.t('err.save'))); }
+      error: e => { this.registrationEnabled.set(previous); this.toast.errorFrom(e, this.i18n.t('err.save')); }
     });
   }
 
   async openCreate() {
-    const ref = this.dialog.open<UserFormDialogComponent, unknown, AdminCreateUserRequest | undefined>(UserFormDialogComponent, { data: {}, width: '520px', maxWidth: '95vw' });
-    const body = await firstValueFrom(ref.afterClosed());
-    if (!body) return;
-    this.api.adminCreateUser({ body }).subscribe({
-      next: () => { this.toast.success(this.i18n.t('admin.created.toast')); this.load(); },
-      error: e => this.toast.error(problemMessage(e, this.i18n.t('err.save')))
-    });
+    const ref = this.dialog.open<UserFormDialogComponent, unknown, UserSummaryDto | undefined>(UserFormDialogComponent, { data: {}, width: '520px', maxWidth: '95vw' });
+    const result = await firstValueFrom(ref.afterClosed());
+    if (!result) return;
+    this.toast.success(this.i18n.t('admin.created.toast'));
+    this.load();
   }
 
   toggleActive(u: UserSummaryDto) {
     if (!u.id || this.isMe(u)) return;
     this.api.adminSetActive({ id: u.id, body: { active: !u.isActive } }).subscribe({
       next: () => { this.toast.success(this.i18n.t('admin.saved.toast')); this.load(); },
-      error: e => this.toast.error(problemMessage(e, this.i18n.t('err.save')))
+      error: e => this.toast.errorFrom(e, this.i18n.t('err.save'))
     });
   }
 
@@ -217,19 +215,16 @@ export class AdminUsersComponent implements OnInit {
     if (ok !== true) return;
     this.api.adminSetAdmin({ id: u.id, body: { admin: !u.isAdmin } }).subscribe({
       next: () => { this.toast.success(this.i18n.t('admin.saved.toast')); this.load(); },
-      error: e => this.toast.error(problemMessage(e, this.i18n.t('err.save')))
+      error: e => this.toast.errorFrom(e, this.i18n.t('err.save'))
     });
   }
 
   async changePassword(u: UserSummaryDto) {
-    if (!u.id) return;
-    const ref = this.dialog.open<UserPasswordDialogComponent, { username: string }, string | undefined>(UserPasswordDialogComponent, { data: { username: u.username ?? '' }, width: '440px', maxWidth: '95vw' });
-    const newPassword = await firstValueFrom(ref.afterClosed());
-    if (!newPassword) return;
-    this.api.adminChangePassword({ id: u.id, body: { newPassword } }).subscribe({
-      next: () => this.toast.success(this.i18n.t('admin.pw.saved')),
-      error: e => this.toast.error(problemMessage(e, this.i18n.t('err.save')))
-    });
+    if (!u.id || this.isMe(u)) return;
+    const ref = this.dialog.open<UserPasswordDialogComponent, { id: string; username: string }, true | undefined>(UserPasswordDialogComponent, { data: { id: u.id, username: u.username ?? '' }, width: '440px', maxWidth: '95vw' });
+    const result = await firstValueFrom(ref.afterClosed());
+    if (!result) return;
+    this.toast.success(this.i18n.t('admin.pw.saved'));
   }
 
   async deleteUser(u: UserSummaryDto) {
@@ -242,7 +237,7 @@ export class AdminUsersComponent implements OnInit {
     if (ok !== true) return;
     this.api.adminDeleteUser({ id: u.id }).subscribe({
       next: () => { this.toast.success(this.i18n.t('admin.deleted.toast')); this.load(); },
-      error: e => this.toast.error(problemMessage(e, this.i18n.t('err.delete')))
+      error: e => this.toast.errorFrom(e, this.i18n.t('err.delete'))
     });
   }
 }

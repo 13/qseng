@@ -24,7 +24,7 @@ function setup(confirmResult: boolean | string = 'hunter2') {
   };
   const auth = { adoptSession: vi.fn(), logout: vi.fn() };
   const confirm = { confirm: vi.fn(async () => confirmResult) };
-  const toast = { success: vi.fn(), error: vi.fn(), info: vi.fn() };
+  const toast = { success: vi.fn(), error: vi.fn(), info: vi.fn(), errorFrom: vi.fn() };
   const i18n = { t: (k: string) => k, dynamic: (k: string) => k, lang: () => 'en', setLang: vi.fn() };
   TestBed.configureTestingModule({
     providers: [

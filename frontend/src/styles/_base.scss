@@ -38,7 +38,7 @@ a:hover { text-decoration: underline; }
   *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
 }
 
-main h1 { outline: none; }
+h1[tabindex="-1"]:focus, h1[tabindex="-1"]:focus-visible { outline: none; }
 
 .qs-toast-error   { --mat-snack-bar-container-color: var(--mat-sys-error-container); --mat-snack-bar-supporting-text-color: var(--mat-sys-on-error-container); --mat-snack-bar-button-color: var(--mat-sys-on-error-container); }
 .qs-toast-success { --mat-snack-bar-container-color: var(--mat-sys-primary-container); --mat-snack-bar-supporting-text-color: var(--mat-sys-on-primary-container); --mat-snack-bar-button-color: var(--mat-sys-on-primary-container); }
