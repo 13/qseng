@@ -136,10 +136,17 @@ export type TranslationKey =
   | 'login.username'
   | 'media.add'
   | 'media.avatarBadge'
+  | 'media.avatarSet.toast'
   | 'media.deleteConfirm'
+  | 'media.deleteTitle'
+  | 'media.deleted.toast'
+  | 'media.dropHint'
   | 'media.empty'
+  | 'media.open'
   | 'media.setAvatar'
   | 'media.title'
+  | 'media.tooLarge'
+  | 'media.uploaded.toast'
   | 'media.uploading'
   | 'nav.lang'
   | 'nav.logout'
@@ -494,10 +501,17 @@ export const TRANSLATION_KEYS: readonly TranslationKey[] = [
   'login.username',
   'media.add',
   'media.avatarBadge',
+  'media.avatarSet.toast',
   'media.deleteConfirm',
+  'media.deleteTitle',
+  'media.deleted.toast',
+  'media.dropHint',
   'media.empty',
+  'media.open',
   'media.setAvatar',
   'media.title',
+  'media.tooLarge',
+  'media.uploaded.toast',
   'media.uploading',
   'nav.lang',
   'nav.logout',

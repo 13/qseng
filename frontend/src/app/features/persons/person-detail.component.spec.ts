@@ -1,4 +1,4 @@
-import { Component, input } from '@angular/core';
+import { Component } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
@@ -19,9 +19,7 @@ class StubFamily {}
 class StubTimeline {}
 
 @Component({ selector: 'qs-person-media', template: '' })
-class StubMedia {
-  readonly personId = input<string>('');
-}
+class StubMedia {}
 
 const person = { id: 'p1', treeId: 't1', firstName: 'Konrad', lastName: 'Smith', maidenName: null, sex: 'Male' as const,
   birth: { year: 1843, month: 11, day: 5 }, birthPlace: 'Bregenz', death: { year: 1909 }, causeOfDeath: null, notes: 'Weber' };

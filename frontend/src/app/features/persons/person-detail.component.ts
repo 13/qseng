@@ -60,7 +60,7 @@ import { PersonMediaComponent } from './person-media.component';
               <div class="qs-tab-body"><qs-timeline /></div>
             </mat-tab>
             <mat-tab [label]="'pd.tab.media' | translate">
-              <div class="qs-tab-body"><qs-person-media [personId]="p.id ?? ''" (avatarChanged)="store.reloadMedia()" /></div>
+              <div class="qs-tab-body"><qs-person-media /></div>
             </mat-tab>
           </mat-tab-group>
         </main>
