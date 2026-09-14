@@ -83,7 +83,7 @@ export class TimelineEventDialogComponent {
   readonly form = inject(FormBuilder).nonNullable.group({
     type: [(this.data.event?.type ?? 'Custom') as TimelineEventType],
     title: [this.data.event?.title ?? '', Validators.required],
-    spouse: [''],
+    spouse: [this.data.event?.spouseName ?? ''],
     start: [(this.data.event?.start ?? null) as PartialDate | null],
     end: [(this.data.event?.end ?? null) as PartialDate | null],
     location: [this.data.event?.location ?? ''],

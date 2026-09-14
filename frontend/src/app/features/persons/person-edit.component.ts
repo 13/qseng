@@ -1,4 +1,4 @@
-import { Component, OnInit, computed, effect, inject, input, signal } from '@angular/core';
+import { Component, OnDestroy, OnInit, computed, effect, inject, input, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatCardModule } from '@angular/material/card';
@@ -37,73 +37,80 @@ const SEXES: Sex[] = ['Male', 'Female'];
         <mat-menu #menu="matMenu"><button mat-menu-item (click)="remove()"><mat-icon>delete</mat-icon>{{ 'delete' | translate }}</button></mat-menu>
       }
     </header>
-    @if (!isNew() && !store.person()) { <mat-progress-bar mode="indeterminate" /> }
-
-    <form [formGroup]="form" (ngSubmit)="save()" novalidate class="qs-pe">
-      <mat-card appearance="outlined" class="qs-pe__card qs-pe__avatar">
-        <button type="button" class="qs-pe__avatar-btn" (click)="avatarInput.click()" [disabled]="avatarUploading()" [attr.aria-label]="'pe.avatarHint' | translate">
-          @if (avatarPreview(); as url) { <img [src]="url" [alt]="''"> }
-          @else { <span [class]="'qs-pe__initials qs-sex-' + sexClass(form.controls.sex.value)">{{ initialsNow() }}</span> }
-          <mat-icon class="qs-pe__avatar-icon" aria-hidden="true">photo_camera</mat-icon>
-        </button>
-        <input #avatarInput type="file" accept="image/*" hidden (change)="onAvatarInput($event)">
-        <div>
-          <div class="qs-pe__avatar-title">{{ 'pe.avatar' | translate }}</div>
-          <div class="qs-muted">{{ (avatarUploading() ? 'media.uploading' : (isNew() && pendingAvatar ? 'pe.avatarPending' : 'pe.avatarHint')) | translate }}</div>
-        </div>
-      </mat-card>
-
-      <mat-card appearance="outlined" class="qs-pe__card">
-        <mat-card-header><mat-card-title>{{ 'pe.basics' | translate }}</mat-card-title></mat-card-header>
-        <mat-card-content class="qs-pe__grid">
-          <mat-form-field><mat-label>{{ 'pe.firstName' | translate }}</mat-label><input matInput formControlName="firstName" maxlength="100"><mat-error>{{ form.controls.firstName.errors | formErrors }}</mat-error></mat-form-field>
-          <mat-form-field><mat-label>{{ 'pe.lastName' | translate }}</mat-label><input matInput formControlName="lastName" maxlength="100"><mat-error>{{ form.controls.lastName.errors | formErrors }}</mat-error></mat-form-field>
-          <mat-form-field><mat-label>{{ 'pe.maidenName' | translate }} ({{ 'optional' | translate }})</mat-label><input matInput formControlName="maidenName" maxlength="100"></mat-form-field>
-          <div class="qs-pe__sex">
-            <span class="qs-muted">{{ 'sex.label' | translate }}</span>
-            <mat-button-toggle-group formControlName="sex" hideSingleSelectionIndicator>
-              @for (s of sexes; track s) { <mat-button-toggle [value]="s">{{ i18n.sexLabel(s) }}</mat-button-toggle> }
-            </mat-button-toggle-group>
+    @if (!isNew() && store.error()) {
+      <div class="qs-empty" role="alert"><mat-icon aria-hidden="true">error</mat-icon><p>{{ store.error() }}</p>
+        <button matButton="outlined" (click)="store.load(id()!)">{{ 'retry' | translate }}</button></div>
+    } @else if (isNew() || store.person()) {
+      <form [formGroup]="form" (ngSubmit)="save()" novalidate class="qs-pe">
+        <mat-card appearance="outlined" class="qs-pe__card qs-pe__avatar">
+          <div class="qs-pe__avatar-wrap">
+            <button type="button" class="qs-pe__avatar-btn" (click)="avatarInput.click()" [disabled]="avatarUploading()" [attr.aria-label]="'pe.avatarHint' | translate">
+              @if (avatarPreview(); as url) { <img [src]="url" [alt]="''"> }
+              @else { <span [class]="'qs-pe__initials qs-sex-' + sexClass(form.controls.sex.value)">{{ initialsNow() }}</span> }
+            </button>
+            <mat-icon class="qs-pe__avatar-icon" aria-hidden="true">photo_camera</mat-icon>
           </div>
-        </mat-card-content>
-      </mat-card>
+          <input #avatarInput type="file" accept="image/*" hidden (change)="onAvatarInput($event)">
+          <div>
+            <div class="qs-pe__avatar-title">{{ 'pe.avatar' | translate }}</div>
+            <div class="qs-muted">{{ (avatarUploading() ? 'media.uploading' : (isNew() && pendingAvatar ? 'pe.avatarPending' : 'pe.avatarHint')) | translate }}</div>
+          </div>
+        </mat-card>
 
-      <mat-card appearance="outlined" class="qs-pe__card">
-        <mat-card-header><mat-card-title>{{ 'pe.life' | translate }}</mat-card-title></mat-card-header>
-        <mat-card-content class="qs-pe__grid">
-          <qs-partial-date-input formControlName="birth" [label]="'pe.birth' | translate" />
-          <mat-form-field><mat-label>{{ 'pe.birthPlace' | translate }}</mat-label><input matInput formControlName="birthPlace" maxlength="200"></mat-form-field>
-          <qs-partial-date-input formControlName="death" [label]="'pe.death' | translate" />
-          <mat-form-field><mat-label>{{ 'pe.deathPlace' | translate }}</mat-label><input matInput formControlName="deathPlace" maxlength="200"></mat-form-field>
-          <mat-form-field class="qs-pe__wide"><mat-label>{{ 'pe.causeOfDeath' | translate }}</mat-label><input matInput formControlName="causeOfDeath" maxlength="200"></mat-form-field>
-        </mat-card-content>
-      </mat-card>
+        <mat-card appearance="outlined" class="qs-pe__card">
+          <mat-card-header><mat-card-title>{{ 'pe.basics' | translate }}</mat-card-title></mat-card-header>
+          <mat-card-content class="qs-pe__grid">
+            <mat-form-field><mat-label>{{ 'pe.firstName' | translate }}</mat-label><input matInput formControlName="firstName" maxlength="100"><mat-error>{{ form.controls.firstName.errors | formErrors }}</mat-error></mat-form-field>
+            <mat-form-field><mat-label>{{ 'pe.lastName' | translate }}</mat-label><input matInput formControlName="lastName" maxlength="100"><mat-error>{{ form.controls.lastName.errors | formErrors }}</mat-error></mat-form-field>
+            <mat-form-field><mat-label>{{ 'pe.maidenName' | translate }} ({{ 'optional' | translate }})</mat-label><input matInput formControlName="maidenName" maxlength="100"></mat-form-field>
+            <div class="qs-pe__sex">
+              <span class="qs-muted">{{ 'sex.label' | translate }}</span>
+              <mat-button-toggle-group formControlName="sex" hideSingleSelectionIndicator>
+                @for (s of sexes; track s) { <mat-button-toggle [value]="s">{{ i18n.sexLabel(s) }}</mat-button-toggle> }
+              </mat-button-toggle-group>
+            </div>
+          </mat-card-content>
+        </mat-card>
 
-      <mat-card appearance="outlined" class="qs-pe__card">
-        <mat-card-header><mat-card-title>{{ 'pe.notes' | translate }}</mat-card-title></mat-card-header>
-        <mat-card-content>
-          <mat-form-field class="qs-pe__wide"><mat-label>{{ 'pe.notes' | translate }}</mat-label><textarea matInput formControlName="notes" rows="5" maxlength="4000"></textarea></mat-form-field>
-        </mat-card-content>
-      </mat-card>
+        <mat-card appearance="outlined" class="qs-pe__card">
+          <mat-card-header><mat-card-title>{{ 'pe.life' | translate }}</mat-card-title></mat-card-header>
+          <mat-card-content class="qs-pe__grid">
+            <qs-partial-date-input formControlName="birth" [label]="'pe.birth' | translate" />
+            <mat-form-field><mat-label>{{ 'pe.birthPlace' | translate }}</mat-label><input matInput formControlName="birthPlace" maxlength="200"></mat-form-field>
+            <qs-partial-date-input formControlName="death" [label]="'pe.death' | translate" />
+            <mat-form-field><mat-label>{{ 'pe.deathPlace' | translate }}</mat-label><input matInput formControlName="deathPlace" maxlength="200"></mat-form-field>
+            <mat-form-field class="qs-pe__wide"><mat-label>{{ 'pe.causeOfDeath' | translate }}</mat-label><input matInput formControlName="causeOfDeath" maxlength="200"></mat-form-field>
+          </mat-card-content>
+        </mat-card>
 
-      @if (error()) { <p class="qs-form-error" role="alert">{{ error() }}</p> }
-      <div class="qs-pe__actions">
-        <a matButton [routerLink]="cancelLink()">{{ 'cancel' | translate }}</a>
-        <button matButton="filled" type="submit" [disabled]="saving()">{{ (saving() ? 'saving' : (isNew() ? 'pe.save' : 'pe.update')) | translate }}</button>
-      </div>
-    </form>
+        <mat-card appearance="outlined" class="qs-pe__card">
+          <mat-card-header><mat-card-title>{{ 'pe.notes' | translate }}</mat-card-title></mat-card-header>
+          <mat-card-content>
+            <mat-form-field class="qs-pe__wide"><mat-label>{{ 'pe.notes' | translate }}</mat-label><textarea matInput formControlName="notes" rows="5" maxlength="4000"></textarea></mat-form-field>
+          </mat-card-content>
+        </mat-card>
+
+        @if (error()) { <p class="qs-form-error" role="alert">{{ error() }}</p> }
+        <div class="qs-pe__actions">
+          <a matButton [routerLink]="cancelLink()">{{ 'cancel' | translate }}</a>
+          <button matButton="filled" type="submit" [disabled]="saving()">{{ (saving() ? 'saving' : (isNew() ? 'pe.save' : 'pe.update')) | translate }}</button>
+        </div>
+      </form>
+    } @else {
+      <mat-progress-bar mode="indeterminate" />
+    }
   `,
   styles: [`
     :host { display: block; }
     .qs-pe { display: flex; flex-direction: column; gap: 16px; max-width: 860px; padding-bottom: 72px; }
     .qs-pe__avatar { display: flex; flex-direction: row; align-items: center; gap: 16px; }
-    .qs-pe__avatar-btn { position: relative; width: 88px; height: 88px; border-radius: 50%; border: 0; padding: 0; overflow: hidden; cursor: pointer; background: var(--mat-sys-surface-container); }
+    .qs-pe__avatar-wrap { position: relative; width: 88px; height: 88px; flex: 0 0 auto; }
+    .qs-pe__avatar-btn { width: 88px; height: 88px; border-radius: 50%; border: 0; padding: 0; overflow: hidden; cursor: pointer; background: var(--mat-sys-surface-container); }
     .qs-pe__avatar-btn img { width: 100%; height: 100%; object-fit: cover; }
     .qs-pe__initials { display: grid; place-items: center; width: 100%; height: 100%; font-size: 1.8rem; font-weight: 600; color: #fff; }
-    .qs-sex-male { background: var(--qs-sex-male); } .qs-sex-female { background: var(--qs-sex-female); } .qs-sex-unknown { background: var(--qs-sex-unknown); }
-    .qs-pe__avatar-icon { position: absolute; right: 4px; bottom: 4px; background: var(--mat-sys-primary); color: var(--mat-sys-on-primary); border-radius: 50%; padding: 3px; font-size: 18px; width: 18px; height: 18px; }
+    .qs-pe__avatar-icon { position: absolute; right: 0; bottom: 0; background: var(--mat-sys-primary); color: var(--mat-sys-on-primary); border-radius: 50%; padding: 3px; font-size: 18px; width: 18px; height: 18px; pointer-events: none; }
     .qs-pe__avatar-title { font-weight: 500; }
-    .qs-pe__grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 4px 16px; }
+    .qs-pe__grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 4px 16px; align-items: start; }
     .qs-pe__wide { grid-column: 1 / -1; width: 100%; }
     .qs-pe__sex { display: flex; flex-direction: column; gap: 4px; }
     .qs-pe__actions { display: flex; justify-content: flex-end; gap: 8px; }
@@ -112,7 +119,7 @@ const SEXES: Sex[] = ['Male', 'Female'];
     }
   `]
 })
-export class PersonEditComponent implements OnInit, HasUnsavedChanges {
+export class PersonEditComponent implements OnInit, OnDestroy, HasUnsavedChanges {
   readonly id = input<string>();
   readonly treeId = input<string>();
   readonly store = inject(PersonStore);
@@ -133,6 +140,8 @@ export class PersonEditComponent implements OnInit, HasUnsavedChanges {
   readonly localAvatar = signal<string | null>(null);
   pendingAvatar: File | null = null;
   private saved = false;
+  private patchedId: string | null = null;
+  private lastObjectUrl: string | null = null;
 
   readonly form = inject(FormBuilder).nonNullable.group({
     firstName: ['', Validators.required], lastName: ['', Validators.required], maidenName: [''],
@@ -149,7 +158,7 @@ export class PersonEditComponent implements OnInit, HasUnsavedChanges {
   constructor() {
     effect(() => {
       const p = this.store.person();
-      if (p && !this.isNew()) this.patchFrom(p);
+      if (p && !this.isNew() && p.id !== this.patchedId) { this.patchedId = p.id ?? null; this.patchFrom(p); }
     });
     effect(() => {
       const tree = this.store.tree();
@@ -163,6 +172,13 @@ export class PersonEditComponent implements OnInit, HasUnsavedChanges {
   }
 
   ngOnInit() { const id = this.id(); if (id) this.store.load(id); }
+
+  ngOnDestroy() { this.revokeLastObjectUrl(); }
+
+  private revokeLastObjectUrl() {
+    if (this.lastObjectUrl && typeof URL.revokeObjectURL === 'function') URL.revokeObjectURL(this.lastObjectUrl);
+    this.lastObjectUrl = null;
+  }
 
   hasUnsavedChanges(): boolean { return !this.saved && (this.pendingAvatar !== null || this.snapshotRaw() !== this.baseline); }
 
@@ -182,16 +198,34 @@ export class PersonEditComponent implements OnInit, HasUnsavedChanges {
   onAvatarPicked(file: File) {
     if (this.isNew()) {
       this.pendingAvatar = file;
-      this.localAvatar.set(typeof URL.createObjectURL === 'function' ? URL.createObjectURL(file) : null);
+      this.setLocalAvatarObjectUrl(file);
       return;
     }
     const personId = this.id();
     if (!personId) return;
     this.avatarUploading.set(true);
     this.media.mediaUpload({ personId, body: { file, kind: 'Photo' } }).subscribe({
-      next: item => { this.localAvatar.set(item.url ?? null); this.avatarUploading.set(false); this.store.reloadMedia(); },
+      next: item => {
+        if (item.id) {
+          this.media.mediaSetAvatar({ personId, mediaId: item.id }).subscribe({
+            next: () => { this.localAvatar.set(item.url ?? null); this.avatarUploading.set(false); this.store.reloadMedia(); },
+            error: err => { this.toast.errorFrom(err, this.i18n.t('err.save')); this.avatarUploading.set(false); this.store.reloadMedia(); }
+          });
+        } else {
+          this.localAvatar.set(item.url ?? null);
+          this.avatarUploading.set(false);
+          this.store.reloadMedia();
+        }
+      },
       error: err => { this.toast.errorFrom(err, this.i18n.t('err.save')); this.avatarUploading.set(false); }
     });
+  }
+
+  private setLocalAvatarObjectUrl(file: File) {
+    this.revokeLastObjectUrl();
+    const url = typeof URL.createObjectURL === 'function' ? URL.createObjectURL(file) : null;
+    this.lastObjectUrl = url;
+    this.localAvatar.set(url);
   }
 
   save(): Promise<void> {

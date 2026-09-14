@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
@@ -24,18 +24,20 @@ export function kindFor(file: File): MediaKind {
   selector: 'qs-person-media',
   imports: [MatButtonModule, MatIconModule, MatMenuModule, MatProgressBarModule, TranslatePipe],
   template: `
-    <div class="qs-media__header">
+    <div class="qs-section-header">
       <h2>{{ 'media.title' | translate }}</h2>
       <button matButton="tonal" (click)="fileInput.click()" [disabled]="uploading()"><mat-icon>upload</mat-icon>{{ 'media.add' | translate }}</button>
       <input #fileInput type="file" accept="image/*,application/pdf,audio/*" multiple hidden (change)="onPicked($event)">
     </div>
     <div class="qs-dropzone" [class.qs-dropzone--over]="dragOver()"
-         (dragover)="onDragOver($event)" (dragleave)="dragOver.set(false)" (drop)="onDrop($event)">
+         (dragenter)="onDragEnter($event)" (dragover)="onDragOver($event)" (dragleave)="onDragLeave($event)" (drop)="onDrop($event)">
       <mat-icon aria-hidden="true">cloud_upload</mat-icon>
       <span class="qs-muted">{{ 'media.dropHint' | translate }} <button matButton type="button" (click)="fileInput.click()">{{ 'media.add' | translate }}</button></span>
     </div>
     @if (uploading()) { <mat-progress-bar mode="indeterminate" /> }
-    @if (!store.media().length && !uploading()) { <p class="qs-muted">{{ 'media.empty' | translate }}</p> }
+    @if (!store.media().length && !uploading()) {
+      <div class="qs-empty"><mat-icon class="qs-empty__icon" aria-hidden="true">photo_library</mat-icon><p class="qs-muted">{{ 'media.empty' | translate }}</p></div>
+    }
     <div class="qs-media__grid">
       @for (item of store.media(); track item.id) {
         <figure class="qs-media__item" [attr.data-media-id]="item.id">
@@ -63,8 +65,6 @@ export function kindFor(file: File): MediaKind {
   `,
   styles: [`
     :host { display: block; }
-    .qs-media__header { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
-    .qs-media__header h2 { font-size: 1.15rem; }
     .qs-dropzone { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 16px; border: 2px dashed var(--mat-sys-outline-variant); border-radius: var(--mat-sys-corner-medium); margin-bottom: 12px; }
     .qs-dropzone--over { border-color: var(--mat-sys-primary); background: var(--mat-sys-primary-container); }
     .qs-media__grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
@@ -87,7 +87,8 @@ export class PersonMediaComponent {
   private readonly i18n = inject(I18nService);
 
   readonly uploading = signal(false);
-  readonly dragOver = signal(false);
+  readonly dragDepth = signal(0);
+  readonly dragOver = computed(() => this.dragDepth() > 0);
 
   onPicked(e: Event) {
     const input = e.target as HTMLInputElement;
@@ -95,31 +96,49 @@ export class PersonMediaComponent {
     input.value = '';
     void this.upload(files);
   }
-  onDragOver(e: DragEvent) { e.preventDefault(); this.dragOver.set(true); }
-  onDrop(e: DragEvent) { e.preventDefault(); this.dragOver.set(false); void this.upload(Array.from(e.dataTransfer?.files ?? [])); }
+  onDragEnter(e: DragEvent) { e.preventDefault(); this.dragDepth.update(d => d + 1); }
+  onDragOver(e: DragEvent) { e.preventDefault(); }
+  onDragLeave(e: DragEvent) { e.preventDefault(); this.dragDepth.update(d => Math.max(0, d - 1)); }
+  onDrop(e: DragEvent) {
+    e.preventDefault();
+    this.dragDepth.set(0);
+    const dropped = Array.from(e.dataTransfer?.files ?? []);
+    const accepted = dropped.filter(f => this.isAcceptedType(f));
+    void this.upload(accepted, dropped.length - accepted.length);
+  }
 
-  async upload(files: File[]) {
+  private isAcceptedType(file: File): boolean {
+    return file.type.startsWith('image/') || file.type === 'application/pdf' || file.type.startsWith('audio/');
+  }
+
+  async upload(files: File[], initialFailed = 0) {
     const personId = this.store.person()?.id;
-    if (!personId || !files.length) return;
+    if (!personId) return;
+    let failed = initialFailed;
+    const oversizedNames: string[] = [];
     const accepted = files.filter(f => {
-      if (f.size > MAX_UPLOAD_BYTES) { this.toast.error(this.i18n.t('media.tooLarge').replace('__NAME__', f.name)); return false; }
+      if (f.size > MAX_UPLOAD_BYTES) { oversizedNames.push(f.name); failed++; return false; }
       return true;
     });
-    if (!accepted.length) return;
-    this.uploading.set(true);
+    if (oversizedNames.length) this.toast.error(this.i18n.t('media.tooLarge').replace('__NAME__', oversizedNames.join(', ')));
     let done = 0;
-    for (const file of accepted) {
-      try {
-        const item = await firstValueFrom(this.api.mediaUpload({ personId, body: { file, kind: kindFor(file) } }));
-        this.store.addMedia(item);
-        done++;
-      } catch (err) {
-        this.toast.errorFrom(err, `${this.i18n.t('err.save')}: ${file.name}`);
-        break;
+    if (accepted.length) {
+      this.uploading.set(true);
+      for (const file of accepted) {
+        try {
+          const item = await firstValueFrom(this.api.mediaUpload({ personId, body: { file, kind: kindFor(file) } }));
+          this.store.addMedia(item);
+          done++;
+        } catch (err) {
+          failed++;
+          if (failed === 1) this.toast.errorFrom(err, `${this.i18n.t('err.save')}: ${file.name}`);
+          continue;
+        }
       }
+      this.uploading.set(false);
     }
-    this.uploading.set(false);
     if (done) this.toast.success(this.i18n.t('media.uploaded.toast').replace('__N__', String(done)));
+    if (failed) this.toast.error(this.i18n.t('media.failed.toast').replace('__N__', String(failed)));
   }
 
   setAvatar(item: MediaDto) {
@@ -149,5 +168,5 @@ export class PersonMediaComponent {
     });
   }
 
-  open(item: MediaDto) { this.dialog.open(MediaLightboxComponent, { data: item, maxWidth: '95vw', autoFocus: 'dialog' }); }
+  open(item: MediaDto) { this.dialog.open(MediaLightboxComponent, { data: item, maxWidth: '95vw', autoFocus: 'dialog', ariaLabel: item.caption || this.i18n.t('media.open') }); }
 }

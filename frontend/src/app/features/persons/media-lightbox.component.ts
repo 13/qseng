@@ -14,7 +14,7 @@ import { TranslatePipe } from '../../core/i18n/translate.pipe';
     </mat-dialog-content>
     <mat-dialog-actions align="end">
       <a matButton [href]="item.url" target="_blank" rel="noopener">{{ 'media.open' | translate }}</a>
-      <button matButton="filled" mat-dialog-close>{{ 'cancel' | translate }}</button>
+      <button matButton="filled" mat-dialog-close>{{ 'close' | translate }}</button>
     </mat-dialog-actions>
   `,
   styles: [`

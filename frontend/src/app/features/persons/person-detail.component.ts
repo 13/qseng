@@ -32,16 +32,18 @@ import { PersonMediaComponent } from './person-media.component';
       <div class="qs-person">
         <aside class="qs-person__aside">
           <mat-card appearance="outlined" class="qs-identity">
-            <div class="qs-identity__hero">
+            <div class="qs-identity__hero" [class.qs-identity__hero--solo]="!(p.maidenName || span())">
               @if (store.avatarUrl(); as url) {
                 <img class="qs-identity__photo" [src]="url" [alt]="store.fullName()">
               } @else {
                 <div class="qs-identity__initials" [class]="'qs-identity__initials qs-sex-' + sexClass(p.sex)" aria-hidden="true">{{ initials({ firstName: p.firstName ?? '', lastName: p.lastName ?? '' }) }}</div>
               }
-              <div>
-                @if (p.maidenName) { <div class="qs-muted">{{ 'pd.maiden' | translate }} {{ p.maidenName }}</div> }
-                @if (span(); as s) { <div class="qs-muted">{{ s }}</div> }
-              </div>
+              @if (p.maidenName || span()) {
+                <div>
+                  @if (p.maidenName) { <div class="qs-muted">{{ 'pd.maiden' | translate }} {{ p.maidenName }}</div> }
+                  @if (span(); as s) { <div class="qs-muted">{{ s }}</div> }
+                </div>
+              }
             </div>
             <dl class="qs-dl">
               @if (p.birth?.year) { <dt>{{ 'pd.birth' | translate }}</dt><dd>{{ p.birth | partialDate }}@if (p.birthPlace) { <span class="qs-muted"> · {{ p.birthPlace }}</span> }</dd> }
@@ -72,9 +74,9 @@ import { PersonMediaComponent } from './person-media.component';
     :host { display: block; }
     .qs-person { display: grid; grid-template-columns: minmax(280px, 360px) 1fr; gap: 24px; align-items: start; }
     .qs-identity__hero { display: flex; gap: 16px; align-items: center; margin-bottom: 12px; }
+    .qs-identity__hero--solo { justify-content: center; }
     .qs-identity__photo, .qs-identity__initials { width: 72px; height: 72px; border-radius: 50%; object-fit: cover; flex: 0 0 auto; }
     .qs-identity__initials { display: grid; place-items: center; font-weight: 600; font-size: 1.4rem; color: #fff; }
-    .qs-sex-male { background: var(--qs-sex-male); } .qs-sex-female { background: var(--qs-sex-female); } .qs-sex-unknown { background: var(--qs-sex-unknown); }
     .qs-dl { display: grid; grid-template-columns: max-content 1fr; gap: 6px 12px; margin: 0; }
     .qs-dl dt { color: var(--mat-sys-on-surface-variant); font-size: .8rem; text-transform: uppercase; letter-spacing: .04em; }
     .qs-dl dd { margin: 0; }

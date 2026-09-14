@@ -2,7 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { MatDialog } from '@angular/material/dialog';
 import { signal } from '@angular/core';
-import { of } from 'rxjs';
+import { of, throwError } from 'rxjs';
 import { describe, expect, it, vi } from 'vitest';
 import { PersonMediaComponent, kindFor } from './person-media.component';
 import { PersonStore } from './person.store';
@@ -58,6 +58,18 @@ describe('PersonMediaComponent', () => {
     expect(toast.success).toHaveBeenCalledWith('media.uploaded.toast'.replace('__N__', '2'));
   });
 
+  it('attempts every file, reports partial success and one failure toast', async () => {
+    const { cmp, api, store, toast } = setup();
+    api.mediaUpload
+      .mockImplementationOnce(() => of({ id: 'm3', personId: 'p1', url: '/u/c.png', kind: 'Photo', isAvatar: false }))
+      .mockImplementationOnce(() => throwError(() => new Error('boom')));
+    await cmp.upload([new File(['x'], 'c.png', { type: 'image/png' }), new File(['y'], 'd.png', { type: 'image/png' })]);
+    expect(api.mediaUpload).toHaveBeenCalledTimes(2);
+    expect(store.addMedia).toHaveBeenCalledTimes(1);
+    expect(toast.success).toHaveBeenCalledWith('media.uploaded.toast'.replace('__N__', '1'));
+    expect(toast.error).toHaveBeenCalledWith('media.failed.toast'.replace('__N__', '1'));
+  });
+
   it('rejects files over 20 MB without calling the API', async () => {
     const { cmp, api, toast } = setup();
     const big = new File([new Uint8Array(1)], 'big.png', { type: 'image/png' });
@@ -75,5 +87,6 @@ describe('PersonMediaComponent', () => {
     await cmp.remove(media[0]);
     expect(api.mediaDelete).toHaveBeenCalledWith({ personId: 'p1', mediaId: 'm1' });
     expect(store.removeMedia).toHaveBeenCalledWith('m1');
+    expect(store.reloadMedia).toHaveBeenCalled();
   });
 });

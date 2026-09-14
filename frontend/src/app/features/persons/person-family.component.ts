@@ -21,7 +21,7 @@ interface Group { key: TranslationKey; icon: string; items: PersonRelationDto[];
   imports: [RouterLink, MatChipsModule, MatButtonModule, MatIconModule, TranslatePipe],
   template: `
     <section class="qs-family">
-      <div class="qs-family__header">
+      <div class="qs-section-header qs-family__header">
         <h2>{{ 'fam.title' | translate }}</h2>
         <button matButton (click)="openAdd()"><mat-icon>person_add</mat-icon>{{ 'fam.add' | translate }}</button>
       </div>
@@ -48,8 +48,7 @@ interface Group { key: TranslationKey; icon: string; items: PersonRelationDto[];
     </section>
   `,
   styles: [`
-    .qs-family__header { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 16px 0 8px; }
-    .qs-family__header h2 { font-size: 1.15rem; }
+    .qs-family__header { margin: 16px 0 8px; }
     .qs-family__group { margin-bottom: 10px; }
     .qs-family__label { display: flex; align-items: center; gap: 4px; margin: 0 0 4px; font-size: .8rem; letter-spacing: .04em; text-transform: uppercase; color: var(--mat-sys-on-surface-variant); }
     .qs-family__label mat-icon { font-size: 18px; width: 18px; height: 18px; }

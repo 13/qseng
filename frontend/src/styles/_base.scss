@@ -43,6 +43,12 @@ a:hover { text-decoration: underline; }
 .qs-empty__icon { font-size: 56px; width: 56px; height: 56px; color: var(--mat-sys-primary); }
 .qs-empty__actions { display: flex; gap: 8px; margin-top: 8px; }
 
+.qs-section-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+.qs-section-header h2 { font-size: 1.15rem; }
+.qs-sex-male { background: var(--qs-sex-male); }
+.qs-sex-female { background: var(--qs-sex-female); }
+.qs-sex-unknown { background: var(--qs-sex-unknown); }
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
 }

@@ -1,4 +1,5 @@
-import { Component, OnInit, inject, input, signal } from '@angular/core';
+import { Component, DestroyRef, OnInit, inject, input, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
 import { FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatCardModule } from '@angular/material/card';
@@ -37,9 +38,9 @@ type Step = 'paste' | 'preview' | 'done';
 Maria Huber, geb. Schmidt * 1883 + 1960
 Max Mustermann oo Maria Huber, 1905</pre>
               <ul class="qs-import__rules">
-                <li><code>*</code> born, <code>+</code> died, <code>geb.</code> maiden name, <code>oo</code> marriage</li>
-                <li><code>DD.MM.YYYY</code>, <code>MM.YYYY</code>, <code>YYYY</code>; prefix <code>~</code> for approximate dates</li>
-                <li><code>in &lt;place&gt;</code> for a location</li>
+                <li><code>*</code> {{ 'import.rule.born' | translate }}, <code>+</code> {{ 'import.rule.died' | translate }}, <code>geb.</code> {{ 'import.rule.maiden' | translate }}, <code>oo</code> {{ 'import.rule.marriage' | translate }}</li>
+                <li><code>DD.MM.YYYY</code>, <code>MM.YYYY</code>, <code>YYYY</code> {{ 'import.rule.dates' | translate }}</li>
+                <li><code>in &lt;place&gt;</code> {{ 'import.rule.place' | translate }}</li>
               </ul>
             </mat-expansion-panel>
             <mat-form-field class="qs-import__field">
@@ -97,6 +98,7 @@ export class ImportTextComponent implements OnInit {
   private readonly toast = inject(ToastService);
   private readonly crumbs = inject(BreadcrumbService);
   private readonly i18n = inject(I18nService);
+  private readonly destroyRef = inject(DestroyRef);
 
   readonly text = new FormControl('', { nonNullable: true, validators: [Validators.required] });
   readonly loading = signal(false);
@@ -105,7 +107,7 @@ export class ImportTextComponent implements OnInit {
 
   ngOnInit() {
     this.crumbs.set([{ label: this.i18n.t('trees.title'), link: ['/trees'] }, { label: this.i18n.t('import.title') }]);
-    this.trees.treesGetAll().subscribe(list => {
+    this.trees.treesGetAll().pipe(takeUntilDestroyed(this.destroyRef)).subscribe(list => {
       const tree = list.find(t => t.id === this.treeId());
       if (tree) this.crumbs.set([{ label: this.i18n.t('trees.title'), link: ['/trees'] }, { label: tree.name ?? '', link: ['/trees', tree.id] }, { label: this.i18n.t('import.title') }]);
     });

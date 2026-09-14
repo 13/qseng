@@ -56,6 +56,7 @@ export type TranslationKey =
   | 'auth.showPassword'
   | 'back'
   | 'cancel'
+  | 'close'
   | 'date.clear'
   | 'date.hint'
   | 'date.invalid'
@@ -121,6 +122,12 @@ export type TranslationKey =
   | 'import.preview'
   | 'import.previewTitle'
   | 'import.rels'
+  | 'import.rule.born'
+  | 'import.rule.dates'
+  | 'import.rule.died'
+  | 'import.rule.maiden'
+  | 'import.rule.marriage'
+  | 'import.rule.place'
   | 'import.step1'
   | 'import.step2'
   | 'import.title'
@@ -148,6 +155,7 @@ export type TranslationKey =
   | 'media.deleted.toast'
   | 'media.dropHint'
   | 'media.empty'
+  | 'media.failed.toast'
   | 'media.open'
   | 'media.setAvatar'
   | 'media.title'
@@ -434,6 +442,7 @@ export const TRANSLATION_KEYS: readonly TranslationKey[] = [
   'auth.showPassword',
   'back',
   'cancel',
+  'close',
   'date.clear',
   'date.hint',
   'date.invalid',
@@ -499,6 +508,12 @@ export const TRANSLATION_KEYS: readonly TranslationKey[] = [
   'import.preview',
   'import.previewTitle',
   'import.rels',
+  'import.rule.born',
+  'import.rule.dates',
+  'import.rule.died',
+  'import.rule.maiden',
+  'import.rule.marriage',
+  'import.rule.place',
   'import.step1',
   'import.step2',
   'import.title',
@@ -526,6 +541,7 @@ export const TRANSLATION_KEYS: readonly TranslationKey[] = [
   'media.deleted.toast',
   'media.dropHint',
   'media.empty',
+  'media.failed.toast',
   'media.open',
   'media.setAvatar',
   'media.title',
