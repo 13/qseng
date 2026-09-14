@@ -78,6 +78,7 @@ export type TranslationKey =
   | 'fam.addBtn'
   | 'fam.adoptive'
   | 'fam.adoptive.hint'
+  | 'fam.adoptiveParents'
   | 'fam.cancel'
   | 'fam.child.hint'
   | 'fam.children'
@@ -90,6 +91,7 @@ export type TranslationKey =
   | 'fam.place'
   | 'fam.placePlaceholder'
   | 'fam.placeholder'
+  | 'fam.remove'
   | 'fam.removeConfirm'
   | 'fam.search'
   | 'fam.spouse.hint'
@@ -151,9 +153,13 @@ export type TranslationKey =
   | 'pd.birth'
   | 'pd.causeOfDeath'
   | 'pd.death'
+  | 'pd.edit'
   | 'pd.lifespan.b'
   | 'pd.lifespan.d'
+  | 'pd.maiden'
   | 'pd.notes'
+  | 'pd.tab.media'
+  | 'pd.tab.timeline'
   | 'pe.approx'
   | 'pe.avatar'
   | 'pe.avatarHint'
@@ -421,6 +427,7 @@ export const TRANSLATION_KEYS: readonly TranslationKey[] = [
   'fam.addBtn',
   'fam.adoptive',
   'fam.adoptive.hint',
+  'fam.adoptiveParents',
   'fam.cancel',
   'fam.child.hint',
   'fam.children',
@@ -433,6 +440,7 @@ export const TRANSLATION_KEYS: readonly TranslationKey[] = [
   'fam.place',
   'fam.placePlaceholder',
   'fam.placeholder',
+  'fam.remove',
   'fam.removeConfirm',
   'fam.search',
   'fam.spouse.hint',
@@ -494,9 +502,13 @@ export const TRANSLATION_KEYS: readonly TranslationKey[] = [
   'pd.birth',
   'pd.causeOfDeath',
   'pd.death',
+  'pd.edit',
   'pd.lifespan.b',
   'pd.lifespan.d',
+  'pd.maiden',
   'pd.notes',
+  'pd.tab.media',
+  'pd.tab.timeline',
   'pe.approx',
   'pe.avatar',
   'pe.avatarHint',
