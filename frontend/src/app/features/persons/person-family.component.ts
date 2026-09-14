@@ -9,7 +9,6 @@ import { PersonRelationDto, RelationshipDto, RelationshipsApi } from '../../core
 import { I18nService } from '../../core/i18n/i18n.service';
 import { TranslatePipe } from '../../core/i18n/translate.pipe';
 import { TranslationKey } from '../../core/i18n/translation-keys';
-import { ConfirmDialogService } from '../../core/ui/confirm-dialog.service';
 import { ToastService } from '../../core/ui/toast.service';
 import { PersonStore } from './person.store';
 import { RelationshipDialogComponent, RelationshipDialogData } from './relationship-dialog.component';
@@ -59,7 +58,6 @@ export class PersonFamilyComponent {
   readonly store = inject(PersonStore);
   private readonly api = inject(RelationshipsApi);
   private readonly dialog = inject(MatDialog);
-  private readonly confirm = inject(ConfirmDialogService);
   private readonly toast = inject(ToastService);
   private readonly i18n = inject(I18nService);
 
@@ -88,14 +86,18 @@ export class PersonFamilyComponent {
     this.store.reloadTimeline();
   }
 
-  async remove(r: PersonRelationDto) {
+  remove(r: PersonRelationDto) {
     const treeId = this.store.person()?.treeId;
     if (!treeId || !r.relationshipId) return;
-    const name = `${r.relatedFirstName ?? ''} ${r.relatedLastName ?? ''}`.trim();
-    const ok = await this.confirm.confirm({ title: this.i18n.t('fam.remove'), message: this.i18n.t('fam.removeConfirm').replace('__NAME__', name), confirmLabel: this.i18n.t('remove'), destructive: true });
-    if (ok !== true) return;
-    this.api.relationshipsDelete({ treeId, id: r.relationshipId }).subscribe({
-      next: () => { this.toast.success(this.i18n.t('rel.removed.toast')); this.store.reloadRelations(); this.store.reloadTimeline(); },
+    const id = r.relationshipId;
+    this.api.relationshipsDelete({ treeId, id }).subscribe({
+      next: () => {
+        this.store.reloadRelations(); this.store.reloadTimeline();
+        this.toast.undoable(this.i18n.t('fam.removed.undo'), () => firstValueFrom(this.api.relationshipsRestore({ treeId, id })).then(() => {
+          this.store.reloadRelations(); this.store.reloadTimeline();
+          this.toast.success(this.i18n.t('restored.toast'));
+        }));
+      },
       error: e => this.toast.errorFrom(e, this.i18n.t('err.delete'))
     });
   }

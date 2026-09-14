@@ -59,6 +59,7 @@ export type TranslationKey =
   | 'err.delete'
   | 'err.forbidden'
   | 'err.load'
+  | 'err.restore'
   | 'err.save'
   | 'err.server'
   | 'event.birth'
@@ -75,7 +76,7 @@ export type TranslationKey =
   | 'fam.noRels'
   | 'fam.parents'
   | 'fam.remove'
-  | 'fam.removeConfirm'
+  | 'fam.removed.undo'
   | 'fam.spouses'
   | 'fam.title'
   | 'form.email'
@@ -121,9 +122,7 @@ export type TranslationKey =
   | 'media.add'
   | 'media.avatarBadge'
   | 'media.avatarSet.toast'
-  | 'media.deleteConfirm'
-  | 'media.deleteTitle'
-  | 'media.deleted.toast'
+  | 'media.deleted.undo'
   | 'media.dropHint'
   | 'media.empty'
   | 'media.failed.toast'
@@ -203,9 +202,8 @@ export type TranslationKey =
   | 'rel.dialog.to'
   | 'rel.dialog.type'
   | 'rel.parent'
-  | 'rel.removed.toast'
   | 'rel.spouse'
-  | 'remove'
+  | 'restored.toast'
   | 'retry'
   | 'save'
   | 'saving'
@@ -251,9 +249,7 @@ export type TranslationKey =
   | 'tl.addEvent'
   | 'tl.auto'
   | 'tl.autoHint'
-  | 'tl.deleteConfirm'
-  | 'tl.deleteTitle'
-  | 'tl.deleted.toast'
+  | 'tl.deleted.undo'
   | 'tl.desc'
   | 'tl.dialog.add'
   | 'tl.dialog.edit'
@@ -280,7 +276,7 @@ export type TranslationKey =
   | 'tree.ctx.addSpouse'
   | 'tree.ctx.focus'
   | 'tree.ctx.remove'
-  | 'tree.deleted.toast'
+  | 'tree.deleted.undo'
   | 'tree.edit'
   | 'tree.emptyTitle'
   | 'tree.export'
@@ -325,7 +321,8 @@ export type TranslationKey =
   | 'trees.persons'
   | 'trees.renamed.toast'
   | 'trees.save'
-  | 'trees.title';
+  | 'trees.title'
+  | 'undo';
 
 export const TRANSLATION_KEYS: readonly TranslationKey[] = [
   'actions',
@@ -387,6 +384,7 @@ export const TRANSLATION_KEYS: readonly TranslationKey[] = [
   'err.delete',
   'err.forbidden',
   'err.load',
+  'err.restore',
   'err.save',
   'err.server',
   'event.birth',
@@ -403,7 +401,7 @@ export const TRANSLATION_KEYS: readonly TranslationKey[] = [
   'fam.noRels',
   'fam.parents',
   'fam.remove',
-  'fam.removeConfirm',
+  'fam.removed.undo',
   'fam.spouses',
   'fam.title',
   'form.email',
@@ -449,9 +447,7 @@ export const TRANSLATION_KEYS: readonly TranslationKey[] = [
   'media.add',
   'media.avatarBadge',
   'media.avatarSet.toast',
-  'media.deleteConfirm',
-  'media.deleteTitle',
-  'media.deleted.toast',
+  'media.deleted.undo',
   'media.dropHint',
   'media.empty',
   'media.failed.toast',
@@ -531,9 +527,8 @@ export const TRANSLATION_KEYS: readonly TranslationKey[] = [
   'rel.dialog.to',
   'rel.dialog.type',
   'rel.parent',
-  'rel.removed.toast',
   'rel.spouse',
-  'remove',
+  'restored.toast',
   'retry',
   'save',
   'saving',
@@ -579,9 +574,7 @@ export const TRANSLATION_KEYS: readonly TranslationKey[] = [
   'tl.addEvent',
   'tl.auto',
   'tl.autoHint',
-  'tl.deleteConfirm',
-  'tl.deleteTitle',
-  'tl.deleted.toast',
+  'tl.deleted.undo',
   'tl.desc',
   'tl.dialog.add',
   'tl.dialog.edit',
@@ -608,7 +601,7 @@ export const TRANSLATION_KEYS: readonly TranslationKey[] = [
   'tree.ctx.addSpouse',
   'tree.ctx.focus',
   'tree.ctx.remove',
-  'tree.deleted.toast',
+  'tree.deleted.undo',
   'tree.edit',
   'tree.emptyTitle',
   'tree.export',
@@ -654,4 +647,5 @@ export const TRANSLATION_KEYS: readonly TranslationKey[] = [
   'trees.renamed.toast',
   'trees.save',
   'trees.title',
+  'undo',
 ];

@@ -34,17 +34,18 @@ function setup(handset = false, withPeople = true) {
     layoutMode: signal('tree'), loading: signal(false), selectedId: signal<string | null>(null), searchTerm: signal(''), hasCustomLayout: signal(false), compact: signal(false), destroy: vi.fn() };
   const dialog = { open: vi.fn(() => ({ afterClosed: () => of(undefined) })) };
   const sheet = { open: vi.fn(() => ({ afterDismissed: () => of(undefined), dismiss: vi.fn() })) };
-  const persons = { personsDelete: vi.fn(() => of(undefined)) };
+  const persons = { personsDelete: vi.fn(() => of(undefined)), personsRestore: vi.fn(() => of(undefined)) };
+  const toast = { success: vi.fn(), errorFrom: vi.fn(), error: vi.fn(), info: vi.fn(), undoable: vi.fn() };
   TestBed.configureTestingModule({ providers: [provideRouter([]), provideNoopAnimations(),
     { provide: PersonsApi, useValue: persons }, { provide: LayoutService, useValue: { handset: () => handset, tablet: () => false, desktop: () => !handset } },
     { provide: MatDialog, useValue: dialog }, { provide: MatBottomSheet, useValue: sheet },
-    { provide: ConfirmDialogService, useValue: { confirm: vi.fn(async () => true) } }, { provide: ToastService, useValue: { success: vi.fn(), errorFrom: vi.fn(), error: vi.fn(), info: vi.fn() } },
+    { provide: ConfirmDialogService, useValue: { confirm: vi.fn(async () => true) } }, { provide: ToastService, useValue: toast },
     { provide: BreadcrumbService, useValue: { set: vi.fn() } }, { provide: I18nService, useValue: { t: (k: string) => k, dynamic: (k: string) => k } }] });
   TestBed.overrideComponent(TreeViewComponent, { set: { providers: [{ provide: TreeStore, useValue: store }, { provide: TreeGraphService, useValue: graph }] } });
   const fixture = TestBed.createComponent(TreeViewComponent);
   fixture.componentRef.setInput('treeId', 't1');
   fixture.detectChanges();
-  return { fixture, cmp: fixture.componentInstance, store, graph, dialog, sheet, persons };
+  return { fixture, cmp: fixture.componentInstance, store, graph, dialog, sheet, persons, toast };
 }
 
 describe('TreeViewComponent', () => {
@@ -71,11 +72,22 @@ describe('TreeViewComponent', () => {
     expect(store.select).toHaveBeenCalledWith('a');
     expect(sheet.open).toHaveBeenCalled();
   });
-  it('deletes the context person after confirmation and reloads', async () => {
-    const { cmp, persons, store } = setup();
+  it('deletes the context person after confirmation, reloads, and offers an undo toast', async () => {
+    const { cmp, persons, store, toast } = setup();
     await cmp.deletePerson(people[0]);
     expect(persons.personsDelete).toHaveBeenCalledWith({ id: 'a' });
-    expect(store.reload).toHaveBeenCalled();
+    expect(store.reload).toHaveBeenCalledTimes(1);
+    expect(toast.undoable).toHaveBeenCalledWith('tree.deleted.undo', expect.any(Function));
+  });
+
+  it('restores the person, reloads and re-selects it when undo is invoked', async () => {
+    const { cmp, persons, store, toast } = setup();
+    await cmp.deletePerson(people[0]);
+    const onUndo = toast.undoable.mock.calls[0][1];
+    await onUndo();
+    expect(persons.personsRestore).toHaveBeenCalledWith({ id: 'a' });
+    expect(store.reload).toHaveBeenCalledTimes(2);
+    expect(store.select).toHaveBeenCalledWith('a');
   });
 
   it('reloads the store when the route treeId changes', () => {

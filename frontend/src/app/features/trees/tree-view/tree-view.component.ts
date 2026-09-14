@@ -307,7 +307,12 @@ export class TreeViewComponent {
     this.personsApi.personsDelete({ id: person.id }).subscribe({
       next: () => {
         if (this.destroyed) return;
-        this.toast.success(this.i18n.t('tree.deleted.toast')); this.store.reload();
+        this.store.reload();
+        this.toast.undoable(this.i18n.t('tree.deleted.undo').replace('__NAME__', name), () => firstValueFrom(this.personsApi.personsRestore({ id: person.id! })).then(() => {
+          this.store.reload();
+          this.onSelected(person.id!);
+          this.toast.success(this.i18n.t('restored.toast'));
+        }));
       },
       error: e => {
         if (this.destroyed) return;

@@ -8,7 +8,6 @@ import { firstValueFrom } from 'rxjs';
 import { MediaApi, MediaDto, MediaKind } from '../../core/api/generated';
 import { I18nService } from '../../core/i18n/i18n.service';
 import { TranslatePipe } from '../../core/i18n/translate.pipe';
-import { ConfirmDialogService } from '../../core/ui/confirm-dialog.service';
 import { ToastService } from '../../core/ui/toast.service';
 import { PersonStore } from './person.store';
 import { MediaLightboxComponent } from './media-lightbox.component';
@@ -82,7 +81,6 @@ export class PersonMediaComponent {
   readonly store = inject(PersonStore);
   private readonly api = inject(MediaApi);
   private readonly dialog = inject(MatDialog);
-  private readonly confirm = inject(ConfirmDialogService);
   private readonly toast = inject(ToastService);
   private readonly i18n = inject(I18nService);
 
@@ -151,18 +149,19 @@ export class PersonMediaComponent {
     });
   }
 
-  async remove(item: MediaDto) {
+  remove(item: MediaDto) {
     const personId = this.store.person()?.id;
     if (!personId || !item.id) return;
-    const ok = await this.confirm.confirm({ title: this.i18n.t('media.deleteTitle'), message: this.i18n.t('media.deleteConfirm'), confirmLabel: this.i18n.t('delete'), destructive: true });
-    if (ok !== true) return;
     const mediaId = item.id;
     const wasAvatar = item.isAvatar === true;
     this.api.mediaDelete({ personId, mediaId }).subscribe({
       next: () => {
         this.store.removeMedia(mediaId);
         if (wasAvatar) this.store.reloadMedia();
-        this.toast.success(this.i18n.t('media.deleted.toast'));
+        this.toast.undoable(this.i18n.t('media.deleted.undo'), () => firstValueFrom(this.api.mediaRestore({ personId, mediaId })).then(() => {
+          this.store.reloadMedia();
+          this.toast.success(this.i18n.t('restored.toast'));
+        }));
       },
       error: e => this.toast.errorFrom(e, this.i18n.t('err.delete'))
     });
