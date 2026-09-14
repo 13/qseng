@@ -54,7 +54,7 @@ export function safeReturnUrl(raw: string | null): string {
         <mat-icon>science</mat-icon>{{ 'login.demoFill' | translate }}
       </button>
 
-      <p class="qs-auth-footer qs-muted">
+      <p class="qs-auth-footer qs-auth__footer qs-muted">
         {{ 'login.noAccount' | translate }} <a routerLink="/register">{{ 'login.register' | translate }}</a>
       </p>
     </qs-auth-page>

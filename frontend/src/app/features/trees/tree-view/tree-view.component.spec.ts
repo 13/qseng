@@ -105,13 +105,15 @@ describe('TreeViewComponent', () => {
     expect(graph.select).toHaveBeenCalledWith('a');
   });
 
-  it('ArrowRight twice cycles from a person to their second spouse', () => {
+  it('ArrowRight cycles the ring a→s1→s2→a (anchor included) for a person with two spouses', () => {
     const { cmp, store } = setup();
+    const personA = people[0];
     const s1 = { id: 's1', treeId: 't1', firstName: 'Bea', lastName: 'Smith', sex: 'Female' as const };
     const s2 = { id: 's2', treeId: 't1', firstName: 'Cleo', lastName: 'Smith', sex: 'Female' as const };
-    // Only 'a' (the anchor) has spouses in the mock lineage index — same shape as the real
-    // TreeStore, where a spouse's own spousesOf set doesn't include their co-spouse.
-    store.relativesOf = vi.fn((id: string) => ({ parents: [], children: [], spouses: id === 'a' ? [s1, s2] : [] }));
+    // Faithful to the real TreeStore.indexLineage, which is symmetric per edge: s1 and s2
+    // each have personA in their spouses (the a–s1 and a–s2 edges) but not each other,
+    // since there is no s1–s2 edge.
+    store.relativesOf = vi.fn((id: string) => ({ parents: [], children: [], spouses: id === 'a' ? [s1, s2] : (id === 's1' || id === 's2') ? [personA] : [] }));
     store.select('a');
 
     cmp.onKey({ key: 'ArrowRight', preventDefault: vi.fn() } as unknown as KeyboardEvent);
@@ -119,17 +121,35 @@ describe('TreeViewComponent', () => {
 
     cmp.onKey({ key: 'ArrowRight', preventDefault: vi.fn() } as unknown as KeyboardEvent);
     expect(store.selectedId()).toBe('s2');
+
+    cmp.onKey({ key: 'ArrowRight', preventDefault: vi.fn() } as unknown as KeyboardEvent);
+    expect(store.selectedId()).toBe('a');
   });
 
   it('ArrowLeft from the anchor wraps to the last spouse', () => {
     const { cmp, store } = setup();
+    const personA = people[0];
     const s1 = { id: 's1', treeId: 't1', firstName: 'Bea', lastName: 'Smith', sex: 'Female' as const };
     const s2 = { id: 's2', treeId: 't1', firstName: 'Cleo', lastName: 'Smith', sex: 'Female' as const };
-    store.relativesOf = vi.fn((id: string) => ({ parents: [], children: [], spouses: id === 'a' ? [s1, s2] : [] }));
+    store.relativesOf = vi.fn((id: string) => ({ parents: [], children: [], spouses: id === 'a' ? [s1, s2] : (id === 's1' || id === 's2') ? [personA] : [] }));
     store.select('a');
 
     cmp.onKey({ key: 'ArrowLeft', preventDefault: vi.fn() } as unknown as KeyboardEvent);
     expect(store.selectedId()).toBe('s2');
+  });
+
+  it('ArrowRight twice toggles a monogamous couple a/s1 back to the anchor', () => {
+    const { cmp, store } = setup();
+    const personA = people[0];
+    const s1 = { id: 's1', treeId: 't1', firstName: 'Bea', lastName: 'Smith', sex: 'Female' as const };
+    store.relativesOf = vi.fn((id: string) => ({ parents: [], children: [], spouses: id === 'a' ? [s1] : id === 's1' ? [personA] : [] }));
+    store.select('a');
+
+    cmp.onKey({ key: 'ArrowRight', preventDefault: vi.fn() } as unknown as KeyboardEvent);
+    expect(store.selectedId()).toBe('s1');
+
+    cmp.onKey({ key: 'ArrowRight', preventDefault: vi.fn() } as unknown as KeyboardEvent);
+    expect(store.selectedId()).toBe('a');
   });
 
   // Regression: the seeding effect used to run in ngOnInit, before the constructor's

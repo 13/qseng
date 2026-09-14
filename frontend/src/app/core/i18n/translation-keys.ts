@@ -133,6 +133,7 @@ export type TranslationKey =
   | 'media.tooLarge'
   | 'media.uploaded.toast'
   | 'media.uploading'
+  | 'nav.account'
   | 'nav.logout'
   | 'nav.settings'
   | 'nav.skip'
@@ -460,6 +461,7 @@ export const TRANSLATION_KEYS: readonly TranslationKey[] = [
   'media.tooLarge',
   'media.uploaded.toast',
   'media.uploading',
+  'nav.account',
   'nav.logout',
   'nav.settings',
   'nav.skip',

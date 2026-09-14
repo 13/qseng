@@ -132,6 +132,7 @@
   "media.tooLarge": "__NAME__ is larger than 20 MB.",
   "media.uploaded.toast": "__N__ file(s) uploaded.",
   "media.uploading": "Uploading…",
+  "nav.account": "Account",
   "nav.logout": "Sign out",
   "nav.settings": "Settings",
   "nav.skip": "Skip to content",

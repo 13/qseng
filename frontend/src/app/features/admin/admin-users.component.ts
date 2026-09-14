@@ -60,7 +60,7 @@ import { UserPasswordDialogComponent } from './user-password-dialog.component';
           @for (u of users(); track u.id) {
             <mat-card appearance="outlined">
               <mat-card-header>
-                <div matCardAvatar class="qs-avatar">{{ initials(u) }}</div>
+                <div matCardAvatar class="qs-avatar qs-avatar--36 qs-admin__avatar">{{ initials(u) }}</div>
                 <mat-card-title>{{ u.displayName }} @if (isMe(u)) { <span class="qs-me">({{ 'admin.me' | translate }})</span> }</mat-card-title>
                 <mat-card-subtitle>&#64;{{ u.username }} · {{ u.email || '–' }}</mat-card-subtitle>
                 <ng-container *ngTemplateOutlet="actions; context: { $implicit: u }" />
@@ -79,7 +79,7 @@ import { UserPasswordDialogComponent } from './user-password-dialog.component';
               <th mat-header-cell *matHeaderCellDef mat-sort-header>{{ 'admin.table.user' | translate }}</th>
               <td mat-cell *matCellDef="let u">
                 <div class="qs-user-cell">
-                  <span class="qs-avatar">{{ initials(u) }}</span>
+                  <span class="qs-avatar qs-avatar--36 qs-admin__avatar">{{ initials(u) }}</span>
                   <div>
                     <div>{{ u.displayName }} @if (isMe(u)) { <span class="qs-me">({{ 'admin.me' | translate }})</span> }</div>
                     <div class="qs-muted">&#64;{{ u.username }}</div>
@@ -141,7 +141,7 @@ import { UserPasswordDialogComponent } from './user-password-dialog.component';
     .qs-table-wrap { overflow-x: auto; border: 1px solid var(--mat-sys-outline-variant); border-radius: var(--mat-sys-corner-medium); }
     .qs-users-table { width: 100%; }
     .qs-user-cell { display: flex; align-items: center; gap: 12px; padding: 6px 0; }
-    .qs-avatar { display: inline-grid; place-items: center; width: 36px; height: 36px; border-radius: 50%; background: var(--mat-sys-primary-container); color: var(--mat-sys-on-primary-container); font-weight: 600; font-size: .8rem; }
+    .qs-admin__avatar { background: var(--mat-sys-primary-container); color: var(--mat-sys-on-primary-container); font-weight: 600; }
     .qs-me { color: var(--mat-sys-on-surface-variant); font-size: .85rem; }
     .qs-col-actions { width: 56px; text-align: right; }
     .qs-chip-active { --mat-chip-label-text-color: var(--mat-sys-on-primary-container); --mat-chip-elevated-container-color: var(--mat-sys-primary-container); }

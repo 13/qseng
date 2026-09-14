@@ -61,7 +61,7 @@ import { AuthPageComponent } from './auth-page.component';
         </form>
       }
 
-      <p class="qs-auth-footer qs-muted">
+      <p class="qs-auth-footer qs-auth__footer qs-muted">
         {{ 'register.haveAccount' | translate }} <a routerLink="/login">{{ 'register.login' | translate }}</a>
       </p>
     </qs-auth-page>

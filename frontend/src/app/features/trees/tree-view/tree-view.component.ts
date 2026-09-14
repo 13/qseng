@@ -189,6 +189,10 @@ export class TreeViewComponent {
   private readonly i18n = inject(I18nService);
   private readonly injector = inject(Injector);
   private readonly destroyRef = inject(DestroyRef);
+  // Not `takeUntilDestroyed` on the delete request itself: a delete in flight should still
+  // land server-side even if the user navigates away mid-request. This flag only stops the
+  // now-pointless UI follow-up (toast/reload) from touching a destroyed component.
+  private destroyed = false;
 
   readonly sidenavOpen = signal(true);
   readonly skeletonRows = [0, 1, 2, 3, 4, 5];
@@ -199,6 +203,7 @@ export class TreeViewComponent {
   private readonly filter$ = new Subject<string>();
 
   constructor() {
+    this.destroyRef.onDestroy(() => { this.destroyed = true; });
     effect(() => {
       const persons = this.store.persons(); const rels = this.store.relationships();
       const host = this.cyHost()?.nativeElement;
@@ -296,9 +301,18 @@ export class TreeViewComponent {
       confirmLabel: this.i18n.t('delete'), destructive: true
     });
     if (ok !== true) return;
-    this.personsApi.personsDelete({ id: person.id }).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-      next: () => { this.toast.success(this.i18n.t('tree.deleted.toast')); this.store.reload(); },
-      error: e => this.toast.errorFrom(e, this.i18n.t('err.delete'))
+    // No takeUntilDestroyed: the DELETE should complete server-side even if the component is
+    // destroyed mid-request (e.g. the user navigates away). The `destroyed` guard below just
+    // skips the now-pointless UI follow-up.
+    this.personsApi.personsDelete({ id: person.id }).subscribe({
+      next: () => {
+        if (this.destroyed) return;
+        this.toast.success(this.i18n.t('tree.deleted.toast')); this.store.reload();
+      },
+      error: e => {
+        if (this.destroyed) return;
+        this.toast.errorFrom(e, this.i18n.t('err.delete'));
+      }
     });
   }
 
@@ -335,7 +349,8 @@ export class TreeViewComponent {
     const anchor = this.spouseCycleAnchor && this.store.relativesOf(this.spouseCycleAnchor).spouses.some(p => p.id === id)
       ? this.spouseCycleAnchor
       : id;
-    const list = this.store.relativesOf(anchor).spouses;
+    const anchorPerson = this.store.personById(anchor);
+    const list = anchorPerson ? [anchorPerson, ...this.store.relativesOf(anchor).spouses] : this.store.relativesOf(anchor).spouses;
     if (!list.length) return;
     const idx = list.findIndex(p => p.id === id);
     const target = idx === -1 ? (step > 0 ? list[0] : list[list.length - 1]) : list[(idx + step + list.length) % list.length];

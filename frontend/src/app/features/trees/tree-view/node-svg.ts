@@ -59,7 +59,7 @@ export function readNodeTheme(): NodeTheme {
   return {
     bg: cssVar('--qs-graph-node-bg', '#fffaf5'), border: cssVar('--qs-graph-node-border', '#c9c2b8'),
     text: cssVar('--mat-sys-on-surface', '#1c1a17'), muted: cssVar('--mat-sys-on-surface-variant', '#5f5a53'),
-    male: cssVar('--qs-sex-male', '#5b7a99'), female: cssVar('--qs-sex-female', '#b5636f'), unknown: cssVar('--qs-sex-unknown', '#8a8177'),
+    male: cssVar('--qs-sex-male', '#4a6a8a'), female: cssVar('--qs-sex-female', '#a4525f'), unknown: cssVar('--qs-sex-unknown', '#6b736f'),
     nameFont: 'Fraunces Variable, Georgia, serif', textFont: 'Inter Variable, system-ui, sans-serif'
   };
 }

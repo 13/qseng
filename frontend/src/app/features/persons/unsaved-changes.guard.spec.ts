@@ -1,8 +1,8 @@
 import { TestBed } from '@angular/core/testing';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ConfirmDialogService } from '../../core/ui/confirm-dialog.service';
 import { I18nService } from '../../core/i18n/i18n.service';
-import { unsavedChangesGuard } from './unsaved-changes.guard';
+import { confirmDialogLoader, unsavedChangesGuard } from './unsaved-changes.guard';
 
 describe('unsavedChangesGuard', () => {
   function run(dirty: boolean, answer: boolean | string) {
@@ -24,5 +24,24 @@ describe('unsavedChangesGuard', () => {
   it('asks and honours the answer when dirty', async () => {
     expect(await run(true, true).result).toBe(true);
     expect(await run(true, false).result).toBe(false);
+  });
+
+  describe('when the confirm-dialog chunk fails to load', () => {
+    const originalLoad = confirmDialogLoader.load;
+    afterEach(() => { confirmDialogLoader.load = originalLoad; });
+
+    it('blocks navigation without asking', async () => {
+      confirmDialogLoader.load = vi.fn().mockRejectedValue(new Error('chunk load failed'));
+      TestBed.resetTestingModule();
+      const confirm = vi.fn();
+      TestBed.configureTestingModule({ providers: [
+        { provide: ConfirmDialogService, useValue: { confirm } },
+        { provide: I18nService, useValue: { t: (k: string) => k } }
+      ] });
+      const result = await TestBed.runInInjectionContext(() =>
+        unsavedChangesGuard({ hasUnsavedChanges: () => true }, {} as never, {} as never, {} as never));
+      expect(result).toBe(false);
+      expect(confirm).not.toHaveBeenCalled();
+    });
   });
 });

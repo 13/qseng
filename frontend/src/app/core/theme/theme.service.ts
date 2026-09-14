@@ -38,8 +38,6 @@ export class ThemeService {
     this.setMode(ORDER[(ORDER.indexOf(this._mode()) + 1) % ORDER.length]);
   }
 
-  /** Kept for the legacy toolbar until Task 7 replaces it. */
-  toggle() { this.setMode(this.isDark() ? 'light' : 'dark'); }
   readonly dark = this.isDark;
 
   private apply(mode: ThemeMode) {

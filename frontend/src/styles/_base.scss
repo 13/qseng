@@ -10,7 +10,7 @@ body {
 
 a { color: var(--mat-sys-primary); text-decoration: none; }
 a:hover { text-decoration: underline; }
-p > a { text-decoration: underline; text-underline-offset: 2px; }
+.qs-prose a, .qs-auth__footer a { text-decoration: underline; text-underline-offset: 2px; }
 
 :focus-visible {
   outline: 2px solid var(--mat-sys-primary);
@@ -54,6 +54,7 @@ p > a { text-decoration: underline; text-underline-offset: 2px; }
 .qs-avatar { display: inline-grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; object-fit: cover; flex: 0 0 auto; overflow: hidden; }
 .qs-avatar--28 { width: 28px; height: 28px; font-size: .75rem; }
 .qs-avatar--32 { width: 32px; height: 32px; font-size: .8rem; }
+.qs-avatar--36 { width: 36px; height: 36px; font-size: .85rem; }
 .qs-avatar--56 { width: 56px; height: 56px; font-size: 1.1rem; }
 .qs-avatar--72 { width: 72px; height: 72px; font-size: 1.4rem; }
 .qs-avatar--88 { width: 88px; height: 88px; font-size: 1.8rem; }
