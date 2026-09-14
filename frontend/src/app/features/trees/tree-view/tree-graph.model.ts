@@ -1,5 +1,5 @@
 import type { EdgeDefinition, NodeDefinition } from 'cytoscape';
-import { Person, Relationship, RelationshipType } from '../../../core/api/api-client.service';
+import { PersonDto as Person, RelationshipDto as Relationship, RelationshipType } from '../../../core/api/generated';
 
 /** The UI offers 'Child' as a convenience; the API only knows Parent edges. */
 export type UiRelType = RelationshipType | 'Child';
@@ -49,14 +49,16 @@ export function indexLineage(rels: Relationship[]): LineageIndex {
   };
 
   for (const r of rels) {
+    const from = r.fromPersonId ?? '';
+    const to = r.toPersonId ?? '';
     if (r.type === 'Spouse') {
-      addTo(index.spousesOf, r.fromPersonId, r.toPersonId);
-      addTo(index.spousesOf, r.toPersonId, r.fromPersonId);
+      addTo(index.spousesOf, from, to);
+      addTo(index.spousesOf, to, from);
       continue;
     }
     if (r.type !== 'Parent' && r.type !== 'Adoptive') continue;
-    addTo(index.childrenOf, r.fromPersonId, r.toPersonId);
-    addTo(index.parentsOf, r.toPersonId, r.fromPersonId);
+    addTo(index.childrenOf, from, to);
+    addTo(index.parentsOf, to, from);
   }
 
   return index;
@@ -101,11 +103,11 @@ export function isLayoutReusable(saved: SavedLayout | null, currentIds: string[]
 }
 
 export function personSearchText(p: Person): string {
-  return `${p.firstName} ${p.lastName} ${p.maidenName ?? ''} ${p.birthPlace ?? ''}`.toLowerCase();
+  return `${p.firstName ?? ''} ${p.lastName ?? ''} ${p.maidenName ?? ''} ${p.birthPlace ?? ''}`.toLowerCase();
 }
 
 function personLabel(p: Person): string {
-  const name = `${p.firstName} ${p.lastName}`;
+  const name = `${p.firstName ?? ''} ${p.lastName ?? ''}`;
   const dates = p.birth?.year
     ? p.death?.year
       ? `${p.birth.year} – ${p.death.year}`
@@ -124,28 +126,30 @@ export function buildElements(persons: Person[], rels: Relationship[]) {
   const parentRels = rels.filter(r => r.type === 'Parent' || r.type === 'Adoptive');
 
   const childrenOf = new Map<string, Set<string>>();
-  for (const r of parentRels) addTo(childrenOf, r.fromPersonId, r.toPersonId);
+  for (const r of parentRels) addTo(childrenOf, r.fromPersonId ?? '', r.toPersonId ?? '');
 
   const coveredEdgeIds = new Set<string>();
   const coupleNodes: NodeDefinition[] = [];
   const edges: EdgeDefinition[] = [];
 
   for (const sr of spouseRels) {
-    const aKids = childrenOf.get(sr.fromPersonId) ?? new Set<string>();
-    const bKids = childrenOf.get(sr.toPersonId) ?? new Set<string>();
+    const srFrom = sr.fromPersonId ?? '';
+    const srTo = sr.toPersonId ?? '';
+    const aKids = childrenOf.get(srFrom) ?? new Set<string>();
+    const bKids = childrenOf.get(srTo) ?? new Set<string>();
     const shared = [...aKids].filter(c => bKids.has(c));
 
     const cid = `_c_${sr.id}`;
     coupleNodes.push({ data: { id: cid, coupleNode: true } });
-    edges.push({ data: { id: `_ma_${cid}`, source: sr.fromPersonId, target: cid, ek: 'marriage' } });
-    edges.push({ data: { id: `_mb_${cid}`, source: sr.toPersonId, target: cid, ek: 'marriage' } });
+    edges.push({ data: { id: `_ma_${cid}`, source: srFrom, target: cid, ek: 'marriage' } });
+    edges.push({ data: { id: `_mb_${cid}`, source: srTo, target: cid, ek: 'marriage' } });
 
     for (const childId of shared) {
       const parentEdges = parentRels.filter(
         r => r.toPersonId === childId &&
-          (r.fromPersonId === sr.fromPersonId || r.fromPersonId === sr.toPersonId)
+          (r.fromPersonId === srFrom || r.fromPersonId === srTo)
       );
-      parentEdges.forEach(r => coveredEdgeIds.add(r.id));
+      parentEdges.forEach(r => coveredEdgeIds.add(r.id ?? ''));
       edges.push({
         data: {
           id: `_d_${cid}_${childId}`,
@@ -159,9 +163,9 @@ export function buildElements(persons: Person[], rels: Relationship[]) {
   }
 
   // Single-parent descent, not covered by a couple junction.
-  for (const r of parentRels.filter(r => !coveredEdgeIds.has(r.id))) {
+  for (const r of parentRels.filter(r => !coveredEdgeIds.has(r.id ?? ''))) {
     edges.push({
-      data: { id: r.id, source: r.fromPersonId, target: r.toPersonId, ek: 'descent', relType: r.type }
+      data: { id: r.id, source: r.fromPersonId ?? '', target: r.toPersonId ?? '', ek: 'descent', relType: r.type }
     });
   }
 

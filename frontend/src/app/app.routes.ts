@@ -2,6 +2,7 @@ import { Routes } from '@angular/router';
 import { authGuard, adminGuard } from './core/auth/auth.guard';
 import { PersonStore } from './features/persons/person.store';
 import { unsavedChangesGuard } from './features/persons/unsaved-changes.guard';
+import { TreeStore } from './features/trees/tree-view/tree.store';
 
 export const routes: Routes = [
   { path: '', redirectTo: '/trees', pathMatch: 'full' },
@@ -9,7 +10,7 @@ export const routes: Routes = [
   { path: 'register', data: { layout: 'auth' }, loadComponent: () => import('./features/auth/register.component').then(m => m.RegisterComponent) },
   { path: 'trees', canActivate: [authGuard],
     loadComponent: () => import('./features/trees/tree-list.component').then(m => m.TreeListComponent) },
-  { path: 'trees/:treeId', canActivate: [authGuard], data: { fullBleed: true },
+  { path: 'trees/:treeId', canActivate: [authGuard], data: { fullBleed: true }, providers: [TreeStore],
     loadComponent: () => import('./features/trees/tree-view/tree-view.component').then(m => m.TreeViewComponent) },
   { path: 'trees/:treeId/persons/new', canActivate: [authGuard], canDeactivate: [unsavedChangesGuard], providers: [PersonStore],
     loadComponent: () => import('./features/persons/person-edit.component').then(m => m.PersonEditComponent) },
