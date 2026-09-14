@@ -4282,7 +4282,7 @@
             "nullable": true
           },
           "kind": {
-            "type": "string"
+            "$ref": "#/components/schemas/MediaKind"
           },
           "createdAt": {
             "type": "string",
@@ -4293,6 +4293,14 @@
           }
         },
         "additionalProperties": false
+      },
+      "MediaKind": {
+        "enum": [
+          "Photo",
+          "Document",
+          "Audio"
+        ],
+        "type": "string"
       },
       "PartialDate": {
         "type": "object",

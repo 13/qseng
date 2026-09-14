@@ -45,6 +45,6 @@ public class UploadMediaHandler : IRequestHandler<UploadMediaCommand, Result<Med
         await _db.SaveChangesAsync(ct);
 
         return Result<MediaDto>.Ok(new MediaDto(
-            media.Id, media.PersonId, media.Url, media.Caption, media.Kind.ToString(), media.CreatedAt, media.IsAvatar));
+            media.Id, media.PersonId, media.Url, media.Caption, media.Kind, media.CreatedAt, media.IsAvatar));
     }
 }

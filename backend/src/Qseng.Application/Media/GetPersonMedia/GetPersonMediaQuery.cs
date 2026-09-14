@@ -29,7 +29,7 @@ public class GetPersonMediaHandler : IRequestHandler<GetPersonMediaQuery, Result
             .OrderByDescending(m => m.IsAvatar)
             .ThenBy(m => m.CreatedAt)
             .Select(m => new MediaDto(
-                m.Id, m.PersonId, m.Url, m.Caption, m.Kind.ToString(), m.CreatedAt, m.IsAvatar))
+                m.Id, m.PersonId, m.Url, m.Caption, m.Kind, m.CreatedAt, m.IsAvatar))
             .ToListAsync(ct);
 
         return Result<List<MediaDto>>.Ok(media);
