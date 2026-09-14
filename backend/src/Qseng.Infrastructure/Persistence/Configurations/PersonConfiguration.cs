@@ -33,6 +33,7 @@ public class PersonConfiguration : IEntityTypeConfiguration<Person>
 
         e.HasIndex(x => x.TreeId);
         e.HasIndex(x => new { x.TreeId, x.LastName, x.FirstName });
+        e.HasIndex(x => x.DeletedAt);
 
         e.HasOne<Tree>()
             .WithMany()

@@ -3,7 +3,7 @@ using Qseng.Domain.Enums;
 
 namespace Qseng.Domain.Entities;
 
-public class Relationship : Entity
+public class Relationship : Entity, ISoftDeletable
 {
     public Guid TreeId { get; set; }
     public Guid FromPersonId { get; set; }
@@ -16,4 +16,6 @@ public class Relationship : Entity
     public int? EndMonth { get; set; }
     public int? EndDay { get; set; }
     public string? Notes { get; set; }
+    public DateTime? DeletedAt { get; set; }
+    public Guid? DeletionBatchId { get; set; }
 }

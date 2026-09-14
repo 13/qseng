@@ -14,6 +14,7 @@ public class MediaConfiguration : IEntityTypeConfiguration<Media>
         e.Property(x => x.Caption).HasMaxLength(500);
         e.Property(x => x.IsAvatar).HasDefaultValue(false).IsRequired();
         e.HasIndex(x => x.PersonId);
+        e.HasIndex(x => x.DeletedAt);
 
         // The "at most one avatar per person" unique index needs a provider-specific
         // filter (booleans differ), so QsengDbContext.OnModelCreating adds it.

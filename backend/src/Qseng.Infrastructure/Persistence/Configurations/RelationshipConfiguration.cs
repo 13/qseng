@@ -13,6 +13,7 @@ public class RelationshipConfiguration : IEntityTypeConfiguration<Relationship>
         e.HasIndex(x => new { x.TreeId, x.FromPersonId });
         e.HasIndex(x => new { x.TreeId, x.ToPersonId });
         e.HasIndex(x => new { x.TreeId, x.FromPersonId, x.ToPersonId, x.Type }).IsUnique();
+        e.HasIndex(x => x.DeletedAt);
 
         e.HasOne<Tree>()
             .WithMany()
