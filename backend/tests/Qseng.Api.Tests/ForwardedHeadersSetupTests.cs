@@ -30,4 +30,11 @@ public class ForwardedHeadersSetupTests
         var act = () => ForwardedHeadersSetup.Parse(["not-a-cidr"]);
         act.Should().Throw<FormatException>().WithMessage("*not-a-cidr*");
     }
+
+    [Fact]
+    public void Out_of_range_prefix_throws_a_clear_format_exception()
+    {
+        var act = () => ForwardedHeadersSetup.Parse(["172.16.0.0/99"]);
+        act.Should().Throw<FormatException>().WithMessage("*172.16.0.0/99*0-32*");
+    }
 }

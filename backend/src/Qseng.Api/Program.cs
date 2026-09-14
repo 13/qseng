@@ -187,7 +187,7 @@ app.UseAuthorization();
 
 app.UseSerilogRequestLogging(o =>
 {
-    o.EnrichDiagnosticContext = (d, http) => d.Set("UserId", http.User.FindFirstValue(ClaimTypes.NameIdentifier));
+    o.EnrichDiagnosticContext = (d, http) => d.Set("UserId", http.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "anonymous");
     o.GetLevel = (http, _, ex) => ex is not null || http.Response.StatusCode >= 500
         ? LogEventLevel.Error
         : http.Request.Path.StartsWithSegments("/health") ? LogEventLevel.Verbose : LogEventLevel.Information;
