@@ -50,6 +50,9 @@ export class TreeGraphService {
   /** Shared by the 'cxttap' (right-click / two-finger tap) and 'taphold' (one-finger long press) node handlers. */
   private readonly onNodeContext = (evt: EventObjectNode) => {
     if (evt.target.data('coupleNode')) return;
+    // 'taphold' also fires for a slow mouse press; only honour it on touch.
+    const oe = evt.originalEvent as (PointerEvent & TouchEvent) | undefined;
+    if (evt.type === 'taphold' && !(oe?.touches?.length || oe?.pointerType === 'touch')) return;
     const { x, y } = evt.renderedPosition ?? { x: 0, y: 0 };
     const rect = this.container?.getBoundingClientRect();
     this.callbacks?.onContext(evt.target.id(), (rect?.left ?? 0) + x, (rect?.top ?? 0) + y);
@@ -154,17 +157,17 @@ export class TreeGraphService {
       if (evt.target === this.cy) this.selectedId.set(null);
     });
 
-    this.observeResize(container);
-    this.runLayout();
-    this.applyEmphasis();
-    this.compact.set(this.cy.zoom() < 0.45);
-    this.loading.set(false);
-
     // A reload (e.g. after deleting the selected person) can leave `selectedId`
     // pointing at a person no longer in the tree; without this, applyEmphasis
     // treats it as a real selection with an empty lineage and dims everything.
     const sel = this.selectedId();
     if (sel && !this.personsById.has(sel)) this.select(null);
+
+    this.observeResize(container);
+    this.runLayout();
+    this.applyEmphasis();
+    this.compact.set(this.cy.zoom() < 0.45);
+    this.loading.set(false);
   }
 
   destroy() {

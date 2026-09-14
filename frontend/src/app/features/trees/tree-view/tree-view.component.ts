@@ -1,5 +1,5 @@
 import {
-  Component, ElementRef, Injector, OnInit,
+  Component, ElementRef, Injector,
   afterNextRender, computed, effect, inject, input, signal, untracked, viewChild
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -151,7 +151,7 @@ class TreeSelectionSheetComponent {
   styles: [`
     .qs-tv { height: calc(100dvh - var(--qs-toolbar-h)); display: flex; flex-direction: column; }
     .qs-tv__header { display: flex; align-items: center; gap: 8px; padding: 8px 16px; border-bottom: 1px solid var(--mat-sys-outline-variant); }
-    .qs-tv__title { margin: 0; }
+    .qs-tv__title { margin: 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .qs-tv__spacer { flex: 1; }
     .qs-tv__body { flex: 1; min-height: 0; }
     .qs-tv__people { width: 300px; }
@@ -169,7 +169,7 @@ class TreeSelectionSheetComponent {
     @media (max-width: 599.98px) { .qs-tv__label { display: none; } }
   `]
 })
-export class TreeViewComponent implements OnInit {
+export class TreeViewComponent {
   private readonly cyHost = viewChild<ElementRef<HTMLElement>>('cyHost');
   private readonly ctxTrigger = viewChild(MatMenuTrigger);
 
@@ -226,12 +226,10 @@ export class TreeViewComponent implements OnInit {
       this.crumbs.set([{ label: this.i18n.t('trees.title'), link: ['/trees'] }, { label: tree.name ?? '…' }]);
     });
 
-    effect(() => this.store.load(this.treeId()));
-  }
-
-  ngOnInit(): void {
-    const q = this.q();
-    if (q) this.store.setFilter(q);
+    effect(() => {
+      this.store.load(this.treeId());
+      untracked(() => { const q = this.q(); if (q) this.store.setFilter(q); });
+    });
   }
 
   focusCanvas(): void {

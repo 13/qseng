@@ -106,4 +106,30 @@ describe('TreeGraphService', () => {
     // Same handler on both — a fix that adds a second, diverging callback is as buggy as missing one.
     expect(nodeHandlers.get('cxttap')).toBe(nodeHandlers.get('taphold'));
   });
+
+  it('ignores a taphold fired by a slow mouse press but honours touch taphold and mouse cxttap', async () => {
+    const service = setup();
+    const localCallbacks: GraphCallbacks = { onSelect: vi.fn(), onOpen: vi.fn(), onContext: vi.fn() };
+    await service.build(document.createElement('div'), [person('a')], [], localCallbacks);
+
+    const cy = instances.at(-1)!;
+    const nodeHandlers = new Map<string, (evt: unknown) => void>(
+      cy.on.mock.calls
+        .filter((call: unknown[]) => call[1] === 'node')
+        .map((call: unknown[]) => [call[0] as string, call[2] as (evt: unknown) => void])
+    );
+    const fakeTarget = { data: vi.fn(() => undefined), id: vi.fn(() => 'a') };
+
+    // A slow mouse press also emits 'taphold' in cytoscape — must not open the menu.
+    nodeHandlers.get('taphold')!({ type: 'taphold', originalEvent: new MouseEvent('mousedown'), target: fakeTarget });
+    expect(localCallbacks.onContext).not.toHaveBeenCalled();
+
+    // A genuine one-finger long press on touch must still open it.
+    nodeHandlers.get('taphold')!({ type: 'taphold', originalEvent: { touches: [{}] }, target: fakeTarget });
+    expect(localCallbacks.onContext).toHaveBeenCalledTimes(1);
+
+    // Desktop right-click (two-finger tap on touch) is unaffected.
+    nodeHandlers.get('cxttap')!({ type: 'cxttap', originalEvent: new MouseEvent('contextmenu'), target: fakeTarget });
+    expect(localCallbacks.onContext).toHaveBeenCalledTimes(2);
+  });
 });

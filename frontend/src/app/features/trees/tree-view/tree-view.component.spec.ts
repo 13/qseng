@@ -9,7 +9,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { TreeViewComponent } from './tree-view.component';
 import { TreeStore } from './tree.store';
 import { TreeGraphService } from './tree-graph.service';
-import { PersonsApi } from '../../../core/api/generated';
+import { PersonsApi, RelationshipsApi, TreesApi } from '../../../core/api/generated';
 import { LayoutService } from '../../../core/ui/layout.service';
 import { ConfirmDialogService } from '../../../core/ui/confirm-dialog.service';
 import { ToastService } from '../../../core/ui/toast.service';
@@ -101,5 +101,31 @@ describe('TreeViewComponent', () => {
     cmp.onSelected('a');
     expect(store.select).toHaveBeenCalledWith('a');
     expect(graph.select).toHaveBeenCalledWith('a');
+  });
+
+  // Regression: the seeding effect used to run in ngOnInit, before the constructor's
+  // `load()` effect had a chance to fire — and load() resets the filter on a treeId
+  // change — so a `?q=` deep link was wiped out. Uses the real TreeStore (rather than
+  // the mocked one above) so `load()`'s filter reset actually happens.
+  it('seeds the filter from ?q after the store load, with the real TreeStore', async () => {
+    const personsApi = { personsGetByTree: vi.fn(() => of(people)) };
+    const relsApi = { relationshipsGetByTree: vi.fn(() => of([])) };
+    const treesApi = { treesGetAll: vi.fn(() => of([{ id: 't1', name: 'Familie' }])) };
+    const graph = { build: vi.fn(async () => undefined), select: vi.fn(), fit: vi.fn(), zoomIn: vi.fn(), zoomOut: vi.fn(), toggleLayout: vi.fn(), resetLayout: vi.fn(), exportPng: vi.fn(),
+      layoutMode: signal('tree'), loading: signal(false), selectedId: signal<string | null>(null), searchTerm: signal(''), hasCustomLayout: signal(false), compact: signal(false), destroy: vi.fn() };
+    TestBed.configureTestingModule({ providers: [provideRouter([]), provideNoopAnimations(),
+      { provide: PersonsApi, useValue: personsApi }, { provide: RelationshipsApi, useValue: relsApi }, { provide: TreesApi, useValue: treesApi },
+      { provide: LayoutService, useValue: { handset: () => false, tablet: () => false, desktop: () => true } },
+      { provide: MatDialog, useValue: { open: vi.fn() } }, { provide: MatBottomSheet, useValue: { open: vi.fn() } },
+      { provide: ConfirmDialogService, useValue: { confirm: vi.fn(async () => true) } }, { provide: ToastService, useValue: { success: vi.fn(), errorFrom: vi.fn(), error: vi.fn(), info: vi.fn() } },
+      { provide: BreadcrumbService, useValue: { set: vi.fn() } }, { provide: I18nService, useValue: { t: (k: string) => k, dynamic: (k: string) => k } }] });
+    TestBed.overrideComponent(TreeViewComponent, { set: { providers: [TreeStore, { provide: TreeGraphService, useValue: graph }] } });
+    const fixture = TestBed.createComponent(TreeViewComponent);
+    fixture.componentRef.setInput('treeId', 't1');
+    fixture.componentRef.setInput('q', 'konrad');
+    fixture.detectChanges();
+    await fixture.whenStable();
+    const store = fixture.debugElement.injector.get(TreeStore);
+    expect(store.filter()).toBe('konrad');
   });
 });
