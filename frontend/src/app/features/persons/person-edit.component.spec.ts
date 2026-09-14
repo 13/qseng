@@ -121,4 +121,11 @@ describe('PersonEditComponent', () => {
     expect(media.mediaUpload).toHaveBeenCalledWith({ personId: 'p1', body: { file: expect.any(File), kind: 'Photo' } });
     expect(media.mediaSetAvatar).toHaveBeenCalledWith({ personId: 'p1', mediaId: 'm1' });
   });
+
+  it('saves the form on mod+S', () => {
+    const { cmp } = setup('edit');
+    const save = vi.spyOn(cmp, 'save');
+    document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 's', ctrlKey: true, bubbles: true }));
+    expect(save).toHaveBeenCalledTimes(1);
+  });
 });

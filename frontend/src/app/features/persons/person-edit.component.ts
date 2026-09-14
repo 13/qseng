@@ -1,4 +1,4 @@
-import { Component, OnDestroy, OnInit, computed, effect, inject, input, signal } from '@angular/core';
+import { Component, DestroyRef, OnDestroy, OnInit, computed, effect, inject, input, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatCardModule } from '@angular/material/card';
@@ -13,6 +13,7 @@ import { MediaApi, PartialDate, PersonDto, PersonRequest, PersonsApi, Sex } from
 import { I18nService } from '../../core/i18n/i18n.service';
 import { TranslatePipe } from '../../core/i18n/translate.pipe';
 import { ConfirmDialogService } from '../../core/ui/confirm-dialog.service';
+import { ShortcutService } from '../../core/ui/shortcut.service';
 import { ToastService } from '../../core/ui/toast.service';
 import { BreadcrumbService } from '../../core/ui/breadcrumb.service';
 import { FormErrorsPipe } from '../../core/forms/form-errors.pipe';
@@ -168,6 +169,8 @@ export class PersonEditComponent implements OnInit, OnDestroy, HasUnsavedChanges
         { label: this.i18n.t(this.isNew() ? 'pe.new' : 'pe.edit') }
       ]);
     });
+    const off = inject(ShortcutService).register('mod+s', () => { if (!this.saving()) void this.save(); }, { allowInInputs: true });
+    inject(DestroyRef).onDestroy(off);
   }
 
   ngOnInit() { const id = this.id(); if (id) this.store.load(id); }
