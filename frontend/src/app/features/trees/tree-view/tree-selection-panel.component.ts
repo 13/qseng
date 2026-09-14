@@ -46,7 +46,6 @@ import { TreeStore } from './tree.store';
     .qs-sel__head { display: flex; align-items: center; gap: 12px; }
     .qs-sel__avatar { width: 56px; height: 56px; border-radius: 50%; object-fit: cover; flex: 0 0 auto; }
     .qs-sel__initials { display: grid; place-items: center; font-weight: 600; color: #fff; }
-    .qs-sex-male { background: var(--qs-sex-male); } .qs-sex-female { background: var(--qs-sex-female); } .qs-sex-unknown { background: var(--qs-sex-unknown); }
     .qs-sel__id { flex: 1; min-width: 0; }
     .qs-sel__name { font-size: 1.25rem; }
     .qs-sel__dl { display: grid; grid-template-columns: max-content 1fr; gap: 4px 10px; margin: 0; }

@@ -24,8 +24,8 @@ import { PeopleSort, TreeStore } from './tree.store';
           @if (filterCtrl.value) { <button matIconButton matSuffix type="button" (click)="filterCtrl.setValue('')" [attr.aria-label]="'cancel' | translate"><mat-icon>close</mat-icon></button> }
         </mat-form-field>
         <mat-button-toggle-group hideSingleSelectionIndicator [value]="store.sort()" (change)="setSort($event.value)" [attr.aria-label]="'tree.sort' | translate">
-          <mat-button-toggle value="birth" [matTooltip]="'tree.sort.birth' | translate"><mat-icon>cake</mat-icon></mat-button-toggle>
-          <mat-button-toggle value="name" [matTooltip]="'tree.sort.name' | translate"><mat-icon>sort_by_alpha</mat-icon></mat-button-toggle>
+          <mat-button-toggle value="birth" [matTooltip]="'tree.sort.birth' | translate" [attr.aria-label]="'tree.sort.birth' | translate"><mat-icon>cake</mat-icon></mat-button-toggle>
+          <mat-button-toggle value="name" [matTooltip]="'tree.sort.name' | translate" [attr.aria-label]="'tree.sort.name' | translate"><mat-icon>sort_by_alpha</mat-icon></mat-button-toggle>
         </mat-button-toggle-group>
       </div>
       <cdk-virtual-scroll-viewport itemSize="56" class="qs-people__viewport" role="listbox" [attr.aria-label]="'tree.peopleList' | translate">
@@ -51,7 +51,6 @@ import { PeopleSort, TreeStore } from './tree.store';
     .qs-people__row--active { background: var(--mat-sys-secondary-container); color: var(--mat-sys-on-secondary-container); }
     .qs-people__avatar { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; flex: 0 0 auto; }
     .qs-people__initials { display: grid; place-items: center; font-size: .75rem; font-weight: 600; color: #fff; }
-    .qs-sex-male { background: var(--qs-sex-male); } .qs-sex-female { background: var(--qs-sex-female); } .qs-sex-unknown { background: var(--qs-sex-unknown); }
     .qs-people__name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .qs-people__span { font-size: .8rem; }
     .qs-people__empty { padding: 12px; }
