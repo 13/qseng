@@ -1,10 +1,17 @@
-using FluentValidation;
 using System.Text.Json;
+using FluentValidation;
+using Microsoft.AspNetCore.Mvc;
 
 namespace Qseng.Api.Middleware;
 
+/// <summary>
+/// Turns FluentValidation failures into <see cref="ValidationProblemDetails"/> (400)
+/// and anything else into a generic <see cref="ProblemDetails"/> (500).
+/// </summary>
 public class ExceptionMiddleware
 {
+    private const string ProblemJson = "application/problem+json";
+
     private readonly RequestDelegate _next;
     private readonly ILogger<ExceptionMiddleware> _log;
 
@@ -19,17 +26,37 @@ public class ExceptionMiddleware
         }
         catch (ValidationException vex)
         {
-            ctx.Response.StatusCode = 400;
-            ctx.Response.ContentType = "application/json";
-            var errors = vex.Errors.Select(e => new { e.PropertyName, e.ErrorMessage });
-            await ctx.Response.WriteAsync(JsonSerializer.Serialize(new { errors }));
+            var errors = vex.Errors
+                .GroupBy(e => CamelCasePath(e.PropertyName))
+                .ToDictionary(g => g.Key, g => g.Select(e => e.ErrorMessage).ToArray());
+
+            var problem = new ValidationProblemDetails(errors)
+            {
+                Status = StatusCodes.Status400BadRequest,
+                Title = "One or more validation errors occurred."
+            };
+            await WriteAsync(ctx, problem);
         }
         catch (Exception ex)
         {
             _log.LogError(ex, "Unhandled exception");
-            ctx.Response.StatusCode = 500;
-            ctx.Response.ContentType = "application/json";
-            await ctx.Response.WriteAsync(JsonSerializer.Serialize(new { error = "Internal server error." }));
+            var problem = new ProblemDetails
+            {
+                Status = StatusCodes.Status500InternalServerError,
+                Title = "Internal server error."
+            };
+            await WriteAsync(ctx, problem);
         }
+    }
+
+    /// <summary>"Birth.Year" -> "birth.year" so keys match the JSON the client sent.</summary>
+    private static string CamelCasePath(string propertyName) =>
+        string.Join('.', propertyName.Split('.').Select(JsonNamingPolicy.CamelCase.ConvertName));
+
+    private static Task WriteAsync(HttpContext ctx, ProblemDetails problem)
+    {
+        ctx.Response.StatusCode = problem.Status!.Value;
+        ctx.Response.ContentType = ProblemJson;
+        return ctx.Response.WriteAsJsonAsync(problem, problem.GetType(), options: null, contentType: ProblemJson);
     }
 }

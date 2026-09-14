@@ -31,7 +31,7 @@ public class MediaController : ControllerBase
         CancellationToken ct)
     {
         if (file is null || file.Length == 0)
-            return BadRequest(new { error = "No file provided." });
+            return ResultExtensions.Problem(StatusCodes.Status400BadRequest, "No file provided.");
 
         var mediaKind = Enum.TryParse<MediaKind>(kind, ignoreCase: true, out var k) ? k : MediaKind.Photo;
         using var stream = file.OpenReadStream();
