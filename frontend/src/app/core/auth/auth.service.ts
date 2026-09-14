@@ -85,7 +85,7 @@ export class AuthService {
     if (refreshToken) {
       this.http
         .post(`${environment.apiBase}/auth/logout`, { refreshToken })
-        .subscribe({ error: () => {} });
+        .subscribe({ error: () => {/* error ignored on logout */} });
     }
     this.clear();
   }

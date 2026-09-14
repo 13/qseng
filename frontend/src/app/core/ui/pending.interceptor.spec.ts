@@ -13,7 +13,7 @@ describe('pendingInterceptor', () => {
     const pending = TestBed.inject(PendingRequestsService);
 
     http.get('/a').subscribe();
-    http.get('/b').subscribe({ error: () => {} });
+    http.get('/b').subscribe({ error: () => {/* error handling tested elsewhere */} });
     expect(pending.count()).toBe(2);
 
     ctrl.expectOne('/a').flush({});

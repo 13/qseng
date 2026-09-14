@@ -13,7 +13,8 @@
     "prestart": "npm run gen",
     "prebuild": "npm run gen",
     "pretest": "npm run gen",
-    "postinstall": "npm run gen"
+    "postinstall": "npm run gen",
+    "lint": "ng lint"
   },
   "private": true,
   "packageManager": "npm@11.13.0",
@@ -41,11 +42,15 @@
     "@angular/build": "^21.2.8",
     "@angular/cli": "^21.2.8",
     "@angular/compiler-cli": "^21.2.0",
+    "@eslint/js": "^10.0.1",
     "@types/cytoscape": "^3.21.9",
+    "angular-eslint": "21.4.0",
+    "eslint": "^10.3.0",
     "jsdom": "^29.1.1",
     "ng-openapi-gen": "^1.0.5",
     "prettier": "^3.8.1",
     "typescript": "~5.9.2",
+    "typescript-eslint": "8.59.2",
     "vitest": "^4.1.10"
   }
 }

@@ -3,7 +3,8 @@
   "version": 1,
   "cli": {
     "packageManager": "npm",
-    "analytics": false
+    "analytics": false,
+    "schematicCollections": ["angular-eslint"]
   },
   "newProjectRoot": "projects",
   "projects": {
@@ -58,10 +59,7 @@
               "node_modules/material-symbols/rounded.css",
               "src/styles.scss"
             ],
-            "allowedCommonJsDependencies": [
-              "cytoscape-dagre",
-              "dagre"
-            ]
+            "allowedCommonJsDependencies": ["cytoscape-dagre", "dagre"]
           },
           "configurations": {
             "production": {
@@ -109,6 +107,12 @@
             "buildTarget": "frontend:build:development",
             "runner": "vitest",
             "setupFiles": ["src/test-setup.ts"]
+          }
+        },
+        "lint": {
+          "builder": "@angular-eslint/builder:lint",
+          "options": {
+            "lintFilePatterns": ["src/**/*.ts", "src/**/*.html"]
           }
         }
       }

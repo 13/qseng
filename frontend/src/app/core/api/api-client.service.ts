@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { environment } from '../../../environments/environment';
 import { AuthResponse } from '../auth/auth.service';
@@ -105,7 +105,7 @@ export const TIMELINE_EVENT_TYPES: TimelineEventType[] = ['Birth', 'Death', 'Mar
 @Injectable({ providedIn: 'root' })
 export class ApiClient {
   private base = environment.apiBase;
-  constructor(private http: HttpClient) {}
+  private http = inject(HttpClient);
 
   // Trees
   getTrees() { return this.http.get<Tree[]>(`${this.base}/trees`); }

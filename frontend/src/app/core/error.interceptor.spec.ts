@@ -39,7 +39,7 @@ describe('errorInterceptor', () => {
 
   it('ends the session with returnUrl when refresh fails', () => {
     const { http, ctrl, auth, router } = setup({ refreshSession: vi.fn(() => throwError(() => new Error('nope'))) });
-    http.get('/api/v1/trees').subscribe({ error: () => {} });
+    http.get('/api/v1/trees').subscribe({ error: () => {/* error handling tested elsewhere */} });
     ctrl.expectOne('/api/v1/trees').flush('', { status: 401, statusText: 'u' });
     expect(auth.clear).toHaveBeenCalled();
     expect(router.navigate).toHaveBeenCalledWith(['/login'], { queryParams: { returnUrl: '/trees/1' } });
@@ -47,9 +47,9 @@ describe('errorInterceptor', () => {
 
   it('toasts on 403 and 5xx but rethrows 400', () => {
     const { http, ctrl, toast } = setup({});
-    http.get('/a').subscribe({ error: () => {} });
+    http.get('/a').subscribe({ error: () => {/* error handling tested elsewhere */} });
     ctrl.expectOne('/a').flush({ title: 'Forbidden', status: 403 }, { status: 403, statusText: 'f' });
-    http.get('/b').subscribe({ error: () => {} });
+    http.get('/b').subscribe({ error: () => {/* error handling tested elsewhere */} });
     ctrl.expectOne('/b').flush({ title: 'Internal server error.', status: 500 }, { status: 500, statusText: 's' });
     let caught: unknown;
     http.get('/c').subscribe({ error: e => (caught = e) });

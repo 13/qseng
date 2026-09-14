@@ -80,7 +80,7 @@ describe('AuthService', () => {
     auth.login('demo', 'pw').subscribe();
     http.expectOne(r => r.url.endsWith('/auth/login')).flush(session());
 
-    auth.refreshSession().subscribe({ error: () => {} });
+    auth.refreshSession().subscribe({ error: () => {/* error handling tested elsewhere */} });
     http.expectOne(r => r.url.endsWith('/auth/refresh'))
       .flush({ error: 'revoked' }, { status: 401, statusText: 'Unauthorized' });
 
