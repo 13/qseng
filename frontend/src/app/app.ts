@@ -69,6 +69,8 @@ import { ShortcutService } from './core/ui/shortcut.service';
             <a mat-menu-item routerLink="/admin/users"><mat-icon>group</mat-icon>{{ 'nav.users' | translate }}</a>
           }
           <mat-divider />
+          <button mat-menu-item (click)="palette.openShortcuts()"><mat-icon>keyboard</mat-icon>{{ 'nav.shortcuts' | translate }}</button>
+          <mat-divider />
           <button mat-menu-item (click)="setLang('de')" [disabled]="i18n.lang() === 'de'"><mat-icon>{{ i18n.lang() === 'de' ? 'check' : '' }}</mat-icon>Deutsch</button>
           <button mat-menu-item (click)="setLang('en')" [disabled]="i18n.lang() === 'en'"><mat-icon>{{ i18n.lang() === 'en' ? 'check' : '' }}</mat-icon>English</button>
           <mat-divider />
@@ -126,6 +128,7 @@ export class App {
 
   constructor() {
     this.shortcuts.register('mod+k', () => void this.palette.open());
+    this.shortcuts.register('?', () => void this.palette.openShortcuts());
 
     this.router.events.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(e => {
       if (e instanceof NavigationStart) this.navigating.set(true);

@@ -25,7 +25,7 @@ function setup(authenticated: boolean) {
       { provide: UserApi, useValue: userApi },
       // Real PaletteService eagerly constructs PersonsApi/TreesApi (HttpClient); this spec
       // never opens the palette, so a stub avoids pulling HTTP providers in just for that.
-      { provide: PaletteService, useValue: { open: vi.fn() } }
+      { provide: PaletteService, useValue: { open: vi.fn(), openShortcuts: vi.fn() } }
     ]
   });
   return { fixture: TestBed.createComponent(App), userApi };

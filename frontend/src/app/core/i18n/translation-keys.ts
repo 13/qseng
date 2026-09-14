@@ -139,6 +139,7 @@ export type TranslationKey =
   | 'nav.logout'
   | 'nav.search'
   | 'nav.settings'
+  | 'nav.shortcuts'
   | 'nav.skip'
   | 'nav.theme.auto'
   | 'nav.theme.dark'
@@ -281,6 +282,15 @@ export type TranslationKey =
   | 'sex.female'
   | 'sex.label'
   | 'sex.male'
+  | 'shortcuts.close'
+  | 'shortcuts.move'
+  | 'shortcuts.open'
+  | 'shortcuts.palette'
+  | 'shortcuts.save'
+  | 'shortcuts.sheet'
+  | 'shortcuts.title'
+  | 'shortcuts.tree'
+  | 'shortcuts.zoom'
   | 'tl.addEvent'
   | 'tl.auto'
   | 'tl.autoHint'
@@ -499,6 +509,7 @@ export const TRANSLATION_KEYS: readonly TranslationKey[] = [
   'nav.logout',
   'nav.search',
   'nav.settings',
+  'nav.shortcuts',
   'nav.skip',
   'nav.theme.auto',
   'nav.theme.dark',
@@ -641,6 +652,15 @@ export const TRANSLATION_KEYS: readonly TranslationKey[] = [
   'sex.female',
   'sex.label',
   'sex.male',
+  'shortcuts.close',
+  'shortcuts.move',
+  'shortcuts.open',
+  'shortcuts.palette',
+  'shortcuts.save',
+  'shortcuts.sheet',
+  'shortcuts.title',
+  'shortcuts.tree',
+  'shortcuts.zoom',
   'tl.addEvent',
   'tl.auto',
   'tl.autoHint',

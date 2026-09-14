@@ -1,4 +1,5 @@
 import { Injectable, Injector, inject } from '@angular/core';
+import type { MatBottomSheetRef } from '@angular/material/bottom-sheet';
 import type { MatDialogRef } from '@angular/material/dialog';
 import type { CommandPaletteData } from '../../features/palette/command-palette.component';
 
@@ -17,6 +18,7 @@ export class PaletteService {
   private readonly injector = inject(Injector);
 
   private ref: MatDialogRef<unknown> | null = null;
+  private sheetRef: MatBottomSheetRef<unknown> | null = null;
 
   async open(): Promise<void> {
     if (this.ref) { this.ref.close(); return; }
@@ -35,10 +37,23 @@ export class PaletteService {
     this.ref.afterClosed().subscribe(() => (this.ref = null));
   }
 
-  /** Implemented in P2b Task 3 (shortcut sheet); reserved so the palette's
-   *  'shortcuts' action and ShortcutService's '?' binding have something to call.
-   *  Kept a no-op stub so `MatBottomSheet` is never pulled in eagerly. */
+  /** Opens the keyboard-shortcut sheet (mirrors `open()`'s lazy-import shape so
+   *  `MatBottomSheet` and `ShortcutSheetComponent` stay a lazy chunk). */
   async openShortcuts(): Promise<void> {
-    // no-op until Task 3 wires up the shortcut sheet
+    if (this.sheetRef) { this.sheetRef.dismiss(); return; }
+
+    const [{ MatBottomSheet }, { ShortcutSheetComponent }] = await Promise.all([
+      import('@angular/material/bottom-sheet'),
+      import('../../features/palette/shortcut-sheet.component')
+    ]);
+    const sheet = this.injector.get(MatBottomSheet);
+
+    // MatBottomSheetConfig in this Angular Material version has no `ariaLabelledBy` (only
+    // `ariaLabel`), so it can't be wired to the sheet's own <h2 id="qs-sc-title"> from here;
+    // panelClass is the only config this version supports for that purpose.
+    this.sheetRef = sheet.open(ShortcutSheetComponent, {
+      panelClass: ['qs-sheet', 'qs-sheet--auto']
+    });
+    this.sheetRef.afterDismissed().subscribe(() => (this.sheetRef = null));
   }
 }

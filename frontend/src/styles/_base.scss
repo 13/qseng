@@ -109,3 +109,15 @@ h1[tabindex="-1"]:focus, h1[tabindex="-1"]:focus-visible { outline: none; }
     flex: initial;
   }
 }
+
+// Keycap look for the shortcut sheet's <kbd> rows.
+.qs-kbd {
+  display: inline-block;
+  min-width: 1.4em;
+  padding: 2px 6px;
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: var(--mat-sys-corner-extra-small);
+  background: var(--mat-sys-surface-container-high);
+  font: 500 .8rem/1.4 monospace;
+  text-align: center;
+}
