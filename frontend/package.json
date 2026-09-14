@@ -6,7 +6,11 @@
     "start": "ng serve",
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
-    "test": "ng test"
+    "test": "ng test",
+    "gen:i18n": "node scripts/gen-i18n-keys.mjs",
+    "prestart": "npm run gen:i18n",
+    "prebuild": "npm run gen:i18n",
+    "pretest": "npm run gen:i18n"
   },
   "private": true,
   "packageManager": "npm@11.13.0",

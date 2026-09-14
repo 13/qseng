@@ -243,7 +243,7 @@ export class AdminUsersComponent implements OnInit {
 
   toggleAdmin(u: UserSummary) {
     const key = u.isAdmin ? 'admin.confirm.removeAdmin' : 'admin.confirm.makeAdmin';
-    if (!confirm(this.i18n.t(key).replace('__NAME__', u.username))) return;
+    if (!confirm(this.i18n.dynamic(key).replace('__NAME__', u.username))) return;
     this.api.setUserAdmin(u.id, !u.isAdmin).subscribe({
       next: () => this.load(),
       error: e => this.setActionErr(u.id, e.error?.error ?? this.i18n.t('err.save'))

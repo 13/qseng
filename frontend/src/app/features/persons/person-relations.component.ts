@@ -29,7 +29,7 @@ interface RelGroup { label: string; icon: string; relations: PersonRelation[]; }
             {{ 'fam.type' | translate }}
             <select [(ngModel)]="newType" name="type">
               @for (t of uiRelTypes; track t) {
-                <option [value]="t">{{ i18n.t('rel.' + t.toLowerCase()) }}</option>
+                <option [value]="t">{{ i18n.dynamic('rel.' + t.toLowerCase()) }}</option>
               }
             </select>
           </label>

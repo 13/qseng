@@ -85,7 +85,7 @@ function sexCls(sex: Sex): string { return sex.toLowerCase(); }
               <select [ngModel]="relType()" (ngModelChange)="relType.set($event)"
                       style="font-size:.82rem;padding:.3rem .45rem">
                 @for (t of uiRelTypes; track t) {
-                  <option [value]="t">{{ i18n.t('rel.' + t.toLowerCase()) }}</option>
+                  <option [value]="t">{{ i18n.dynamic('rel.' + t.toLowerCase()) }}</option>
                 }
               </select>
             </label>
