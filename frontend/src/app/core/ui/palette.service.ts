@@ -12,7 +12,9 @@ function lastTreeId(): string | null {
  *  the palette or the shortcut sheet on top of another modal. Both use the CDK's global
  *  positioning strategy, which wraps every such overlay's pane in this class. */
 function anotherOverlayOpen(): boolean {
-  return !!document.querySelector('.cdk-overlay-container .cdk-global-overlay-wrapper');
+  // A modal (MatDialog, MatBottomSheet) always paints an opaque backdrop; snackbars have none and
+  // menus/autocompletes use the transparent one, so neither of those blocks the palette.
+  return !!document.querySelector('.cdk-overlay-container .cdk-overlay-backdrop:not(.cdk-overlay-transparent-backdrop)');
 }
 
 // Same rationale as `unsaved-changes.guard.ts`'s `confirmDialogLoader`: a bare `export const

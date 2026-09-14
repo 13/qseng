@@ -53,10 +53,17 @@ describe('PaletteService', () => {
     expect(dialog.open).toHaveBeenCalledTimes(1);
   });
 
-  it('does not open when a global overlay wrapper already exists', async () => {
+  it('does not open when a modal backdrop is up', async () => {
     const { service, dialog } = setup();
-    document.body.innerHTML = '<div class="cdk-overlay-container"><div class="cdk-global-overlay-wrapper"></div></div>';
+    document.body.innerHTML = '<div class="cdk-overlay-container"><div class="cdk-overlay-backdrop cdk-overlay-dark-backdrop"></div><div class="cdk-global-overlay-wrapper"></div></div>';
     await service.open();
     expect(dialog.open).not.toHaveBeenCalled();
+  });
+
+  it('still opens over a snackbar (no backdrop) and over a menu (transparent backdrop)', async () => {
+    const { service, dialog } = setup();
+    document.body.innerHTML = '<div class="cdk-overlay-container"><div class="cdk-global-overlay-wrapper"><div class="cdk-overlay-pane"></div></div><div class="cdk-overlay-backdrop cdk-overlay-transparent-backdrop"></div></div>';
+    await service.open();
+    expect(dialog.open).toHaveBeenCalledTimes(1);
   });
 });
