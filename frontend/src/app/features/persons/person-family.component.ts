@@ -1,19 +1,21 @@
 import { Component, computed, inject } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatDialog } from '@angular/material/dialog';
 import { firstValueFrom } from 'rxjs';
-import { PersonRelationDto, RelationshipDto, RelationshipsApi } from '../../core/api/generated';
+import { PersonRelationDto, RelationshipsApi } from '../../core/api/generated';
 import { I18nService } from '../../core/i18n/i18n.service';
 import { TranslatePipe } from '../../core/i18n/translate.pipe';
 import { TranslationKey } from '../../core/i18n/translation-keys';
 import { ToastService } from '../../core/ui/toast.service';
+import { fullName } from '../../core/models/person-helpers';
+import { UiRelType } from '../trees/tree-view/tree-graph.model';
 import { PersonStore } from './person.store';
-import { RelationshipDialogComponent, RelationshipDialogData } from './relationship-dialog.component';
+import { RelationshipDialogComponent, RelationshipDialogData, RelationshipDialogResult } from './relationship-dialog.component';
 
-interface Group { key: TranslationKey; icon: string; items: PersonRelationDto[]; }
+interface Group { key: TranslationKey; icon: string; items: PersonRelationDto[]; add?: { type: UiRelType; label: TranslationKey }; }
 
 @Component({
   selector: 'qs-person-family',
@@ -42,6 +44,8 @@ interface Group { key: TranslationKey; icon: string; items: PersonRelationDto[];
               }
             </mat-chip-set>
           </div>
+        } @else if (g.add; as add) {
+          <button matButton (click)="addNew(add.type)"><mat-icon>person_add</mat-icon>{{ add.label | translate }}</button>
         }
       }
     </section>
@@ -60,13 +64,14 @@ export class PersonFamilyComponent {
   private readonly dialog = inject(MatDialog);
   private readonly toast = inject(ToastService);
   private readonly i18n = inject(I18nService);
+  private readonly router = inject(Router);
 
   readonly groups = computed<Group[]>(() => {
     const rels = this.store.relations();
     return [
-      { key: 'fam.parents', icon: 'family_restroom', items: rels.filter(r => r.type === 'Parent' && r.direction === 'to') },
-      { key: 'fam.spouses', icon: 'favorite', items: rels.filter(r => r.type === 'Spouse') },
-      { key: 'fam.children', icon: 'child_care', items: rels.filter(r => r.type === 'Parent' && r.direction === 'from') },
+      { key: 'fam.parents', icon: 'family_restroom', items: rels.filter(r => r.type === 'Parent' && r.direction === 'to'), add: { type: 'Parent' as UiRelType, label: 'fam.add.parent' as TranslationKey } },
+      { key: 'fam.spouses', icon: 'favorite', items: rels.filter(r => r.type === 'Spouse'), add: { type: 'Spouse' as UiRelType, label: 'fam.add.spouse' as TranslationKey } },
+      { key: 'fam.children', icon: 'child_care', items: rels.filter(r => r.type === 'Parent' && r.direction === 'from'), add: { type: 'Child' as UiRelType, label: 'fam.add.child' as TranslationKey } },
       { key: 'fam.adoptiveParents', icon: 'volunteer_activism', items: rels.filter(r => r.type === 'Adoptive' && r.direction === 'to') },
       { key: 'fam.adoptiveChildren', icon: 'child_care', items: rels.filter(r => r.type === 'Adoptive' && r.direction === 'from') }
     ];
@@ -77,13 +82,33 @@ export class PersonFamilyComponent {
     const person = this.store.person();
     const treeId = person?.treeId;
     if (!person || !treeId) return;
-    const data: RelationshipDialogData = { treeId, persons: this.store.treePersons(), anchor: person };
-    const ref = this.dialog.open<RelationshipDialogComponent, RelationshipDialogData, RelationshipDto | undefined>(RelationshipDialogComponent, { data, width: '520px', maxWidth: '95vw' });
+    await this.openDialog({ treeId, persons: this.store.treePersons(), anchor: person });
+  }
+
+  async addNew(presetType: UiRelType) {
+    const person = this.store.person();
+    const treeId = person?.treeId;
+    if (!person || !treeId) return;
+    await this.openDialog({ treeId, persons: this.store.treePersons(), anchor: person, presetType, mode: 'new' }, presetType);
+  }
+
+  private async openDialog(data: RelationshipDialogData, presetType?: UiRelType) {
+    const ref = this.dialog.open<RelationshipDialogComponent, RelationshipDialogData, RelationshipDialogResult | undefined>(RelationshipDialogComponent, { data, width: '520px', maxWidth: '95vw' });
     const result = await firstValueFrom(ref.afterClosed());
     if (!result) return;
-    this.toast.success(this.i18n.t('rel.added.toast'));
     this.store.reloadRelations();
     this.store.reloadTimeline();
+    if (result.created) {
+      const created = result.created;
+      const key = 'rel.added.' + (presetType ?? result.relationship.type ?? '').toLowerCase();
+      const name = fullName({ firstName: created.firstName ?? '', lastName: created.lastName ?? '' });
+      this.toast.success(this.i18n.dynamic(key).replace('__NAME__', name), {
+        action: this.i18n.t('rel.open'),
+        onAction: () => void this.router.navigate(['/persons', created.id])
+      });
+    } else {
+      this.toast.success(this.i18n.t('rel.added.toast'));
+    }
   }
 
   remove(r: PersonRelationDto) {

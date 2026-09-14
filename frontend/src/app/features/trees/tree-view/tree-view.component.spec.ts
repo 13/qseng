@@ -66,6 +66,14 @@ describe('TreeViewComponent', () => {
     await cmp.addRelationFor(people[0], 'Parent');
     expect(dialog.open).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ data: expect.objectContaining({ treeId: 't1', anchor: people[0], presetType: 'Parent' }) }));
   });
+  it('when the dialog creates a new person, reloads, selects it and toasts an "Open" action', async () => {
+    const { cmp, dialog, store, toast } = setup();
+    dialog.open.mockReturnValueOnce({ afterClosed: () => of({ relationship: { id: 'r9', type: 'Parent' }, created: { id: 'n1', firstName: 'Anna', lastName: 'Ray' } }) } as unknown as ReturnType<typeof dialog.open>);
+    await cmp.addRelationFor(people[0], 'Child');
+    expect(store.reload).toHaveBeenCalled();
+    expect(store.select).toHaveBeenCalledWith('n1');
+    expect(toast.success).toHaveBeenCalledWith('rel.added.child', expect.objectContaining({ action: 'rel.open', onAction: expect.any(Function) }));
+  });
   it('on handset, selecting a node opens the bottom sheet instead of the side panel', () => {
     const { cmp, sheet, store } = setup(true);
     cmp.onSelected('a');

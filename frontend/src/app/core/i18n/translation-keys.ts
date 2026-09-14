@@ -70,6 +70,9 @@ export type TranslationKey =
   | 'event.move'
   | 'event.occupation'
   | 'fam.add'
+  | 'fam.add.child'
+  | 'fam.add.parent'
+  | 'fam.add.spouse'
   | 'fam.adoptiveChildren'
   | 'fam.adoptiveParents'
   | 'fam.children'
@@ -189,6 +192,10 @@ export type TranslationKey =
   | 'register.tagline'
   | 'register.title'
   | 'register.username'
+  | 'rel.added.adoptive'
+  | 'rel.added.child'
+  | 'rel.added.parent'
+  | 'rel.added.spouse'
   | 'rel.added.toast'
   | 'rel.adoptive'
   | 'rel.child'
@@ -201,6 +208,13 @@ export type TranslationKey =
   | 'rel.dialog.title'
   | 'rel.dialog.to'
   | 'rel.dialog.type'
+  | 'rel.mode.existing'
+  | 'rel.mode.new'
+  | 'rel.new.birthPlace'
+  | 'rel.new.firstName'
+  | 'rel.new.lastName'
+  | 'rel.new.sex'
+  | 'rel.open'
   | 'rel.parent'
   | 'rel.spouse'
   | 'restored.toast'
@@ -395,6 +409,9 @@ export const TRANSLATION_KEYS: readonly TranslationKey[] = [
   'event.move',
   'event.occupation',
   'fam.add',
+  'fam.add.child',
+  'fam.add.parent',
+  'fam.add.spouse',
   'fam.adoptiveChildren',
   'fam.adoptiveParents',
   'fam.children',
@@ -514,6 +531,10 @@ export const TRANSLATION_KEYS: readonly TranslationKey[] = [
   'register.tagline',
   'register.title',
   'register.username',
+  'rel.added.adoptive',
+  'rel.added.child',
+  'rel.added.parent',
+  'rel.added.spouse',
   'rel.added.toast',
   'rel.adoptive',
   'rel.child',
@@ -526,6 +547,13 @@ export const TRANSLATION_KEYS: readonly TranslationKey[] = [
   'rel.dialog.title',
   'rel.dialog.to',
   'rel.dialog.type',
+  'rel.mode.existing',
+  'rel.mode.new',
+  'rel.new.birthPlace',
+  'rel.new.firstName',
+  'rel.new.lastName',
+  'rel.new.sex',
+  'rel.open',
   'rel.parent',
   'rel.spouse',
   'restored.toast',

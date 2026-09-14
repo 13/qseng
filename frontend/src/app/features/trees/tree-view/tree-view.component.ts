@@ -13,7 +13,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatDialog } from '@angular/material/dialog';
 import { MatBottomSheet, MatBottomSheetRef } from '@angular/material/bottom-sheet';
-import { PersonDto, PersonsApi, RelationshipDto } from '../../../core/api/generated';
+import { PersonDto, PersonsApi } from '../../../core/api/generated';
 import { I18nService } from '../../../core/i18n/i18n.service';
 import { TranslatePipe } from '../../../core/i18n/translate.pipe';
 import { BreadcrumbService } from '../../../core/ui/breadcrumb.service';
@@ -21,7 +21,7 @@ import { ConfirmDialogService } from '../../../core/ui/confirm-dialog.service';
 import { ToastService } from '../../../core/ui/toast.service';
 import { LayoutService } from '../../../core/ui/layout.service';
 import { fullName } from '../../../core/models/person-helpers';
-import { RelationshipDialogComponent, RelationshipDialogData } from '../../persons/relationship-dialog.component';
+import { RelationshipDialogComponent, RelationshipDialogData, RelationshipDialogResult } from '../../persons/relationship-dialog.component';
 import { TreeStore } from './tree.store';
 import { TreeGraphService } from './tree-graph.service';
 import { UiRelType } from './tree-graph.model';
@@ -284,13 +284,24 @@ export class TreeViewComponent {
   }
 
   private async openRelationshipDialog(data: RelationshipDialogData): Promise<void> {
-    const ref = this.dialog.open<RelationshipDialogComponent, RelationshipDialogData, RelationshipDto | undefined>(
+    const ref = this.dialog.open<RelationshipDialogComponent, RelationshipDialogData, RelationshipDialogResult | undefined>(
       RelationshipDialogComponent, { data, width: '520px', maxWidth: '95vw' }
     );
     const result = await firstValueFrom(ref.afterClosed());
     if (!result) return;
-    this.toast.success(this.i18n.t('rel.added.toast'));
     this.store.reload();
+    if (result.created) {
+      const created = result.created;
+      const key = 'rel.added.' + (data.presetType ?? result.relationship.type ?? '').toLowerCase();
+      const name = fullName({ firstName: created.firstName ?? '', lastName: created.lastName ?? '' });
+      this.toast.success(this.i18n.dynamic(key).replace('__NAME__', name), {
+        action: this.i18n.t('rel.open'),
+        onAction: () => this.open(created.id!)
+      });
+      if (created.id) this.onSelected(created.id);
+    } else {
+      this.toast.success(this.i18n.t('rel.added.toast'));
+    }
   }
 
   async deletePerson(person: PersonDto): Promise<void> {
