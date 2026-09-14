@@ -1169,6 +1169,7 @@ import { I18nService } from '../../core/i18n/i18n.service';
 import { ThemeService } from '../../core/theme/theme.service';
 
 function setup(confirmResult: boolean | string = 'hunter2') {
+  TestBed.resetTestingModule(); // setup() runs twice in one test below
   const session = { accessToken: 'new', refreshToken: 'r2', userId: 'u', displayName: 'Demo', username: 'demo', isAdmin: false };
   const api = {
     userGetProfile: vi.fn(() => of({ id: 'u', username: 'demo', displayName: 'Demo', email: 'd@x', isAdmin: false, language: 'de', createdAt: '2026-01-01T00:00:00Z' })),
@@ -1694,6 +1695,7 @@ const users = [
 ];
 
 function setup(handset = false, confirmResult = true, dialogResult: unknown = undefined) {
+  TestBed.resetTestingModule(); // setup() runs twice in one test below
   const api = {
     adminListUsers: vi.fn(() => of(users)),
     adminGetSettings: vi.fn(() => of({ registrationEnabled: true })),
