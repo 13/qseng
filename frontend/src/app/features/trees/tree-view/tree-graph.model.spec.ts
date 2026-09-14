@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { Person, Relationship } from '../../../core/api/api-client.service';
+import { PersonDto as Person, RelationshipDto as Relationship } from '../../../core/api/generated';
 import { NodeTheme } from './node-svg';
 import {
   LAYOUT_VERSION, SavedLayout,
