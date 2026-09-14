@@ -129,6 +129,8 @@ export type TranslationKey =
   | 'nav.lang'
   | 'nav.logout'
   | 'nav.settings'
+  | 'nav.skip'
+  | 'nav.theme.auto'
   | 'nav.theme.dark'
   | 'nav.theme.light'
   | 'nav.users'
@@ -426,6 +428,8 @@ export const TRANSLATION_KEYS: readonly TranslationKey[] = [
   'nav.lang',
   'nav.logout',
   'nav.settings',
+  'nav.skip',
+  'nav.theme.auto',
   'nav.theme.dark',
   'nav.theme.light',
   'nav.users',
