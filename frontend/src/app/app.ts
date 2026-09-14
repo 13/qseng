@@ -1,4 +1,4 @@
-import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, Injector, afterNextRender, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, NavigationCancel, NavigationEnd, NavigationError, NavigationStart, Router, RouterLink, RouterOutlet } from '@angular/router';
 import { MatToolbarModule } from '@angular/material/toolbar';
@@ -103,6 +103,7 @@ export class App {
   private readonly pending = inject(PendingRequestsService);
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly injector = inject(Injector);
 
   private readonly navigating = signal(false);
   private lastPath: string | null = null;
@@ -122,7 +123,10 @@ export class App {
           const path = e.urlAfterRedirects.split(/[?#]/)[0];
           if (path !== this.lastPath) {
             this.lastPath = path;
-            queueMicrotask(() => (document.querySelector('main h1') as HTMLElement | null)?.focus?.());
+            afterNextRender(
+              () => (document.querySelector('main h1') as HTMLElement | null)?.focus?.(),
+              { injector: this.injector }
+            );
           }
         }
       }
