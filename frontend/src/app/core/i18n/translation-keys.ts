@@ -200,6 +200,12 @@ export type TranslationKey =
   | 'search.placeholder'
   | 'search.searching'
   | 'search.title'
+  | 'settings.appearance.auto'
+  | 'settings.appearance.dark'
+  | 'settings.appearance.hint'
+  | 'settings.appearance.light'
+  | 'settings.appearance.title'
+  | 'settings.danger.title'
   | 'settings.delete.btn'
   | 'settings.delete.confirm'
   | 'settings.delete.deleting'
@@ -209,11 +215,13 @@ export type TranslationKey =
   | 'settings.deleteData.btn'
   | 'settings.deleteData.confirm'
   | 'settings.deleteData.deleting'
+  | 'settings.deleteData.done'
   | 'settings.deleteData.hint'
   | 'settings.deleteData.submit'
   | 'settings.deleteData.title'
   | 'settings.export.btn'
   | 'settings.export.busy'
+  | 'settings.export.done'
   | 'settings.export.hint'
   | 'settings.export.title'
   | 'settings.lang.hint'
@@ -226,6 +234,10 @@ export type TranslationKey =
   | 'settings.password.save'
   | 'settings.password.saving'
   | 'settings.password.title'
+  | 'settings.profile.email'
+  | 'settings.profile.member'
+  | 'settings.profile.title'
+  | 'settings.profile.username'
   | 'settings.title'
   | 'sex.female'
   | 'sex.label'
@@ -512,6 +524,12 @@ export const TRANSLATION_KEYS: readonly TranslationKey[] = [
   'search.placeholder',
   'search.searching',
   'search.title',
+  'settings.appearance.auto',
+  'settings.appearance.dark',
+  'settings.appearance.hint',
+  'settings.appearance.light',
+  'settings.appearance.title',
+  'settings.danger.title',
   'settings.delete.btn',
   'settings.delete.confirm',
   'settings.delete.deleting',
@@ -521,11 +539,13 @@ export const TRANSLATION_KEYS: readonly TranslationKey[] = [
   'settings.deleteData.btn',
   'settings.deleteData.confirm',
   'settings.deleteData.deleting',
+  'settings.deleteData.done',
   'settings.deleteData.hint',
   'settings.deleteData.submit',
   'settings.deleteData.title',
   'settings.export.btn',
   'settings.export.busy',
+  'settings.export.done',
   'settings.export.hint',
   'settings.export.title',
   'settings.lang.hint',
@@ -538,6 +558,10 @@ export const TRANSLATION_KEYS: readonly TranslationKey[] = [
   'settings.password.save',
   'settings.password.saving',
   'settings.password.title',
+  'settings.profile.email',
+  'settings.profile.member',
+  'settings.profile.title',
+  'settings.profile.username',
   'settings.title',
   'sex.female',
   'sex.label',
