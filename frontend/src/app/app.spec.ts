@@ -38,6 +38,13 @@ describe('App shell', () => {
     expect(fixture.nativeElement.querySelector('mat-toolbar')).toBeNull();
   });
 
+  it('renders no toolbar for an anonymous visitor on an app route', async () => {
+    const fixture = setup(false);
+    await TestBed.inject(Router).navigateByUrl('/trees');
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('mat-toolbar')).toBeNull();
+  });
+
   it('shows toolbar, brand and user initials on app routes', async () => {
     const fixture = setup(true);
     await TestBed.inject(Router).navigateByUrl('/trees');

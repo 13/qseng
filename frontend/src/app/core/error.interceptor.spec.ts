@@ -55,7 +55,7 @@ describe('errorInterceptor', () => {
     http.get('/c').subscribe({ error: e => (caught = e) });
     ctrl.expectOne('/c').flush({ status: 400, errors: { x: ['bad'] } }, { status: 400, statusText: 'b' });
     expect(toast.error).toHaveBeenCalledTimes(2);
-    expect(toast.error).toHaveBeenNthCalledWith(1, 'Forbidden');
+    expect(toast.error).toHaveBeenNthCalledWith(1, 'err.forbidden');
     expect(caught).toBeDefined();
   });
 });

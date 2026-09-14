@@ -42,3 +42,6 @@ main h1 { outline: none; }
 
 .qs-toast-error   { --mat-snack-bar-container-color: var(--mat-sys-error-container); --mat-snack-bar-supporting-text-color: var(--mat-sys-on-error-container); --mat-snack-bar-button-color: var(--mat-sys-on-error-container); }
 .qs-toast-success { --mat-snack-bar-container-color: var(--mat-sys-primary-container); --mat-snack-bar-supporting-text-color: var(--mat-sys-on-primary-container); --mat-snack-bar-button-color: var(--mat-sys-on-primary-container); }
+.qs-toast-info { --mat-snack-bar-container-color: var(--mat-sys-inverse-surface); --mat-snack-bar-supporting-text-color: var(--mat-sys-inverse-on-surface); --mat-snack-bar-button-color: var(--mat-sys-inverse-primary); }
+
+.qs-main--app { max-width: var(--qs-page-max); margin: 0 auto; padding: 24px var(--qs-gutter) 48px; }

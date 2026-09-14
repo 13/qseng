@@ -5,7 +5,7 @@ import { isValidationProblem, problemMessage } from './problem-details';
 describe('problem-details', () => {
   it('prefers detail, then title, then fallback', () => {
     expect(problemMessage(new HttpErrorResponse({ error: { status: 409, title: 'Conflict', detail: 'Name taken' } }), 'x')).toBe('Name taken');
-    expect(problemMessage(new HttpErrorResponse({ error: { status: 404, title: 'Not Found' } }), 'x')).toBe('Not Found');
+    expect(problemMessage(new HttpErrorResponse({ error: { status: 404, title: 'Not Found' } }), 'x')).toBe('x');
     expect(problemMessage(new HttpErrorResponse({ error: 'html garbage' }), 'fallback')).toBe('fallback');
   });
 

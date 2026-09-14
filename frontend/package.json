@@ -1,6 +1,7 @@
 {
   "name": "frontend",
   "version": "0.0.0",
+  "//": "postinstall runs the i18n key and OpenAPI client generators; CI must install devDependencies (npm ci without --omit=dev). src/app/core/api/generated/ is not committed.",
   "scripts": {
     "ng": "ng",
     "start": "ng serve",

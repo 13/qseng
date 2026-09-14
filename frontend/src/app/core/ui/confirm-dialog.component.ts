@@ -33,7 +33,7 @@ export interface ConfirmOptions {
     </mat-dialog-content>
     <mat-dialog-actions align="end">
       <button matButton (click)="ref.close(false)">{{ data.cancelLabel ?? ('cancel' | translate) }}</button>
-      <button matButton="filled" [class.qs-destructive]="data.destructive" cdkFocusInitial
+      <button matButton="filled" [class.qs-destructive]="data.destructive"
               [disabled]="data.requirePassword && !password()" (click)="confirm()">
         {{ data.confirmLabel ?? ('delete' | translate) }}
       </button>

@@ -27,7 +27,9 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
 
   const endSession = () => {
     auth.clear();
-    void router.navigate(['/login'], { queryParams: { returnUrl: router.url } });
+    const current = router.url;
+    const returnUrl = current.startsWith('/login') ? undefined : current;
+    void router.navigate(['/login'], { queryParams: returnUrl ? { returnUrl } : {} });
   };
 
   return next(req).pipe(

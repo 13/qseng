@@ -1,3 +1,4 @@
+// Canonical client-side ProblemDetails types for error handling. The generated client also exports ProblemDetails/ValidationProblemDetails under core/api/generated; import from here in application code.
 import { HttpErrorResponse } from '@angular/common/http';
 
 export interface ProblemDetails { type?: string; title?: string; status?: number; detail?: string; }
@@ -18,6 +19,6 @@ export function problemMessage(err: unknown, fallback: string): string {
     const first = Object.values(body.errors).flat()[0];
     if (first) return first;
   }
-  if (isProblem(body)) return body.detail ?? body.title ?? fallback;
+  if (isProblem(body)) return body.detail ?? fallback;
   return fallback;
 }

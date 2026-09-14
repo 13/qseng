@@ -22,7 +22,7 @@ import { BreadcrumbService } from './core/ui/breadcrumb.service';
   template: `
     <a class="qs-skip-link" href="#main">{{ 'nav.skip' | translate }}</a>
 
-    @if (layout() === 'app') {
+    @if (layout() === 'app' && auth.isAuthenticated()) {
       <mat-toolbar class="qs-toolbar">
         <a class="qs-brand" routerLink="/trees" aria-label="Qseng">
           <mat-icon aria-hidden="true">park</mat-icon>
@@ -71,7 +71,7 @@ import { BreadcrumbService } from './core/ui/breadcrumb.service';
       <mat-progress-bar class="qs-progress" mode="indeterminate" [class.qs-progress--on]="busy()" aria-hidden="true" />
     }
 
-    <main id="main" tabindex="-1" [class.qs-main--app]="layout() === 'app'">
+    <main id="main" tabindex="-1" [class.qs-main--app]="layout() === 'app' && !fullBleed()">
       <router-outlet />
     </main>
   `,
@@ -108,6 +108,7 @@ export class App {
   private readonly navigating = signal(false);
   private lastPath: string | null = null;
   readonly layout = signal<'auth' | 'app'>('app');
+  readonly fullBleed = signal(false);
   readonly busy = computed(() => this.navigating() || this.pending.busy());
 
   readonly themeIcon = computed(() => ({ auto: 'brightness_auto', light: 'light_mode', dark: 'dark_mode' })[this.theme.mode()]);
@@ -119,6 +120,7 @@ export class App {
       if (e instanceof NavigationEnd || e instanceof NavigationCancel || e instanceof NavigationError) {
         this.navigating.set(false);
         this.layout.set(this.deepestData()['layout'] === 'auth' ? 'auth' : 'app');
+        this.fullBleed.set(this.deepestData()['fullBleed'] === true);
         if (e instanceof NavigationEnd) {
           const path = e.urlAfterRedirects.split(/[?#]/)[0];
           if (path !== this.lastPath) {

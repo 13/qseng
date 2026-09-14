@@ -1,3 +1,4 @@
+@layer qs-legacy {
 /* ================================================
    Design Tokens
    ================================================ */
@@ -1859,4 +1860,5 @@ label {
   }
 
   .btn.danger:hover, button.danger:hover { border-color: #7f1d1d; }
+}
 }

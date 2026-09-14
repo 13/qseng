@@ -23,8 +23,17 @@ export class I18nService {
   }
 
   async load(): Promise<void> {
-    const [en, de] = await Promise.all(LANGS.map(l => fetch(`assets/i18n/${l}.json`).then(r => r.json() as Promise<Dictionary>)));
-    this.dictionaries.set({ en, de });
+    const loaded = await Promise.all(LANGS.map(async lang => {
+      try {
+        const r = await fetch(`assets/i18n/${lang}.json`);
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return [lang, (await r.json()) as Dictionary] as const;
+      } catch (err) {
+        console.warn(`i18n: could not load ${lang} dictionary`, err);
+        return [lang, {} as Dictionary] as const;
+      }
+    }));
+    this.dictionaries.set(Object.fromEntries(loaded) as Record<Lang, Dictionary>);
   }
 
   /** Type-checked lookup for literal keys. */

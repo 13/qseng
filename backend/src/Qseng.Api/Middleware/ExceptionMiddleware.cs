@@ -26,6 +26,8 @@ public class ExceptionMiddleware
         }
         catch (ValidationException vex)
         {
+            if (ctx.Response.HasStarted) throw;
+
             var errors = vex.Errors
                 .GroupBy(e => CamelCasePath(e.PropertyName))
                 .ToDictionary(g => g.Key, g => g.Select(e => e.ErrorMessage).ToArray());
@@ -39,6 +41,8 @@ public class ExceptionMiddleware
         }
         catch (Exception ex)
         {
+            if (ctx.Response.HasStarted) throw;
+
             _log.LogError(ex, "Unhandled exception");
             var problem = new ProblemDetails
             {

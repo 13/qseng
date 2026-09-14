@@ -45,4 +45,14 @@ describe('I18nService', () => {
     await i18n.load();
     expect(i18n.relLabel('Parent')).toBe('Parent');
   });
+
+  it('survives a failed dictionary fetch and falls back to the key', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response('nope', { status: 404 })));
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => { /* silence expected warning */ });
+    const i18n = TestBed.inject(I18nService);
+    await expect(i18n.load()).resolves.toBeUndefined();
+    expect(i18n.t('save')).toBe('save');
+    expect(warn).toHaveBeenCalled();
+    warn.mockRestore();
+  });
 });
