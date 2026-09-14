@@ -103,7 +103,7 @@ import { TrashCardComponent } from './trash-card.component';
         </mat-card-content>
       </mat-card>
 
-      <qs-trash-card id="trash" #trashCard />
+      <qs-trash-card id="trash" #trashCard tabindex="-1" />
 
       <mat-card appearance="outlined" class="qs-danger">
         <mat-card-header><mat-card-title>{{ 'settings.danger.title' | translate }}</mat-card-title></mat-card-header>
@@ -164,7 +164,7 @@ export class SettingsComponent implements OnInit {
   constructor() {
     effect(() => {
       const el = this.trashCard()?.nativeElement;
-      if (this.fragment() === 'trash' && el) queueMicrotask(() => el.scrollIntoView({ block: 'start' }));
+      if (this.fragment() === 'trash' && el) queueMicrotask(() => { el.scrollIntoView({ block: 'start' }); el.focus({ preventScroll: true }); });
     });
   }
 

@@ -90,8 +90,7 @@ describe('SettingsComponent', () => {
   });
 
   it('scrolls the #trash card into view when arriving with the "trash" fragment', async () => {
-    // afterNextRender is macrotask-scheduled in zoneless mode (see app.spec.ts's identical
-    // technique), so this needs autoDetectChanges() plus a real timer tick, not detectChanges().
+    // The scroll runs in a queueMicrotask inside a viewChild-driven effect; flush microtasks before asserting.
     const original = Element.prototype.scrollIntoView;
     const scrollSpy = vi.fn();
     Element.prototype.scrollIntoView = scrollSpy;

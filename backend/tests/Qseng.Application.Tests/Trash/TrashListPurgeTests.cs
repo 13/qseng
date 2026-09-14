@@ -68,7 +68,7 @@ public class TrashListPurgeTests
     }
 
     [Fact]
-    public async Task PurgeBatch_of_a_person_with_no_deletion_batch_does_not_delete_other_owners_live_events()
+    public async Task PurgeBatch_of_a_person_with_no_deletion_batch_does_not_delete_unrelated_live_events()
     {
         var (db, owner, a, b, _, _, _) = await TrashFixtures.SeedFamilyAsync();
         // Trashed directly (not via DeletePersonHandler), so DeletionBatchId stays null —

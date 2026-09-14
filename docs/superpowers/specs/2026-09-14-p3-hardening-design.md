@@ -167,3 +167,12 @@ Node 22 in CI (`docker/Dockerfile.web` moves to `node:22-alpine` for consistency
   build (budget 800 kB — re-measured; if the trash card pushes the initial bundle over, it is
   lazy) green; OpenAPI contract regenerated and committed with the new trash operations.
 - README updated; spec §7 results block appended at the end (measured coverage, bundle).
+
+## 8. P3a results (2026-09-15, branch `feat/p3-hardening`)
+
+- CORS from `Cors:AllowedOrigins` (validated at startup; origins with a path, query, fragment or trailing slash are rejected because the middleware compares the `Origin` header verbatim); Development defaults to `http://localhost:4200`.
+- Auth rate limit: fixed window per client IP (`RateLimiting:Auth`, 10 / 60 s), 429 ProblemDetails with `Retry-After`, rejections logged at Warning. Behind the compose nginx the client IP comes from `X-Forwarded-For`, trusted only from `ForwardedHeaders:KnownNetworks` — the compose file pins the network to `172.28.0.0/16`; a custom Docker address pool must be mirrored into `ForwardedHeaders__KnownNetworks__0`, otherwise every client shares one partition. The api container no longer publishes a host port (nginx is the only entry).
+- Health: `/health/live`, `/health/ready` (database + uploads-writable, path rooted at the content root); the image HEALTHCHECK uses `/health/ready`.
+- Trash: `Trash_List` / `Trash_Purge`; the Settings card uses the key `trash.hint` for the retention note (spec text said `trash.retention`). Purge removes rows before files (orphan files, never dangling rows); a null deletion batch cannot widen a purge.
+- Avatar swap and media delete run in one transaction; account/data deletion removes media files after the commit; timeline delete is scoped by person.
+- Backend 109 tests on real SQLite; frontend 53 files / 297 tests; bundle 793 kB (headroom 7 kB). Deferred: app-wide `LOCALE_ID` for dates; unthrottled health endpoints (mitigated by no host port); `docker-compose.override.yml` now resets the api → postgres dependency for the SQLite profile.
