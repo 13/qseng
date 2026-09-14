@@ -283,23 +283,31 @@ export type TranslationKey =
   | 'tree.zoomOut'
   | 'trees.cancel'
   | 'trees.created'
+  | 'trees.created.toast'
   | 'trees.delete'
   | 'trees.delete.confirm'
+  | 'trees.deleted.toast'
   | 'trees.edit'
   | 'trees.editCancel'
   | 'trees.empty'
+  | 'trees.emptyHint'
+  | 'trees.emptyImport'
+  | 'trees.emptyTitle'
   | 'trees.err.create'
   | 'trees.err.delete'
   | 'trees.err.load'
   | 'trees.err.save'
+  | 'trees.menu'
   | 'trees.new'
   | 'trees.new.desc'
   | 'trees.new.name'
+  | 'trees.new.rename'
   | 'trees.new.submit'
   | 'trees.new.title'
   | 'trees.open'
   | 'trees.optional'
   | 'trees.persons'
+  | 'trees.renamed.toast'
   | 'trees.save'
   | 'trees.title';
 
@@ -587,23 +595,31 @@ export const TRANSLATION_KEYS: readonly TranslationKey[] = [
   'tree.zoomOut',
   'trees.cancel',
   'trees.created',
+  'trees.created.toast',
   'trees.delete',
   'trees.delete.confirm',
+  'trees.deleted.toast',
   'trees.edit',
   'trees.editCancel',
   'trees.empty',
+  'trees.emptyHint',
+  'trees.emptyImport',
+  'trees.emptyTitle',
   'trees.err.create',
   'trees.err.delete',
   'trees.err.load',
   'trees.err.save',
+  'trees.menu',
   'trees.new',
   'trees.new.desc',
   'trees.new.name',
+  'trees.new.rename',
   'trees.new.submit',
   'trees.new.title',
   'trees.open',
   'trees.optional',
   'trees.persons',
+  'trees.renamed.toast',
   'trees.save',
   'trees.title',
 ];
