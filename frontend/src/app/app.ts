@@ -45,7 +45,7 @@ import { ShortcutService } from './core/ui/shortcut.service';
 
         <span class="qs-spacer"></span>
 
-        <button matIconButton (click)="palette.open()" [matTooltip]="'nav.search' | translate" [attr.aria-label]="'nav.search' | translate">
+        <button matIconButton id="qs-palette-trigger" (click)="palette.open()" [matTooltip]="'nav.search' | translate" [attr.aria-label]="'nav.search' | translate">
           <mat-icon>search</mat-icon>
         </button>
 
@@ -141,7 +141,7 @@ export class App {
           if (path !== this.lastPath) {
             this.lastPath = path;
             afterNextRender(
-              () => (document.querySelector('main h1') as HTMLElement | null)?.focus?.(),
+              () => (document.querySelector('main h1') as HTMLElement | null)?.focus?.({ preventScroll: true }),
               { injector: this.injector }
             );
           }
