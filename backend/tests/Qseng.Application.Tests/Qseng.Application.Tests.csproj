@@ -15,8 +15,13 @@
     <PackageReference Include="FluentAssertions" Version="8.3.0" />
     <PackageReference Include="NSubstitute" Version="5.3.0" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="9.0.4" />
-    <!-- No 9.0.4 release of this package exists; 9.0.0 is the closest match to the
-         solution's other Microsoft.Extensions.* packages (all pinned to 9.0.4). -->
+    <!-- Microsoft.Extensions.TimeProvider.Testing versions on its own cadence, independent of the
+         runtime's Microsoft.Extensions.* line this solution pins to 9.0.4: its published 9.x
+         releases go 9.0.0, 9.1.0, 9.2.0, ... 9.10.0 (then 10.x) with no 9.0.1-9.0.4 in between
+         (checked against nuget.org's version list), so no release of this package will ever match
+         9.0.4 exactly. 9.0.0 is therefore already the closest available match, not a stale pin;
+         revisit only if the rest of the line moves off 9.0.x entirely (e.g. to 10.x), at which
+         point a same-major TimeProvider.Testing version would exist to match it. -->
     <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" Version="9.0.0" />
   </ItemGroup>
   <ItemGroup>
