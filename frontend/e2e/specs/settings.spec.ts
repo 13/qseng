@@ -14,9 +14,21 @@ test.describe('settings', () => {
       // different files concurrently against the same API. A throwaway account has no such
       // neighbours to race. Both toggle labels are fixed, untranslated strings
       // ('Deutsch'/'English'), so they're clickable regardless of the fresh account's default
-      // starting language — the first click below establishes a known 'de' state.
+      // starting language.
       const page = freshUser.page;
       await page.goto('/settings');
+
+      // A fresh account starts in the server's default language (User.Language = "de" in the
+      // backend entity today). Clicking the radio that is already selected fires no change
+      // event and no "saved" toast, so if the page opens in German, flip to English first —
+      // every click from here on then really changes the setting.
+      const heading = page.getByRole('heading', { level: 1 });
+      await expect(heading).toBeVisible();
+      if ((await heading.innerText()).trim() === 'Einstellungen') {
+        await page.getByRole('radio', { name: 'English' }).click();
+        await expect(page.getByText('Language saved.').first()).toBeVisible();
+        await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible();
+      }
 
       await page.getByRole('radio', { name: 'Deutsch' }).click();
       await expect(page.getByText('Sprache gespeichert.').first()).toBeVisible();
