@@ -21,7 +21,10 @@ WORKDIR /app
 # with the image's own "ubuntu" account on the non-preview tag, so useradd -u 1000 would fail).
 RUN mkdir -p /data /app/uploads && chown app /data /app/uploads
 # mcr.microsoft.com/dotnet/aspnet:10.0 ships neither wget nor curl; install curl for the
-# HEALTHCHECK probe below.
+# HEALTHCHECK probe below. --no-install-recommends already keeps this to curl's own dependency
+# closure. This does add a Debian-mirror network dependency to the image build that the base pull
+# alone doesn't have — accepted for a working HEALTHCHECK; a custom .NET health-probe binary would
+# drop it but isn't justified by one curl install.
 RUN apt-get update && apt-get install -y --no-install-recommends curl \
  && rm -rf /var/lib/apt/lists/*
 USER app
