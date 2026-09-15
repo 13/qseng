@@ -1,5 +1,5 @@
 import { TestBed } from '@angular/core/testing';
-import { DatePipe, registerLocaleData } from '@angular/common';
+import { DatePipe, formatDate, registerLocaleData } from '@angular/common';
 import localeDe from '@angular/common/locales/de';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { of } from 'rxjs';
@@ -80,6 +80,12 @@ describe('TrashCardComponent', () => {
     const expectedDe = new DatePipe('de').transform(items[0].deletedAt, 'mediumDate')!;
     expect(expectedDe).not.toBe(expectedEn);
     expect(deText).toContain(expectedDe);
+
+    // 'mediumDate' happens to be fully numeric in German ("dd.MM.y"), so the assertions above
+    // don't actually prove a month name renders. Prove it directly with a month-token format,
+    // via the same locale data registered at the top of this file (mirroring app.config.ts).
+    expect(formatDate(new Date(2026, 0, 15), 'MMMM', 'en')).toBe('January');
+    expect(formatDate(new Date(2026, 0, 15), 'MMMM', 'de')).toBe('Januar');
   });
 
   it('shows trash.empty when the list is empty', () => {
