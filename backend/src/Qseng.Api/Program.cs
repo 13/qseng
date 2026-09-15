@@ -146,7 +146,9 @@ builder.Services.AddRateLimiter(o => AuthRateLimitPolicy.Configure(o, rateLimiti
 
 // The docker image sits behind nginx, which sets X-Forwarded-For/-Proto; without this the
 // per-IP rate limiter and any IP-based logic would only ever see the proxy's own address.
-// KnownNetworks defaults to empty, which means only loopback proxies are trusted.
+// ForwardedHeadersOptions keeps its built-in loopback defaults (127.0.0.1/8 and ::1) regardless;
+// KnownNetworks configured here are added on top of those, not a replacement for them, so an
+// empty list still trusts loopback proxies, not "nothing".
 var knownNetworks = builder.Configuration.GetSection("ForwardedHeaders:KnownNetworks").Get<string[]>() ?? [];
 builder.Services.Configure<ForwardedHeadersOptions>(o =>
 {
