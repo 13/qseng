@@ -17,7 +17,10 @@ public class GenealogyTextParser : IGenealogyParser
         RegexOptions.Multiline | RegexOptions.IgnoreCase);
 
     private static readonly Regex MarriageRx = new(
-        $@"^[^\S\n]*(?<a>[A-ZÄÖÜ][\wäöüÄÖÜß\-]+(?:[^\S\n]+[A-ZÄÖÜ][\wäöüÄÖÜß\-]+)*?)[^\S\n]+oo[^\S\n]+" +
+        // Same optional bullet prefix PersonRx accepts (`^\s*[-•*]?\s*`), kept on the
+        // horizontal-whitespace-only anchor so a bullet doesn't reopen the cross-newline capture
+        // the `^[^\S\n]*` anchor exists to prevent.
+        $@"^[^\S\n]*[-•*]?[^\S\n]*(?<a>[A-ZÄÖÜ][\wäöüÄÖÜß\-]+(?:[^\S\n]+[A-ZÄÖÜ][\wäöüÄÖÜß\-]+)*?)[^\S\n]+oo[^\S\n]+" +
         $@"(?<b>[A-ZÄÖÜ][\wäöüÄÖÜß\-]+(?:[^\S\n]+[A-ZÄÖÜ][\wäöüÄÖÜß\-]+)*?)(?=[^\S\n]*,|[^\S\n]+in[^\S\n]|[^\S\n]*$)" +
         $@"(?:,\s*(?<date>{DatePat}))?" +
         @"(?:[^\S\n]+in[^\S\n]+(?<place>[^\n]+))?",

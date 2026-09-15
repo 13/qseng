@@ -102,4 +102,18 @@ public class GenealogyTextParserTests
         marriage.SpouseAName.Should().Be("Ludwig von Beethoven");
         marriage.SpouseBName.Should().Be("Anna de Vries");
     }
+
+    [Theory]
+    [InlineData("- Max Mustermann oo Maria Huber, 1905")]
+    [InlineData("• Max Mustermann oo Maria Huber, 1905")]
+    [InlineData("* Max Mustermann oo Maria Huber, 1905")]
+    public void MarriageLine_WithBulletPrefix_MatchesSameAsPersonRx(string text)
+    {
+        // PersonRx already accepts this optional prefix (`^\s*[-•*]?\s*`); MarriageRx must too.
+        var result = new GenealogyTextParser().Parse(text);
+
+        var marriage = result.Marriages.Should().ContainSingle().Subject;
+        marriage.SpouseAName.Should().Be("Max Mustermann");
+        marriage.SpouseBName.Should().Be("Maria Huber");
+    }
 }
