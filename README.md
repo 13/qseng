@@ -148,6 +148,13 @@ gh attestation verify oci://ghcr.io/13/qseng-api:1.2.0 --owner 13
 docker run --rm ghcr.io/13/qseng-web:1.2.0 cat /usr/share/nginx/html/version.json
 ```
 
+Prerelease tags (`vX.Y.Z-<suffix>`, e.g. `v1.2.0-rc.1`) publish `X.Y.Z` and mark the GitHub Release
+as a prerelease, but never move `latest` or `X.Y`.
+
+If `docker pull` of a freshly published image is denied, the ghcr.io package is probably still
+private; make it public under the package's own settings on GitHub (Packages → `qseng-api` /
+`qseng-web` → Package settings → Change visibility).
+
 The running version is shown in Settings → About and in `/health/ready` (`version`, `commit`).
 Local builds report `0.0.0-dev`.
 
@@ -291,12 +298,14 @@ else — so that option isn't available here even where it would matter.
 
 ### What CI runs
 
-`.github/workflows/ci.yml` runs on every push to `main` and on pull requests, with five jobs:
+`.github/workflows/ci.yml` runs on pull requests, on every push to `main`, and on `v*` tags, with
+six jobs:
 
 | Job | What it does |
 |---|---|
 | `backend` | restore, build (Release), `dotnet test`, `dotnet publish` → uploads the published API as an artifact |
 | `frontend` | `npm ci`, `npm run gates`, `ng lint`, `npm run e2e:lint`, `ng test --coverage`, `ng build` (fails if the bundle exceeds its budget) → uploads the browser bundle as an artifact |
 | `contract` | regenerates `contracts/openapi.json` from a live API instance and fails if it drifts from the committed file, then regenerates the Angular API client and builds |
-| `e2e` | needs `backend` + `frontend`; downloads the published API artifact, installs Playwright's Chromium, runs the full Playwright suite against it |
-| `images` | builds both images (PRs) and pushes them to ghcr.io with attestations (push to main / v* tags); `release` creates the GitHub Release on tags |
+| `e2e` | needs `backend`; downloads the published API artifact, installs Playwright's Chromium, runs the full Playwright suite against it |
+| `images` | builds both images (PRs) and pushes them to ghcr.io with attestations (push to main / v* tags) |
+| `release` | creates the GitHub Release on `v*` tags; prerelease when the tag has a `-` suffix |
