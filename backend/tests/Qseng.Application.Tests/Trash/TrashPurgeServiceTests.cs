@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Threading.Channels;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -54,18 +55,22 @@ public class TrashPurgeServiceTests
         }
     }
 
-    /// <summary>An <see cref="ILogger{TrashPurger}"/> that completes <see cref="Logged"/> the first
-    /// time anything is logged. <see cref="TrashPurger.PurgeAsync"/> logs unconditionally — once per
-    /// run, after its <c>SaveChangesAsync</c> has already completed — so this is a deterministic "a
-    /// run has finished" signal, unlike polling a row whose presence is already true before any run
-    /// starts (which would return true on the very first poll and prove nothing).</summary>
+    /// <summary>An <see cref="ILogger{TrashPurger}"/> that writes to <see cref="Runs"/> every time
+    /// anything is logged. <see cref="TrashPurger.PurgeAsync"/> logs unconditionally — once per run,
+    /// after its <c>SaveChangesAsync</c> has already completed — so reading one item from
+    /// <see cref="Runs"/> is a deterministic "a run has finished" signal, unlike polling a row whose
+    /// presence is already true before any run starts (which would return true on the very first
+    /// poll and prove nothing). Unlike a single-shot <see cref="TaskCompletionSource"/>, an unbounded
+    /// <see cref="Channel{T}"/> is re-triggerable: every scheduled run gets its own item, so callers
+    /// can await a fresh completion signal before each read that follows it, not just the first.</summary>
     private sealed class SignalingLogger<T> : ILogger<T>
     {
-        public TaskCompletionSource Logged { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private readonly Channel<bool> _runs = Channel.CreateUnbounded<bool>();
+        public ChannelReader<bool> Runs => _runs.Reader;
         public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
         public bool IsEnabled(LogLevel logLevel) => true;
         public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
-            => Logged.TrySetResult();
+            => _runs.Writer.TryWrite(true);
     }
 
     [Fact]
@@ -135,25 +140,44 @@ public class TrashPurgeServiceTests
             // starts, so that poll would return true on its very first iteration and prove
             // nothing about the run having actually happened. The signal only fires after the
             // service's write is done, so the read below never races it on the shared connection.
-            var firstRunLogged = await Task.WhenAny(purgerLog.Logged.Task, Task.Delay(TimeSpan.FromSeconds(2)))
-                == purgerLog.Logged.Task;
+            var firstRunLogged = false;
+            using (var firstRunTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(2)))
+            {
+                try
+                {
+                    await purgerLog.Runs.ReadAsync(firstRunTimeout.Token);
+                    firstRunLogged = true;
+                }
+                catch (OperationCanceledException) when (firstRunTimeout.IsCancellationRequested) { }
+            }
             firstRunLogged.Should().BeTrue("the first run must complete and log within the timeout");
             var survivedFirstRun = await reads.Persons.IgnoreQueryFilters().AnyAsync(p => p.Id == recent.Id);
             survivedFirstRun.Should().BeTrue("the row is only 1 day old and not yet past the 30-day retention");
 
-            // Drive the fake clock forward by Interval-sized steps: each step both ages the row
-            // (well past the 30-day retention within a couple of steps) and, once the loop's
-            // Task.Delay(Interval, clock, ...) has actually been registered, satisfies it so the
-            // next scheduled run fires. A short real-time gap between steps gives the background
-            // loop's continuation a chance to run and (re-)register that delay before the next
-            // Advance — looping this way, instead of a single Advance call, avoids a race against
-            // exactly when the delay gets registered.
-            var purged = await PollUntilAsync(async () =>
+            // Drive the fake clock forward by Interval-sized steps until the row is purged. Each
+            // step both ages the row (well past the 30-day retention after enough steps) and,
+            // once the loop's Task.Delay(Interval, clock, ...) has actually been registered,
+            // satisfies it so the next scheduled run fires. Rather than a fixed real-time delay,
+            // each step awaits that run's own completion signal on the re-triggerable
+            // SignalingLogger — re-registration races are absorbed because a step that lands
+            // before the delay is (re-)registered simply produces no run, and the next step's
+            // Advance keeps pushing the clock forward until one does — so the read that follows
+            // never races a SaveChangesAsync still in flight on the shared connection, for this
+            // run or any later one. A single 2-second overall timeout bounds the whole loop.
+            var purged = false;
+            using (var loopTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(2)))
             {
-                clock.Advance(TrashPurgeService.Interval);
-                await Task.Delay(20);
-                return !await reads.Persons.IgnoreQueryFilters().AnyAsync(p => p.Id == recent.Id);
-            }, TimeSpan.FromSeconds(2));
+                try
+                {
+                    while (!purged)
+                    {
+                        clock.Advance(TrashPurgeService.Interval);
+                        await purgerLog.Runs.ReadAsync(loopTimeout.Token);
+                        purged = !await reads.Persons.IgnoreQueryFilters().AnyAsync(p => p.Id == recent.Id);
+                    }
+                }
+                catch (OperationCanceledException) when (loopTimeout.IsCancellationRequested) { }
+            }
 
             purged.Should().BeTrue("a scheduled run after the row aged past retention must purge it");
         }
