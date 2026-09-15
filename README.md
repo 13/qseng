@@ -250,9 +250,9 @@ run computes coverage (Vitest v8, reporters `text` + `lcov`) over `src/app/core/
 `src/app/shared/**` and enforces the pinned thresholds — lines 88 / functions 79 / branches 84 /
 statements 85 — failing the run if any drop below. `--coverage` on the command line is optional
 and only affects reporter verbosity. All 24 non-spec, non-generated `core/`/`shared/` files are
-measured on a full run — 15 have their own matching `*.spec.ts`, and the other 9 are loaded
-(and so instrumented) transitively by the rest of the suite; check `coverage/frontend/lcov.info`
-for the per-file list if that ever needs re-verifying. `@angular/build`'s Vitest integration
+instrumented on a full run (`coverage/frontend/lcov.info` has 24 `SF:` entries); some files reach
+100% on every metric and so don't print a row in the compact text table — see `lcov.info` for the
+authoritative per-file list. `@angular/build`'s Vitest integration
 (21.2.8) does not pass a `coverage.all` set via a `vitest.config.ts` runner config through to
 Vitest — its plugin rebuilds `test.coverage` from a fixed field whitelist and drops anything
 else — so that option isn't available here even where it would matter.
