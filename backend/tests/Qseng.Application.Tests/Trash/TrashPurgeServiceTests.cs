@@ -19,12 +19,15 @@ public class TrashPurgeServiceTests
 {
     private static readonly DateTimeOffset Start = new(2026, 1, 1, 0, 0, 0, TimeSpan.Zero);
 
-    private static ServiceProvider BuildProvider(IQsengDbContext db, FakeTimeProvider clock)
+    private static ServiceProvider BuildProvider(IQsengDbContext serviceDb, FakeTimeProvider clock)
     {
         var services = new ServiceCollection();
-        // The db context is a single real SQLite ":memory:" connection (see TestDb.Create), so
-        // every scope must resolve the same instance rather than getting its own context.
-        services.AddSingleton<IQsengDbContext>(db);
+        // serviceDb is the single context instance TrashPurger uses across every scoped run of
+        // the background loop. It must not also be read from concurrently by the test's own
+        // polling assertions — DbContext is not thread-safe, and a poll landing while
+        // PurgeAsync's SaveChangesAsync is in flight throws. Callers give the assertions their
+        // own context over the same underlying SQLite connection instead (see TestDb.CreateOn).
+        services.AddSingleton<IQsengDbContext>(serviceDb);
         services.AddSingleton<IFileStorage>(Substitute.For<IFileStorage>());
         services.AddSingleton<ILogger<TrashPurger>>(NullLogger<TrashPurger>.Instance);
         services.AddScoped<TrashPurger>();
@@ -51,7 +54,7 @@ public class TrashPurgeServiceTests
     [Fact]
     public async Task StartAsync_PurgesOnFirstRun_RemovingOnlyRowsPastRetention()
     {
-        var db = TestDb.Create();
+        var (db, connection) = TestDb.CreateWithConnection();
         var owner = TestDb.AddOwner(db).Id;
         var tree = new Tree { OwnerId = owner, Name = "T" };
         db.Trees.Add(tree);
@@ -63,16 +66,20 @@ public class TrashPurgeServiceTests
         var clock = new FakeTimeProvider(Start);
         await using var provider = BuildProvider(db, clock);
         var service = provider.GetRequiredService<TrashPurgeService>();
+        // A separate context over the same SQLite connection: the service's own context (db,
+        // above) is used exclusively by TrashPurger's background runs, so reads here never race
+        // a SaveChangesAsync in flight on the same instance.
+        await using var reads = TestDb.CreateOn(connection);
 
         await service.StartAsync(CancellationToken.None);
         try
         {
             var purged = await PollUntilAsync(
-                async () => !await db.Persons.IgnoreQueryFilters().AnyAsync(p => p.Id == old.Id),
+                async () => !await reads.Persons.IgnoreQueryFilters().AnyAsync(p => p.Id == old.Id),
                 TimeSpan.FromSeconds(2));
 
             purged.Should().BeTrue("the service purges once, immediately, when it starts");
-            (await db.Persons.IgnoreQueryFilters().AnyAsync(p => p.Id == recent.Id)).Should().BeTrue();
+            (await reads.Persons.IgnoreQueryFilters().AnyAsync(p => p.Id == recent.Id)).Should().BeTrue();
         }
         finally
         {
@@ -83,7 +90,7 @@ public class TrashPurgeServiceTests
     [Fact]
     public async Task ScheduledRun_PurgesARowThatAgedPastRetentionSinceStartup()
     {
-        var db = TestDb.Create();
+        var (db, connection) = TestDb.CreateWithConnection();
         var owner = TestDb.AddOwner(db).Id;
         var tree = new Tree { OwnerId = owner, Name = "T" };
         db.Trees.Add(tree);
@@ -96,13 +103,17 @@ public class TrashPurgeServiceTests
         var clock = new FakeTimeProvider(Start);
         await using var provider = BuildProvider(db, clock);
         var service = provider.GetRequiredService<TrashPurgeService>();
+        // A separate context over the same SQLite connection: the service's own context (db,
+        // above) is used exclusively by TrashPurger's background runs, so reads here never race
+        // a SaveChangesAsync in flight on the same instance.
+        await using var reads = TestDb.CreateOn(connection);
 
         await service.StartAsync(CancellationToken.None);
         try
         {
             // Let the immediate first run finish; the row is not old enough yet, so it must survive it.
             var survivedFirstRun = await PollUntilAsync(
-                async () => await db.Persons.IgnoreQueryFilters().AnyAsync(p => p.Id == recent.Id),
+                async () => await reads.Persons.IgnoreQueryFilters().AnyAsync(p => p.Id == recent.Id),
                 TimeSpan.FromSeconds(2));
             survivedFirstRun.Should().BeTrue();
 
@@ -117,7 +128,7 @@ public class TrashPurgeServiceTests
             {
                 clock.Advance(TrashPurgeService.Interval);
                 await Task.Delay(20);
-                return !await db.Persons.IgnoreQueryFilters().AnyAsync(p => p.Id == recent.Id);
+                return !await reads.Persons.IgnoreQueryFilters().AnyAsync(p => p.Id == recent.Id);
             }, TimeSpan.FromSeconds(2));
 
             purged.Should().BeTrue("a scheduled run after the row aged past retention must purge it");

@@ -24,17 +24,36 @@ internal static class TestDb
     /// in this test project disposes the returned context, so nothing closes
     /// the connection early.
     /// </summary>
-    public static QsengDbContext Create()
+    public static QsengDbContext Create() => CreateWithConnection().Db;
+
+    /// <summary>
+    /// Same as <see cref="Create"/>, but also returns the open <see cref="SqliteConnection"/> so a
+    /// caller can build additional contexts over the same in-memory database (see
+    /// <see cref="CreateOn"/>) — e.g. one context for a component under test and a second,
+    /// independent context for a test's own reads, since <see cref="DbContext"/> is not
+    /// thread-safe and two callers must not share a single instance concurrently.
+    /// </summary>
+    public static (QsengDbContext Db, SqliteConnection Connection) CreateWithConnection()
     {
         var connection = new SqliteConnection("DataSource=:memory:");
         connection.Open();
 
+        var db = CreateOn(connection);
+        db.Database.EnsureCreated();
+        return (db, connection);
+    }
+
+    /// <summary>
+    /// A new <see cref="QsengDbContext"/> over an already-open <see cref="SqliteConnection"/> —
+    /// typically one obtained from <see cref="CreateWithConnection"/>. Does not call
+    /// <c>EnsureCreated</c>; the schema must already exist on the connection.
+    /// </summary>
+    public static QsengDbContext CreateOn(SqliteConnection connection)
+    {
         var opts = new DbContextOptionsBuilder<SqliteQsengDbContext>()
             .UseSqlite(connection)
             .Options;
-        var db = new SqliteQsengDbContext(opts);
-        db.Database.EnsureCreated();
-        return db;
+        return new SqliteQsengDbContext(opts);
     }
 
     /// <summary>
