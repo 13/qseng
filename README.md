@@ -242,7 +242,11 @@ Coverage is always on: `angular.json`'s `test` target sets `coverage: true`, so 
 run computes coverage (Vitest v8, reporters `text` + `lcov`) over `src/app/core/**` and
 `src/app/shared/**` and enforces the pinned thresholds — lines 88 / functions 79 / branches 84 /
 statements 85 — failing the run if any drop below. `--coverage` on the command line is optional
-and only affects reporter verbosity.
+and only affects reporter verbosity. The gate only measures files a spec actually imports — today
+15 of the 24 non-spec, non-generated `core/`/`shared/` files, since v8 cannot instrument a file
+that never gets bundled into a test run and `coverageInclude` cannot force it in. Widening this
+with a `vitest.config.ts` runner config's `coverage.all: true` and re-pinning the thresholds
+against the new, lower measurement is a planned follow-up.
 
 ### What CI runs
 

@@ -180,7 +180,7 @@ Node 22 in CI (`docker/Dockerfile.web` moves to `node:22-alpine` for consistency
 ## 9. P3b results (2026-09-15, branch `feat/p3-hardening`)
 
 - CI: `.github/workflows/ci.yml`, five jobs (`backend`, `frontend`, `contract`, `e2e`, `docker`), `push: [main]` + `pull_request`, concurrency-cancelled per ref. `frontend` gained an `e2e:lint` step (new `npm run e2e:lint` script, `eslint e2e --config eslint.config.js`) alongside `gates`/`ng lint`/`ng test`/`ng build`. `docker/Dockerfile.web` moved to `node:22-alpine` to match CI's Node 22.
-- Coverage (measured, `ng test --coverage`, Vitest v8): statements 90.57% / branches 89.58% / functions 84.55% / lines 93.11%, against pinned thresholds statements 85 / branches 84 / functions 79 / lines 88 — all comfortably above. 53 spec files / 298 tests.
+- Coverage (measured, `ng test --coverage`, Vitest v8): statements 90.57% / branches 89.58% / functions 84.55% / lines 93.11%, against pinned thresholds statements 85 / branches 84 / functions 79 / lines 88 — all comfortably above. 53 spec files / 298 tests. Caveat: the gate only measures `core/`/`shared/` files a spec actually imports (15 of 24 today); widening it with `coverage.all` and re-pinning is a planned follow-up (README documents the same caveat).
 - Frontend production bundle (`ng build`): initial total 793.04 kB, no build WARNING/ERROR lines (the CI build step tees the log and greps for them).
 - Backend: `dotnet test backend/Qseng.slnx` — 109 tests (13 Domain, 20 Api, 76 Application) on real SQLite, all passing.
 - e2e: 27 specs collected, 26 passed + 1 `fixme` (marriage-line spouse-name truncation, tracked separately), full suite in ~1.3 min against the published API DLL.
