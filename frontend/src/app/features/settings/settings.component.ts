@@ -39,7 +39,7 @@ import { TrashCardComponent } from './trash-card.component';
               <dt>{{ 'settings.profile.displayName' | translate }}</dt><dd>{{ p.displayName }}</dd>
               <dt>{{ 'settings.profile.username' | translate }}</dt><dd>{{ p.username }}</dd>
               <dt>{{ 'settings.profile.email' | translate }}</dt><dd>{{ p.email || '–' }}</dd>
-              <dt>{{ 'settings.profile.member' | translate }}</dt><dd>{{ p.createdAt | date:'mediumDate' }}</dd>
+              <dt>{{ 'settings.profile.member' | translate }}</dt><dd>{{ p.createdAt | date:'mediumDate':undefined:i18n.lang() }}</dd>
             </dl>
           } @else if (loadingProfile()) {
             <mat-progress-bar mode="indeterminate" />

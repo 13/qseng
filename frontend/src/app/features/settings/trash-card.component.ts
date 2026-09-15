@@ -38,11 +38,11 @@ import { ToastService } from '../../core/ui/toast.service';
               </ng-container>
               <ng-container matColumnDef="deleted">
                 <th mat-header-cell *matHeaderCellDef>{{ 'trash.col.deleted' | translate }}</th>
-                <td mat-cell *matCellDef="let it">{{ it.deletedAt | date:'mediumDate' }}</td>
+                <td mat-cell *matCellDef="let it">{{ it.deletedAt | date:'mediumDate':undefined:i18n.lang() }}</td>
               </ng-container>
               <ng-container matColumnDef="purge">
                 <th mat-header-cell *matHeaderCellDef>{{ 'trash.col.purge' | translate }}</th>
-                <td mat-cell *matCellDef="let it">{{ it.purgeAt | date:'mediumDate' }}</td>
+                <td mat-cell *matCellDef="let it">{{ it.purgeAt | date:'mediumDate':undefined:i18n.lang() }}</td>
               </ng-container>
               <ng-container matColumnDef="actions">
                 <th mat-header-cell *matHeaderCellDef class="qs-col-actions"></th>
@@ -78,7 +78,7 @@ export class TrashCardComponent {
   private readonly personsApi = inject(PersonsApi);
   private readonly confirm = inject(ConfirmDialogService);
   private readonly toast = inject(ToastService);
-  private readonly i18n = inject(I18nService);
+  readonly i18n = inject(I18nService);
   private readonly destroyRef = inject(DestroyRef);
   private loadSeq = 0;
 

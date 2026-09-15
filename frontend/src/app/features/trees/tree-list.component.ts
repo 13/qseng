@@ -67,7 +67,7 @@ import type { OnboardingResult } from '../onboarding/onboarding-dialog.component
                 <mat-chip-set>
                   <mat-chip disabled><mat-icon matChipAvatar>group</mat-icon>{{ tree.personCount ?? 0 }} {{ 'trees.persons' | translate }}</mat-chip>
                 </mat-chip-set>
-                <span class="qs-muted">{{ 'trees.created' | translate }} {{ tree.createdAt | date:'mediumDate' }}</span>
+                <span class="qs-muted">{{ 'trees.created' | translate }} {{ tree.createdAt | date:'mediumDate':undefined:i18n.lang() }}</span>
               </div>
             </mat-card-content>
             <mat-card-actions>
@@ -95,7 +95,7 @@ export class TreeListComponent implements OnInit {
   private readonly dialog = inject(MatDialog);
   private readonly confirm = inject(ConfirmDialogService);
   private readonly toast = inject(ToastService);
-  private readonly i18n = inject(I18nService);
+  readonly i18n = inject(I18nService);
   private readonly crumbs = inject(BreadcrumbService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);

@@ -1,5 +1,6 @@
 import { TestBed } from '@angular/core/testing';
-import { DatePipe } from '@angular/common';
+import { DatePipe, registerLocaleData } from '@angular/common';
+import localeDe from '@angular/common/locales/de';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { of } from 'rxjs';
 import { describe, expect, it, vi } from 'vitest';
@@ -8,6 +9,10 @@ import { PersonsApi, TrashApi, TrashedPersonDto } from '../../core/api/generated
 import { ConfirmDialogService } from '../../core/ui/confirm-dialog.service';
 import { ToastService } from '../../core/ui/toast.service';
 import { I18nService } from '../../core/i18n/i18n.service';
+
+// Normally registered once at bootstrap (app.config.ts); this spec runs in isolation, so
+// register it here too, or a 'de'-locale DatePipe transform below throws "Missing locale data".
+registerLocaleData(localeDe);
 
 const items: TrashedPersonDto[] = [
   { id: 'p1', firstName: 'Anna', lastName: 'Smith', treeId: 't1', treeName: 'Smith Family', deletedAt: '2026-01-01T00:00:00Z', purgeAt: '2026-01-31T00:00:00Z' },
@@ -21,13 +26,13 @@ const dict: Record<string, string> = {
   'trash.purgeConfirm': 'remove __NAME__?'
 };
 
-function setup(listResult: TrashedPersonDto[] = items, confirmResult: boolean | string = true) {
+function setup(listResult: TrashedPersonDto[] = items, confirmResult: boolean | string = true, lang: 'en' | 'de' = 'en') {
   TestBed.resetTestingModule();
   const trashApi = { trashList: vi.fn(() => of({ retentionDays: 30, items: listResult })), trashPurge: vi.fn(() => of(undefined)) };
   const personsApi = { personsRestore: vi.fn(() => of({})) };
   const confirm = { confirm: vi.fn(async () => confirmResult) };
   const toast = { success: vi.fn(), error: vi.fn(), info: vi.fn(), errorFrom: vi.fn() };
-  const i18n = { t: (k: string) => dict[k] ?? k, dynamic: (k: string) => dict[k] ?? k };
+  const i18n = { t: (k: string) => dict[k] ?? k, dynamic: (k: string) => dict[k] ?? k, lang: () => lang };
   TestBed.configureTestingModule({
     providers: [
       provideNoopAnimations(),
@@ -58,6 +63,23 @@ describe('TrashCardComponent', () => {
     expect(rowText(1)).toContain('Jones Family');
 
     expect(el.textContent).toContain('stays 30 days');
+  });
+
+  it('formats dates with the German locale when the current language is de', () => {
+    // German 'mediumDate' is "dd.MM.y" (fully numeric per CLDR) rather than English's
+    // "MMM d, y" — a real, locale-specific format, not just a translated label. Asserting the
+    // exact de-locale transform (and that it differs from the en one) catches the pipe falling
+    // back to the injected LOCALE_ID default instead of the live `i18n.lang()`.
+    const { fixture: enFixture } = setup(items, true, 'en');
+    const enText = (enFixture.nativeElement as HTMLElement).querySelectorAll('table tbody tr')[0].textContent ?? '';
+    const expectedEn = new DatePipe('en').transform(items[0].deletedAt, 'mediumDate')!;
+    expect(enText).toContain(expectedEn);
+
+    const { fixture: deFixture } = setup(items, true, 'de');
+    const deText = (deFixture.nativeElement as HTMLElement).querySelectorAll('table tbody tr')[0].textContent ?? '';
+    const expectedDe = new DatePipe('de').transform(items[0].deletedAt, 'mediumDate')!;
+    expect(expectedDe).not.toBe(expectedEn);
+    expect(deText).toContain(expectedDe);
   });
 
   it('shows trash.empty when the list is empty', () => {
