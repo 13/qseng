@@ -148,8 +148,8 @@ gh attestation verify oci://ghcr.io/13/qseng-api:1.2.0 --owner 13
 docker run --rm ghcr.io/13/qseng-web:1.2.0 cat /usr/share/nginx/html/version.json
 ```
 
-Prerelease tags (`vX.Y.Z-<suffix>`, e.g. `v1.2.0-rc.1`) publish `X.Y.Z` and mark the GitHub Release
-as a prerelease, but never move `latest` or `X.Y`.
+Prerelease tags (`vX.Y.Z-<suffix>`, e.g. `v1.2.0-rc.1`) publish only `X.Y.Z-<suffix>` (here `1.2.0-rc.1`) and mark
+the GitHub Release as a prerelease; they never move `latest` or `X.Y`.
 
 If `docker pull` of a freshly published image is denied, the ghcr.io package is probably still
 private; make it public under the package's own settings on GitHub (Packages → `qseng-api` /

@@ -34,7 +34,7 @@
 5. `docker/metadata-action@v5` with `images: ghcr.io/${{ steps.owner.outputs.lc }}/qseng-${{ matrix.image }}` (owner lowercased in a prior step from `github.repository_owner`) and tags:
    - `type=semver,pattern={{version}}` → `1.2.0`
    - `type=semver,pattern={{major}}.{{minor}}` → `1.2`
-   - `type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/v') && !contains(github.ref, '-') }}` — `latest` only when the tag has no prerelease suffix; a prerelease tag (`v1.2.0-rc.1`) still publishes `X.Y.Z` and creates a prerelease Release (see below), but never moves `latest` (metadata-action already suppresses `{{major}}.{{minor}}` for prereleases on its own).
+   - `type=raw,value=latest,enable=${{ steps.inputs.outputs.stable == 'true' }}` — `latest` only when the tag has no prerelease suffix (the `inputs` step's `stable` output); a prerelease tag (`v1.2.0-rc.1`) publishes `1.2.0-rc.1` and creates a prerelease Release (see below), but never moves `latest` (metadata-action already suppresses `{{major}}.{{minor}}` for prereleases on its own).
    - `type=raw,value=edge,enable={{is_default_branch}}`
    - `type=sha,prefix=sha-,format=short,enable={{is_default_branch}}`
    Labels come from metadata-action's defaults (`org.opencontainers.image.source/revision/version/created/…`), plus `org.opencontainers.image.description` per image.
