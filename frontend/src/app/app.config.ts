@@ -40,10 +40,14 @@ export const appConfig: ApplicationConfig = {
       // "Missing locale data" for it otherwise. Registered once, unconditionally, so both an
       // initial German render and a later runtime switch to German (I18nService.lang() can
       // change without a reload) always have it. Dynamic import keeps it out of the initial
-      // bundle: it lands as its own lazy chunk regardless of when this awaits.
-      const localeDe = await import('@angular/common/locales/de');
-      registerLocaleData(localeDe.default);
-      await i18n.load();
+      // bundle: it lands as its own lazy chunk regardless of when this awaits. Loaded in
+      // parallel with the i18n dictionaries (Promise.all), not sequentially before them, so it
+      // adds no measurable bootstrap latency of its own — a same-origin JS chunk resolves well
+      // inside the time the i18n JSON fetches it runs alongside already take.
+      await Promise.all([
+        import('@angular/common/locales/de').then(m => registerLocaleData(m.default)),
+        i18n.load()
+      ]);
     })
   ]
 };
