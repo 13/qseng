@@ -22,11 +22,12 @@ import { FormErrorsPipe } from '../../core/forms/form-errors.pipe';
 import { setServerErrors } from '../../core/forms/server-errors';
 import { isValidationProblem } from '../../core/api/problem-details';
 import { TrashCardComponent } from './trash-card.component';
+import { AboutCardComponent } from './about-card.component';
 
 @Component({
   selector: 'qs-settings',
   imports: [ReactiveFormsModule, DatePipe, MatCardModule, MatFormFieldModule, MatInputModule, MatButtonModule, MatIconModule,
-            MatButtonToggleModule, MatProgressBarModule, TranslatePipe, FormErrorsPipe, TrashCardComponent],
+            MatButtonToggleModule, MatProgressBarModule, TranslatePipe, FormErrorsPipe, TrashCardComponent, AboutCardComponent],
   template: `
     <header class="qs-page-header"><h1 tabindex="-1">{{ 'settings.title' | translate }}</h1></header>
 
@@ -104,6 +105,8 @@ import { TrashCardComponent } from './trash-card.component';
       </mat-card>
 
       <qs-trash-card id="trash" #trashCard tabindex="-1" />
+
+      <qs-about-card />
 
       <mat-card appearance="outlined" class="qs-danger">
         <mat-card-header><mat-card-title>{{ 'settings.danger.title' | translate }}</mat-card-title></mat-card-header>

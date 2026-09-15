@@ -6,6 +6,17 @@ const DEMO_USERNAME = 'demo';
 const DEMO_PASSWORD = 'Demo123!';
 
 test.describe('settings', () => {
+  test('about card shows the web and API versions', async ({ demo }) => {
+    const page = demo;
+    await page.goto('/settings');
+    const card = page.locator('qs-about-card');
+    await expect(card).toBeVisible();
+    // ng serve serves public/version.json's dev defaults; the API reports its csproj version.
+    await expect(card.locator('.qs-about__value').nth(0)).toHaveText(/^0\.0\.0-dev \(unknown\)$/);
+    await expect(card.locator('.qs-about__value').nth(1)).toHaveText(/^\d+\.\d+\.\d+\S* \(\S+\)$/);
+    await expect(card.getByRole('link', { name: /Release notes|Versionshinweise/ })).toHaveAttribute('href', 'https://github.com/13/qseng/releases');
+  });
+
   test.describe('language and theme', () => {
     test('language toggle changes the heading and persists after reload', async ({ freshUser }) => {
       // Uses freshUser rather than the shared demo account: the language toggle persists

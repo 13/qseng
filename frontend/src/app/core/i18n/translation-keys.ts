@@ -259,6 +259,10 @@ export type TranslationKey =
   | 'save'
   | 'saving'
   | 'search'
+  | 'settings.about.api'
+  | 'settings.about.releases'
+  | 'settings.about.title'
+  | 'settings.about.web'
   | 'settings.appearance.auto'
   | 'settings.appearance.dark'
   | 'settings.appearance.hint'
@@ -657,6 +661,10 @@ export const TRANSLATION_KEYS: readonly TranslationKey[] = [
   'save',
   'saving',
   'search',
+  'settings.about.api',
+  'settings.about.releases',
+  'settings.about.title',
+  'settings.about.web',
   'settings.appearance.auto',
   'settings.appearance.dark',
   'settings.appearance.hint',

@@ -1,10 +1,10 @@
 import { TestBed } from '@angular/core/testing';
-import { HttpClient, provideHttpClient, withInterceptors } from '@angular/common/http';
+import { HttpClient, HttpContext, provideHttpClient, withInterceptors } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { Router } from '@angular/router';
 import { of, throwError } from 'rxjs';
 import { describe, expect, it, vi } from 'vitest';
-import { errorInterceptor } from './error.interceptor';
+import { errorInterceptor, SKIP_ERROR_TOAST } from './error.interceptor';
 import { AuthResponse, AuthService } from './auth/auth.service';
 import { ToastService } from './ui/toast.service';
 import { I18nService } from './i18n/i18n.service';
@@ -57,5 +57,17 @@ describe('errorInterceptor', () => {
     expect(toast.error).toHaveBeenCalledTimes(2);
     expect(toast.error).toHaveBeenNthCalledWith(1, 'err.forbidden');
     expect(caught).toBeDefined();
+  });
+
+  it('SKIP_ERROR_TOAST suppresses the 5xx toast; the same request without it still toasts', () => {
+    const { http, ctrl, toast } = setup({});
+    const context = new HttpContext().set(SKIP_ERROR_TOAST, true);
+    http.get('/quiet', { context }).subscribe({ error: () => {/* error handling tested elsewhere */} });
+    ctrl.expectOne('/quiet').flush({ title: 'Service unavailable' }, { status: 503, statusText: 'u' });
+    expect(toast.error).not.toHaveBeenCalled();
+
+    http.get('/loud').subscribe({ error: () => {/* error handling tested elsewhere */} });
+    ctrl.expectOne('/loud').flush({ title: 'Service unavailable' }, { status: 503, statusText: 'u' });
+    expect(toast.error).toHaveBeenCalledTimes(1);
   });
 });
