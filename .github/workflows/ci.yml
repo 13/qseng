@@ -69,6 +69,15 @@ jobs:
       - uses: actions/download-artifact@v8
         with: { name: api, path: out/api }
       - run: npm ci
+      # npm ci already runs @playwright/test's own postinstall, which downloads the browsers this
+      # step also installs; the redundant part is the download, not the --with-deps OS package
+      # install this step still needs. Caching ~/.cache/ms-playwright keyed on the Playwright
+      # version (via the lockfile hash) makes the second install a cache hit instead of a second
+      # download (Minor 7).
+      - uses: actions/cache@v6
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('frontend/package-lock.json') }}
       - run: npx playwright install --with-deps chromium
       - run: npm run e2e
         env:
