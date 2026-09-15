@@ -123,8 +123,13 @@ test.describe('palette', () => {
     await expect(dialog).toBeVisible();
 
     await page.keyboard.press('Control+k');
-    // Negative assertion: give the (now-cached) palette chunk a settle window so a real
-    // regression — the palette opening anyway — has time to render before we check for it.
+    // Negative assertion: there is no positive signal to wait on — the palette is expected to
+    // stay closed, so nothing here produces an event Playwright can await instead. A blind
+    // sleep only weakens this assertion, it can't flake it: a too-short window just means a
+    // real regression (the palette opening anyway) has less time to render before the
+    // `toHaveCount(0)` check runs. 300ms is the suite's only such sleep; on a slow CI runner
+    // it may not be enough margin for a real regression to show up — if this assertion is ever
+    // suspected of a false pass, widen the window rather than distrust `toHaveCount(0)`.
     await page.waitForTimeout(300);
     await expect(page.locator('.qs-palette')).toHaveCount(0);
 
