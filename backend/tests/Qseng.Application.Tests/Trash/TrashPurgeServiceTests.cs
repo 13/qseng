@@ -19,7 +19,7 @@ public class TrashPurgeServiceTests
 {
     private static readonly DateTimeOffset Start = new(2026, 1, 1, 0, 0, 0, TimeSpan.Zero);
 
-    private static ServiceProvider BuildProvider(IQsengDbContext serviceDb, FakeTimeProvider clock)
+    private static ServiceProvider BuildProvider(IQsengDbContext serviceDb, FakeTimeProvider clock, ILogger<TrashPurger>? purgerLogger = null)
     {
         var services = new ServiceCollection();
         // serviceDb is the single context instance TrashPurger uses across every scoped run of
@@ -27,9 +27,12 @@ public class TrashPurgeServiceTests
         // polling assertions — DbContext is not thread-safe, and a poll landing while
         // PurgeAsync's SaveChangesAsync is in flight throws. Callers give the assertions their
         // own context over the same underlying SQLite connection instead (see TestDb.CreateOn).
+        // That connection itself is also not thread-safe, so callers must additionally never let
+        // the assertions' reads run concurrently with the service's writes — see SignalingLogger
+        // below for how ScheduledRun_PurgesARowThatAgedPastRetentionSinceStartup serializes that.
         services.AddSingleton<IQsengDbContext>(serviceDb);
         services.AddSingleton<IFileStorage>(Substitute.For<IFileStorage>());
-        services.AddSingleton<ILogger<TrashPurger>>(NullLogger<TrashPurger>.Instance);
+        services.AddSingleton<ILogger<TrashPurger>>(purgerLogger ?? NullLogger<TrashPurger>.Instance);
         services.AddScoped<TrashPurger>();
         services.AddSingleton(Options.Create(new TrashOptions { RetentionDays = 30 }));
         services.AddSingleton<TimeProvider>(clock);
@@ -49,6 +52,20 @@ public class TrashPurgeServiceTests
             if (sw.Elapsed >= timeout) return false;
             await Task.Delay(20);
         }
+    }
+
+    /// <summary>An <see cref="ILogger{TrashPurger}"/> that completes <see cref="Logged"/> the first
+    /// time anything is logged. <see cref="TrashPurger.PurgeAsync"/> logs unconditionally — once per
+    /// run, after its <c>SaveChangesAsync</c> has already completed — so this is a deterministic "a
+    /// run has finished" signal, unlike polling a row whose presence is already true before any run
+    /// starts (which would return true on the very first poll and prove nothing).</summary>
+    private sealed class SignalingLogger<T> : ILogger<T>
+    {
+        public TaskCompletionSource Logged { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+        public bool IsEnabled(LogLevel logLevel) => true;
+        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
+            => Logged.TrySetResult();
     }
 
     [Fact]
@@ -101,7 +118,8 @@ public class TrashPurgeServiceTests
         await db.SaveChangesAsync();
 
         var clock = new FakeTimeProvider(Start);
-        await using var provider = BuildProvider(db, clock);
+        var purgerLog = new SignalingLogger<TrashPurger>();
+        await using var provider = BuildProvider(db, clock, purgerLog);
         var service = provider.GetRequiredService<TrashPurgeService>();
         // A separate context over the same SQLite connection: the service's own context (db,
         // above) is used exclusively by TrashPurger's background runs, so reads here never race
@@ -111,11 +129,17 @@ public class TrashPurgeServiceTests
         await service.StartAsync(CancellationToken.None);
         try
         {
-            // Let the immediate first run finish; the row is not old enough yet, so it must survive it.
-            var survivedFirstRun = await PollUntilAsync(
-                async () => await reads.Persons.IgnoreQueryFilters().AnyAsync(p => p.Id == recent.Id),
-                TimeSpan.FromSeconds(2));
-            survivedFirstRun.Should().BeTrue();
+            // Wait for the deterministic signal that the first run's PurgeAsync has completed —
+            // it logs unconditionally, after its SaveChangesAsync, once per run — instead of
+            // polling AnyAsync for the row directly: the row is already present before the run
+            // starts, so that poll would return true on its very first iteration and prove
+            // nothing about the run having actually happened. The signal only fires after the
+            // service's write is done, so the read below never races it on the shared connection.
+            var firstRunLogged = await Task.WhenAny(purgerLog.Logged.Task, Task.Delay(TimeSpan.FromSeconds(2)))
+                == purgerLog.Logged.Task;
+            firstRunLogged.Should().BeTrue("the first run must complete and log within the timeout");
+            var survivedFirstRun = await reads.Persons.IgnoreQueryFilters().AnyAsync(p => p.Id == recent.Id);
+            survivedFirstRun.Should().BeTrue("the row is only 1 day old and not yet past the 30-day retention");
 
             // Drive the fake clock forward by Interval-sized steps: each step both ages the row
             // (well past the 30-day retention within a couple of steps) and, once the loop's
