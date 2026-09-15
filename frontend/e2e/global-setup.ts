@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import net from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
-import { spawn } from 'node:child_process';
+import { SpawnOptions, spawn } from 'node:child_process';
 
 const API_PORT = 5000;
 const READY_URL = `http://127.0.0.1:${API_PORT}/health/ready`;
@@ -93,14 +93,20 @@ export default async function globalSetup(): Promise<void> {
 
   // CI passes a prebuilt-dll command (e.g. `dotnet /path/Qseng.Api.dll`); locally we `dotnet run`
   // the project so the first invocation compiles it (~40s).
-  const cmdParts = process.env['E2E_API_CMD']
-    ? process.env['E2E_API_CMD'].split(' ')
-    : ['dotnet', 'run', '--project', apiProjectDir, '--no-launch-profile'];
+  const envCmd = process.env['E2E_API_CMD'];
 
   const log: string[] = [];
   // detached: true makes the child the leader of its own process group, so teardown can
   // kill the whole tree (dotnet run's build/host child included) via a negative pid.
-  const child = spawn(cmdParts[0], cmdParts.slice(1), { env, detached: true, stdio: ['ignore', 'pipe', 'pipe'] });
+  const spawnOptions: SpawnOptions = { env, detached: true, stdio: ['ignore', 'pipe', 'pipe'] };
+  // A naive `envCmd.split(' ')` breaks on any path containing a space (e.g. a workspace under
+  // "Program Files" or a repo checked out under a name with a space). `shell: true` hands the
+  // whole string to the platform shell instead, so quoting-aware parsing (and quoted paths) is
+  // the caller's responsibility rather than ours. The no-env-var default has no such risk since
+  // its argv is built here, so it keeps the plain (shell-less) array form.
+  const child = envCmd
+    ? spawn(envCmd, { ...spawnOptions, shell: true })
+    : spawn('dotnet', ['run', '--project', apiProjectDir, '--no-launch-profile'], spawnOptions);
   child.stdout?.on('data', d => log.push(String(d)));
   child.stderr?.on('data', d => log.push(String(d)));
 
