@@ -174,6 +174,19 @@ app.UseForwardedHeaders();
 
 app.UseMiddleware<ExceptionMiddleware>();
 
+// Registered before UseRateLimiter/UseAuthentication so it still wraps them: a 429 rejection or a
+// 401 challenge short-circuits the pipeline without calling next(), so any request-logging
+// middleware registered after them never runs its "before" phase and produces no log line for
+// that request. The rate limiter logs its own Warning in OnRejected, but failed authentications
+// otherwise went entirely unlogged.
+app.UseSerilogRequestLogging(o =>
+{
+    o.EnrichDiagnosticContext = (d, http) => d.Set("UserId", http.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "anonymous");
+    o.GetLevel = (http, _, ex) => ex is not null || http.Response.StatusCode >= 500
+        ? LogEventLevel.Error
+        : http.Request.Path.StartsWithSegments("/health") ? LogEventLevel.Verbose : LogEventLevel.Information;
+});
+
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -191,14 +204,6 @@ app.UseStaticFiles(new StaticFileOptions
 app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
-
-app.UseSerilogRequestLogging(o =>
-{
-    o.EnrichDiagnosticContext = (d, http) => d.Set("UserId", http.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "anonymous");
-    o.GetLevel = (http, _, ex) => ex is not null || http.Response.StatusCode >= 500
-        ? LogEventLevel.Error
-        : http.Request.Path.StartsWithSegments("/health") ? LogEventLevel.Verbose : LogEventLevel.Information;
-});
 
 app.MapControllers();
 app.MapGet("/api/v1/health", () => Results.Ok(new { status = "ok", timestamp = DateTime.UtcNow }));
