@@ -1,6 +1,8 @@
 # Build
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
+ARG QSENG_VERSION=0.0.0-dev
+ARG QSENG_COMMIT=unknown
 COPY backend/*.slnx backend/
 COPY backend/src/Qseng.Api/*.csproj backend/src/Qseng.Api/
 COPY backend/src/Qseng.Application/*.csproj backend/src/Qseng.Application/
@@ -12,7 +14,8 @@ COPY backend/tests/Qseng.Domain.Tests/*.csproj backend/tests/Qseng.Domain.Tests/
 RUN dotnet restore backend/Qseng.slnx
 
 COPY backend/ backend/
-RUN dotnet publish backend/src/Qseng.Api/Qseng.Api.csproj -c Release -o /app/publish
+RUN dotnet publish backend/src/Qseng.Api/Qseng.Api.csproj -c Release -o /app/publish \
+    -p:Version=$QSENG_VERSION -p:InformationalVersion=$QSENG_VERSION+$QSENG_COMMIT
 
 # Runtime
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
@@ -27,6 +30,7 @@ RUN mkdir -p /data /app/uploads && chown app /data /app/uploads
 # drop it but isn't justified by one curl install.
 RUN apt-get update && apt-get install -y --no-install-recommends curl \
  && rm -rf /var/lib/apt/lists/*
+LABEL org.opencontainers.image.source=https://github.com/13/qseng
 USER app
 COPY --from=build --chown=app /app/publish .
 ENV ASPNETCORE_URLS=http://+:8080
