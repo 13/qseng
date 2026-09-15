@@ -7,18 +7,19 @@ const DEMO_PASSWORD = 'Demo123!';
 
 test.describe('settings', () => {
   test.describe('language and theme', () => {
-    // The language toggle persists server-side on the shared demo account; start from a known
-    // 'de' so this doesn't depend on what an earlier file left behind, and reset it back after.
-    test.beforeEach(async ({ api }) => {
-      await api.patch('/api/v1/user/language', { data: { language: 'de' } });
-    });
-    test.afterEach(async ({ api }) => {
-      await api.patch('/api/v1/user/language', { data: { language: 'de' } });
-    });
-
-    test('language toggle changes the heading and persists after reload', async ({ demo }) => {
-      const page = demo;
+    test('language toggle changes the heading and persists after reload', async ({ freshUser }) => {
+      // Uses freshUser rather than the shared demo account: the language toggle persists
+      // server-side, and mutating demo's language here — even restored in an afterEach — races
+      // any other spec file's demo session once tests run under `--shard`, which executes
+      // different files concurrently against the same API. A throwaway account has no such
+      // neighbours to race. Both toggle labels are fixed, untranslated strings
+      // ('Deutsch'/'English'), so they're clickable regardless of the fresh account's default
+      // starting language — the first click below establishes a known 'de' state.
+      const page = freshUser.page;
       await page.goto('/settings');
+
+      await page.getByRole('radio', { name: 'Deutsch' }).click();
+      await expect(page.getByText('Sprache gespeichert.').first()).toBeVisible();
       await expect(page.getByRole('heading', { name: 'Einstellungen' })).toBeVisible();
       await axeCheck(page, 'settings');
 
