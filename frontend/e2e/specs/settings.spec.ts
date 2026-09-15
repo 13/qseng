@@ -16,18 +16,21 @@ test.describe('settings', () => {
       // ('Deutsch'/'English'), so they're clickable regardless of the fresh account's default
       // starting language.
       const page = freshUser.page;
+      // The page first paints in the browser's default language, then the profile response
+      // switches to the account's stored one (User.Language defaults to "de" in the backend).
+      // Clicking a radio that is already selected fires no change and no "saved" toast, so wait
+      // for the profile, read the language it carries, and if it is German flip to English
+      // first: every click below then really changes the setting.
+      const profileLoaded = page.waitForResponse(r => r.url().includes('/api/v1/user/profile') && r.ok());
       await page.goto('/settings');
-
-      // A fresh account starts in the server's default language (User.Language = "de" in the
-      // backend entity today). Clicking the radio that is already selected fires no change
-      // event and no "saved" toast, so if the page opens in German, flip to English first —
-      // every click from here on then really changes the setting.
-      const heading = page.getByRole('heading', { level: 1 });
-      await expect(heading).toBeVisible();
-      if ((await heading.innerText()).trim() === 'Einstellungen') {
+      const profile = (await (await profileLoaded).json()) as { language?: string };
+      if (profile.language === 'de') {
+        await expect(page.getByRole('radio', { name: 'Deutsch' })).toBeChecked();
         await page.getByRole('radio', { name: 'English' }).click();
         await expect(page.getByText('Language saved.').first()).toBeVisible();
         await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible();
+      } else {
+        await expect(page.getByRole('radio', { name: 'English' })).toBeChecked();
       }
 
       await page.getByRole('radio', { name: 'Deutsch' }).click();
