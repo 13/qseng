@@ -110,7 +110,14 @@ docker compose -f docker-compose.yml up --build
 - Frontend: http://localhost:8081
 - API:      http://localhost:8080/api/v1
 
-> **Before going to prod:** change the `Jwt__Key` value in `docker-compose.yml` to a random 32+ character string.
+> **`Jwt__Key` must be overridden.** `docker-compose.yml`'s `Jwt__Key` is the built-in development
+> placeholder (`JwtOptions.InsecureDevelopmentKey`), and `JwtOptionsValidator` rejects that exact
+> value at startup whenever `ASPNETCORE_ENVIRONMENT` is not `Development` — which is the api
+> image's default; only `docker-compose.override.yml` (the Development compose above) sets it to
+> `Development`. Running `docker compose -f docker-compose.yml up` on its own therefore fails to
+> start until you override `Jwt__Key` with a random 32+ character secret — via an env file
+> (`--env-file`, or `environment:`) or a `docker-compose.prod.yml` layered on top of
+> `docker-compose.yml`.
 
 ---
 
