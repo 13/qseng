@@ -29,7 +29,13 @@ export const appConfig: ApplicationConfig = {
     { provide: MAT_FORM_FIELD_DEFAULT_OPTIONS, useValue: { appearance: 'outline' } },
     { provide: MAT_SNACK_BAR_DEFAULT_OPTIONS, useValue: { duration: 4000 } },
     provideAppInitializer(async () => {
+      // Both inject() calls must run synchronously, before the first `await` below — inject()
+      // outside an injection context (which a suspended async function no longer has) throws
+      // NG0203. Capturing the services up front and using only the captured references after
+      // that point keeps this safe regardless of what gets awaited in between.
+      const i18n = inject(I18nService);
       inject(MatIconRegistry).setDefaultFontSetClass('material-symbols-rounded');
+
       // 'en' has built-in fallback data in @angular/core, but 'de' does not — DatePipe throws
       // "Missing locale data" for it otherwise. Registered once, unconditionally, so both an
       // initial German render and a later runtime switch to German (I18nService.lang() can
@@ -37,7 +43,7 @@ export const appConfig: ApplicationConfig = {
       // bundle: it lands as its own lazy chunk regardless of when this awaits.
       const localeDe = await import('@angular/common/locales/de');
       registerLocaleData(localeDe.default);
-      await inject(I18nService).load();
+      await i18n.load();
     })
   ]
 };
