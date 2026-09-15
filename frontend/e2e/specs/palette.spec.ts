@@ -26,6 +26,9 @@ async function openPalette(page: Page): Promise<Locator> {
   await page.keyboard.press('Control+k');
   const palette = page.locator('.qs-palette');
   await expect(palette).toBeVisible();
+  // Let the dialog's fade-in finish before callers run axe: mid-transition the surface is
+  // translucent, the backdrop bleeds through, and the muted group label measures ~4.46:1.
+  await expect(page.locator('.mat-mdc-dialog-surface').last()).toHaveCSS('opacity', '1');
   return palette;
 }
 
