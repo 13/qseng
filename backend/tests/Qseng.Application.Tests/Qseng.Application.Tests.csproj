@@ -15,6 +15,9 @@
     <PackageReference Include="FluentAssertions" Version="8.3.0" />
     <PackageReference Include="NSubstitute" Version="5.3.0" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="9.0.4" />
+    <!-- No 9.0.4 release of this package exists; 9.0.0 is the closest match to the
+         solution's other Microsoft.Extensions.* packages (all pinned to 9.0.4). -->
+    <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" Version="9.0.0" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\Qseng.Application\Qseng.Application.csproj" />
