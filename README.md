@@ -104,7 +104,10 @@ The override file (`docker-compose.override.yml`) disables PostgreSQL and mounts
 ### Production (PostgreSQL)
 
 ```bash
+# build locally
 docker compose -f docker-compose.yml up --build
+# or deploy a published release
+QSENG_VERSION=1.2.0 docker compose -f docker-compose.yml up -d --no-build --pull always
 ```
 
 - Frontend: http://localhost:8081
@@ -118,6 +121,35 @@ docker compose -f docker-compose.yml up --build
 > start until you override `Jwt__Key` with a random 32+ character secret — via an env file
 > (`--env-file`, or `environment:`) or a `docker-compose.prod.yml` layered on top of
 > `docker-compose.yml`.
+
+---
+
+## Releases
+
+Images are published to GitHub Container Registry by CI:
+
+| Event | Tags | Extras |
+|---|---|---|
+| push to `main` (all checks green) | `edge`, `sha-<7>` | provenance + SBOM attestations |
+| tag `vX.Y.Z` (all checks green) | `X.Y.Z`, `X.Y`, `latest` | attestations + a GitHub Release with generated notes |
+
+Images: `ghcr.io/13/qseng-api`, `ghcr.io/13/qseng-web` (linux/amd64).
+
+Cut a release:
+
+```bash
+git tag v1.2.0 && git push origin v1.2.0
+```
+
+Verify what you pull:
+
+```bash
+gh attestation verify oci://ghcr.io/13/qseng-api:1.2.0 --owner 13
+docker run --rm ghcr.io/13/qseng-web:1.2.0 cat /usr/share/nginx/html/version.json
+```
+
+The running version is shown in Settings → About and in `/health/ready` (`version`, `commit`).
+Local builds report `0.0.0-dev`.
 
 ---
 
@@ -267,4 +299,4 @@ else — so that option isn't available here even where it would matter.
 | `frontend` | `npm ci`, `npm run gates`, `ng lint`, `npm run e2e:lint`, `ng test --coverage`, `ng build` (fails if the bundle exceeds its budget) → uploads the browser bundle as an artifact |
 | `contract` | regenerates `contracts/openapi.json` from a live API instance and fails if it drifts from the committed file, then regenerates the Angular API client and builds |
 | `e2e` | needs `backend` + `frontend`; downloads the published API artifact, installs Playwright's Chromium, runs the full Playwright suite against it |
-| `docker` | builds both `docker/Dockerfile.api` and `docker/Dockerfile.web` images (no push) |
+| `images` | builds both images (PRs) and pushes them to ghcr.io with attestations (push to main / v* tags); `release` creates the GitHub Release on tags |

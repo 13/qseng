@@ -15,6 +15,7 @@ services:
       retries: 10
 
   api:
+    image: ghcr.io/13/qseng-api:${QSENG_VERSION:-latest}
     build:
       context: .
       dockerfile: docker/Dockerfile.api
@@ -38,6 +39,7 @@ services:
       - uploads:/app/uploads
 
   frontend:
+    image: ghcr.io/13/qseng-web:${QSENG_VERSION:-latest}
     build:
       context: .
       dockerfile: docker/Dockerfile.web
