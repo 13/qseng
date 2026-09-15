@@ -27,7 +27,7 @@
 2. `docker/setup-buildx-action@v3`.
 3. `docker/login-action@v3` to `ghcr.io` with `${{ github.actor }}` / `${{ secrets.GITHUB_TOKEN }}` — `if: github.event_name == 'push'`.
 4. Compute version inputs in a small `run` step exporting to `$GITHUB_OUTPUT`:
-   - `version`: on a tag, the tag without the leading `v` (`v1.2.0` → `1.2.0`); on `main`, `0.0.0-edge+<sha7>`; on PRs, `0.0.0-pr+<sha7>`.
+   - `version`: on a tag, the tag without the leading `v` (`v1.2.0` → `1.2.0`); on `main`, `0.0.0-edge`; on PRs, `0.0.0-pr`. The commit is never part of `version` (MSBuild `Version` must not carry `+metadata`); it travels separately as `commit`.
    - `commit`: `${{ github.sha }}`.
 5. `docker/metadata-action@v5` with `images: ghcr.io/${{ steps.owner.outputs.lc }}/qseng-${{ matrix.image }}` (owner lowercased in a prior step from `github.repository_owner`) and tags:
    - `type=semver,pattern={{version}}` → `1.2.0`
@@ -67,7 +67,7 @@ Both Dockerfiles declare `ARG QSENG_VERSION=0.0.0-dev` and `ARG QSENG_COMMIT=unk
 ## 5. Verification
 
 1. PR run of the branch: `images` builds both images without pushing (job log shows `push: false`), all other jobs green.
-2. After merge, the `main` run publishes `edge` and `sha-<7>` for both images; `docker pull ghcr.io/13/qseng-api:edge` works anonymously; `docker run … /health/ready` returns `"version":"0.0.0-edge+<sha7>"`.
+2. After merge, the `main` run publishes `edge` and `sha-<7>` for both images; `docker pull ghcr.io/13/qseng-api:edge` works anonymously; `docker run … /health/ready` returns `"version":"0.0.0-edge"` and `"commit":"<full sha>"`.
 3. Tag `v0.1.0` on main: run publishes `0.1.0`, `0.1`, `latest`; a Release `v0.1.0` exists with generated notes + digests; `gh attestation verify oci://ghcr.io/13/qseng-api:0.1.0 --owner 13` passes for both images.
 4. `QSENG_VERSION=0.1.0 docker compose -f docker-compose.yml up -d --no-build --pull always` (with a `Jwt__Key` override) starts; Settings → About shows `0.1.0` for both.
 5. Local: `docker compose build` still works with the defaults; backend/unit/e2e suites green; bundle stays under 800 kB.
