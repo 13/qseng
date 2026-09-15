@@ -31,7 +31,20 @@ async function fillLoginForm(page: Page, username: string, password: string): Pr
   await page.locator('input[formcontrolname="username"]').fill(username);
   await page.locator('input[formcontrolname="password"]').fill(password);
   await page.locator('button[type="submit"]').click();
-  await page.waitForURL('**/trees');
+
+  // Race the redirect against the form's own error banner. A wrong password — e.g. the cached
+  // demo.json's session having outlived a (would-be) test that changed demo's password without
+  // restoring it — would otherwise just time out on a bare waitForURL with a generic, hard to
+  // diagnose Playwright error instead of naming the actual problem. Once one side of the race
+  // wins, the other keeps running in the background (Playwright locators aren't cancellable) and
+  // will itself eventually time out or stop matching after navigation — caught here so it can't
+  // surface later as an unhandled rejection.
+  const error = page.locator('.qs-form-error');
+  const errorSeen = error.waitFor({ state: 'visible' }).then(async () => {
+    throw new Error(`Login as "${username}" failed: ${await error.textContent()}`);
+  });
+  errorSeen.catch(() => { /* only the race's outcome matters; see comment above */ });
+  await Promise.race([page.waitForURL('**/trees'), errorSeen]);
 }
 
 export const test = base.extend<Fixtures>({
@@ -44,6 +57,12 @@ export const test = base.extend<Fixtures>({
 
     if (hasCachedState) {
       // Sanity-check the cached session is still valid; a stale/expired token bounces to /login.
+      // This only catches an *invalid* token — a token that is still valid but was issued before
+      // demo's password (or other credentials) last changed passes right through. No spec should
+      // ever mutate demo's own account state without restoring it in the same file (settings.spec
+      // uses freshUser for exactly this reason); if one ever does and forgets, this check won't
+      // catch it, but the loud, specific error in fillLoginForm's login-failure race below will
+      // once the cache eventually needs a real re-login (expiry, or a wiped e2e/.state/ dir).
       await page.goto('/trees');
       if (page.url().includes('/login')) {
         await fillLoginForm(page, DEMO_USERNAME, DEMO_PASSWORD);
