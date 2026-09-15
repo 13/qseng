@@ -1,0 +1,42 @@
+# Root .dockerignore (Minor 9). Keeps the build context small and prevents host artifacts
+# (a local node_modules, dist, bin/obj, generated reports) from leaking into image layers. The
+# Dockerfiles only COPY backend/, frontend/, contracts/, and docker/ — nothing below is needed by
+# either image build.
+
+# Version control / planning docs
+.git
+.gitignore
+.superpowers/
+docs/
+*.md
+
+# Editor / local tooling
+.vscode/
+.idea/
+.playwright-mcp/
+
+# .NET build output
+backend/**/bin/
+backend/**/obj/
+
+# Angular build output & deps (npm ci / ng build run fresh inside the image)
+frontend/node_modules/
+frontend/dist/
+frontend/.angular/
+frontend/coverage/
+
+# e2e state and reports — not used by either image build
+frontend/playwright-report/
+frontend/test-results/
+frontend/e2e/.state/
+frontend/e2e/test-results/
+
+# Local envs / logs / SQLite files
+*.env.local
+.api.log
+*.db
+*.db-shm
+*.db-wal
+
+# CI workflow definitions aren't needed inside either image
+.github/
