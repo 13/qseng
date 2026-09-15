@@ -7,6 +7,7 @@ permissions: { contents: read }
 jobs:
   backend:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-dotnet@v6
@@ -19,6 +20,7 @@ jobs:
         with: { name: api, path: out/api }
   frontend:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     defaults: { run: { working-directory: frontend } }
     steps:
       - uses: actions/checkout@v7
@@ -38,6 +40,7 @@ jobs:
         with: { name: web, path: frontend/dist/frontend/browser }
   contract:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-dotnet@v6
@@ -51,6 +54,7 @@ jobs:
   e2e:
     needs: [backend, frontend]
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     defaults: { run: { working-directory: frontend } }
     steps:
       - uses: actions/checkout@v7
@@ -74,6 +78,7 @@ jobs:
         with: { name: playwright-report, path: frontend/playwright-report }
   docker:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
       - run: docker build -f docker/Dockerfile.api -t qseng-api:ci .
