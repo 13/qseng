@@ -107,9 +107,26 @@ jobs:
           owner="${{ github.repository_owner }}"
           echo "image=ghcr.io/${owner,,}/qseng-${{ matrix.image }}" >> "$GITHUB_OUTPUT"
           case "$GITHUB_REF" in
-            refs/tags/v*)     echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT" ;;
-            refs/heads/main)  echo "version=0.0.0-edge" >> "$GITHUB_OUTPUT" ;;
-            *)                echo "version=0.0.0-pr" >> "$GITHUB_OUTPUT" ;;
+            refs/tags/v*)
+              if [[ ! "${GITHUB_REF_NAME}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+                echo "::error::tag must look like vX.Y.Z or vX.Y.Z-pre"
+                exit 1
+              fi
+              version="${GITHUB_REF_NAME#v}"
+              echo "version=$version" >> "$GITHUB_OUTPUT"
+              case "$version" in
+                *-*) echo "stable=false" >> "$GITHUB_OUTPUT" ;;
+                *)   echo "stable=true" >> "$GITHUB_OUTPUT" ;;
+              esac
+              ;;
+            refs/heads/main)
+              echo "version=0.0.0-edge" >> "$GITHUB_OUTPUT"
+              echo "stable=false" >> "$GITHUB_OUTPUT"
+              ;;
+            *)
+              echo "version=0.0.0-pr" >> "$GITHUB_OUTPUT"
+              echo "stable=false" >> "$GITHUB_OUTPUT"
+              ;;
           esac
       - uses: docker/setup-buildx-action@v4
       - if: github.event_name == 'push'
@@ -122,7 +139,7 @@ jobs:
           tags: |
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
-            type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/v') }}
+            type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/v') && !contains(github.ref, '-') }}
             type=raw,value=edge,enable={{is_default_branch}}
             type=sha,prefix=sha-,format=short,enable={{is_default_branch}}
           labels: |
@@ -181,6 +198,7 @@ jobs:
         env: { GH_TOKEN: "${{ github.token }}", TAG: "${{ github.ref_name }}", OWNER: "${{ github.repository_owner }}" }
         run: |
           v="${TAG#v}"
+          owner_lc="${OWNER,,}"
           {
             echo "## Images"
             echo
@@ -189,12 +207,24 @@ jobs:
             echo "Verify provenance and SBOM:"
             echo
             echo '```'
-            echo "gh attestation verify oci://ghcr.io/${OWNER,,}/qseng-api:$v --owner $OWNER"
-            echo "gh attestation verify oci://ghcr.io/${OWNER,,}/qseng-web:$v --owner $OWNER"
+            echo "gh attestation verify oci://ghcr.io/${owner_lc}/qseng-api:$v --owner ${owner_lc}"
+            echo "gh attestation verify oci://ghcr.io/${owner_lc}/qseng-web:$v --owner ${owner_lc}"
             echo '```'
-          } > notes.md
+          } > images.md
+          # Fetch GitHub's generated notes ourselves (instead of `--generate-notes`) so a re-run of
+          # the same tag can rebuild the identical body via `gh release edit` without wiping it —
+          # `gh release edit` has no `--generate-notes` flag. Same body, same order, on both the
+          # create and edit paths: generated notes first, then the Images block.
+          gh api "repos/$GITHUB_REPOSITORY/releases/generate-notes" -f tag_name="$TAG" -q .body > generated.md
+          { cat generated.md; echo; cat images.md; } > body.md
+          case "$v" in
+            *-*) prerelease=true ;;
+            *)   prerelease=false ;;
+          esac
           if gh release view "$TAG" >/dev/null 2>&1; then
-            gh release edit "$TAG" --notes-file notes.md
+            gh release edit "$TAG" --notes-file body.md --prerelease="$prerelease"
           else
-            gh release create "$TAG" --verify-tag --generate-notes --notes-file notes.md
+            create_flags=(--verify-tag --notes-file body.md)
+            [ "$prerelease" = true ] && create_flags+=(--prerelease)
+            gh release create "$TAG" "${create_flags[@]}"
           fi
