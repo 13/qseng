@@ -1,5 +1,6 @@
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using Qseng.Application.Abstractions;
 using Qseng.Application.Media.DeleteMedia;
@@ -58,7 +59,7 @@ public class RestoreTests
         var user = TrashFixtures.FakeUser(owner);
         (await new RestoreTimelineEventHandler(db, user).Handle(new RestoreTimelineEventCommand(a.Id, ev.Id), CancellationToken.None)).StatusCode.Should().Be(404);
         (await new RestoreTimelineEventHandler(db, user).Handle(new RestoreTimelineEventCommand(a.Id, Guid.NewGuid()), CancellationToken.None)).StatusCode.Should().Be(404);
-        await new DeleteTimelineEventHandler(db, user).Handle(new DeleteTimelineEventCommand(ev.Id), CancellationToken.None);
+        await new DeleteTimelineEventHandler(db, user).Handle(new DeleteTimelineEventCommand(a.Id, ev.Id), CancellationToken.None);
         (await new RestoreTimelineEventHandler(db, TrashFixtures.FakeUser(Guid.NewGuid())).Handle(new RestoreTimelineEventCommand(a.Id, ev.Id), CancellationToken.None)).StatusCode.Should().Be(403);
         (await new RestoreTimelineEventHandler(db, user).Handle(new RestoreTimelineEventCommand(a.Id, ev.Id), CancellationToken.None)).IsSuccess.Should().BeTrue();
     }
@@ -194,7 +195,8 @@ public class RestoreTests
         var hasher = Substitute.For<IPasswordHasher>();
         hasher.Verify(Arg.Any<string>(), Arg.Any<string>()).Returns(true);
 
-        var result = await new DeleteOwnDataHandler(db, user, hasher).Handle(new DeleteOwnDataCommand("pw"), CancellationToken.None);
+        var result = await new DeleteOwnDataHandler(db, user, hasher, Substitute.For<IFileStorage>(), NullLogger<DeleteOwnDataHandler>.Instance)
+            .Handle(new DeleteOwnDataCommand("pw"), CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
         (await db.Trees.IgnoreQueryFilters().CountAsync()).Should().Be(0);

@@ -95,6 +95,11 @@ export function paletteActions(deps: PaletteActionDeps): PaletteAction[] {
       run: () => { void deps.router.navigate(['/settings']); }
     },
     {
+      id: 'trash', labelKey: 'palette.action.trash', icon: 'delete_sweep',
+      available: () => true,
+      run: () => { void deps.router.navigate(['/settings'], { fragment: 'trash' }); }
+    },
+    {
       id: 'themeLight', labelKey: 'palette.action.themeLight', icon: 'light_mode',
       available: () => true,
       run: () => deps.theme.setMode('light')

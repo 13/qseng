@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 using Qseng.Application.Abstractions;
 using Qseng.Domain.Entities;
 
@@ -61,6 +62,40 @@ public abstract class QsengDbContext : DbContext, IQsengDbContext
     {
         SyncTimelineSortKeys();
         return base.SaveChanges();
+    }
+
+    public async Task<ITransactionScope> BeginTransactionAsync(CancellationToken ct = default) =>
+        new EfTransactionScope(await Database.BeginTransactionAsync(ct));
+
+    /// <summary>
+    /// Rolls back on dispose unless <see cref="CompleteAsync"/> ran first, so a
+    /// handler that lets an exception propagate out of an <c>await using</c>
+    /// block gets the rollback for free instead of having to catch and rollback
+    /// explicitly.
+    /// </summary>
+    private sealed class EfTransactionScope(IDbContextTransaction tx) : ITransactionScope
+    {
+        private bool _done;
+
+        public async Task CompleteAsync(CancellationToken ct = default)
+        {
+            await tx.CommitAsync(ct);
+            _done = true;
+        }
+
+        public async ValueTask DisposeAsync()
+        {
+            // No ILogger is available in this private helper; a rollback failure here means the
+            // connection is already gone (e.g. the process is tearing down), so there is nothing
+            // actionable to do beyond not letting it mask the original exception propagating out
+            // of the `await using` block.
+            if (!_done)
+            {
+                try { await tx.RollbackAsync(); }
+                catch (Exception) { /* swallow: see comment above */ }
+            }
+            await tx.DisposeAsync();
+        }
     }
 
     /// <summary>

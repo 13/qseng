@@ -1,26 +1,37 @@
 # Build
-FROM mcr.microsoft.com/dotnet/sdk:10.0-preview AS build
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 COPY backend/*.slnx backend/
 COPY backend/src/Qseng.Api/*.csproj backend/src/Qseng.Api/
 COPY backend/src/Qseng.Application/*.csproj backend/src/Qseng.Application/
 COPY backend/src/Qseng.Domain/*.csproj backend/src/Qseng.Domain/
 COPY backend/src/Qseng.Infrastructure/*.csproj backend/src/Qseng.Infrastructure/
+COPY backend/tests/Qseng.Api.Tests/*.csproj backend/tests/Qseng.Api.Tests/
+COPY backend/tests/Qseng.Application.Tests/*.csproj backend/tests/Qseng.Application.Tests/
+COPY backend/tests/Qseng.Domain.Tests/*.csproj backend/tests/Qseng.Domain.Tests/
 RUN dotnet restore backend/Qseng.slnx
 
 COPY backend/ backend/
-RUN dotnet publish backend/src/Qseng.Api/Qseng.Api.csproj -c Release -o /app/publish --no-restore
+RUN dotnet publish backend/src/Qseng.Api/Qseng.Api.csproj -c Release -o /app/publish
 
 # Runtime
-FROM mcr.microsoft.com/dotnet/aspnet:10.0-preview AS runtime
+FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
 WORKDIR /app
-RUN adduser -D -u 1000 qseng 2>/dev/null || useradd -u 1000 -m qseng
-RUN mkdir -p /data /app/uploads && chown qseng /data /app/uploads
-USER qseng
-COPY --from=build --chown=qseng /app/publish .
+# The 10.0 base image already ships a non-root "app" user for this purpose (UID 1000 collides
+# with the image's own "ubuntu" account on the non-preview tag, so useradd -u 1000 would fail).
+RUN mkdir -p /data /app/uploads && chown app /data /app/uploads
+# mcr.microsoft.com/dotnet/aspnet:10.0 ships neither wget nor curl; install curl for the
+# HEALTHCHECK probe below. --no-install-recommends already keeps this to curl's own dependency
+# closure. This does add a Debian-mirror network dependency to the image build that the base pull
+# alone doesn't have — accepted for a working HEALTHCHECK; a custom .NET health-probe binary would
+# drop it but isn't justified by one curl install.
+RUN apt-get update && apt-get install -y --no-install-recommends curl \
+ && rm -rf /var/lib/apt/lists/*
+USER app
+COPY --from=build --chown=app /app/publish .
 ENV ASPNETCORE_URLS=http://+:8080
 ENV ASPNETCORE_ENVIRONMENT=Production
 EXPOSE 8080
 HEALTHCHECK --interval=15s --timeout=5s --start-period=30s --retries=3 \
-  CMD wget -qO- http://localhost:8080/api/v1/health || exit 1
+  CMD curl -fsS http://localhost:8080/health/ready || exit 1
 ENTRYPOINT ["dotnet", "Qseng.Api.dll"]

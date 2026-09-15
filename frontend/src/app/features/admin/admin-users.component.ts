@@ -67,7 +67,7 @@ import { UserPasswordDialogComponent } from './user-password-dialog.component';
               </mat-card-header>
               <mat-card-content>
                 <ng-container *ngTemplateOutlet="chips; context: { $implicit: u }" />
-                <p class="qs-muted">{{ 'admin.table.registered' | translate }}: {{ u.createdAt | date:'mediumDate' }}</p>
+                <p class="qs-muted">{{ 'admin.table.registered' | translate }}: {{ u.createdAt | date:'mediumDate':undefined:i18n.lang() }}</p>
               </mat-card-content>
             </mat-card>
           }
@@ -97,7 +97,7 @@ import { UserPasswordDialogComponent } from './user-password-dialog.component';
             </ng-container>
             <ng-container matColumnDef="registered">
               <th mat-header-cell *matHeaderCellDef mat-sort-header>{{ 'admin.table.registered' | translate }}</th>
-              <td mat-cell *matCellDef="let u">{{ u.createdAt | date:'mediumDate' }}</td>
+              <td mat-cell *matCellDef="let u">{{ u.createdAt | date:'mediumDate':undefined:i18n.lang() }}</td>
             </ng-container>
             <ng-container matColumnDef="actions">
               <th mat-header-cell *matHeaderCellDef class="qs-col-actions">{{ 'admin.table.actions' | translate }}</th>

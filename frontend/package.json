@@ -16,7 +16,11 @@
     "pretest": "npm run gen",
     "postinstall": "npm run gen",
     "lint": "ng lint",
-    "gates": "node scripts/check-gates.mjs"
+    "gates": "node scripts/check-gates.mjs",
+    "e2e:lint": "eslint e2e --config eslint.config.js",
+    "e2e": "playwright test -c e2e/playwright.config.ts",
+    "e2e:ui": "playwright test -c e2e/playwright.config.ts --ui",
+    "e2e:install": "playwright install --with-deps chromium"
   },
   "private": true,
   "packageManager": "npm@11.13.0",
@@ -45,7 +49,10 @@
     "@angular/cli": "^21.2.8",
     "@angular/compiler-cli": "^21.2.0",
     "@eslint/js": "^10.0.1",
+    "@playwright/test": "^1.63.0",
     "@types/cytoscape": "^3.21.9",
+    "@types/node": "^26.5.1",
+    "@vitest/coverage-v8": "^4.1.10",
     "angular-eslint": "21.4.0",
     "axe-core": "^4.13.0",
     "eslint": "^10.3.0",

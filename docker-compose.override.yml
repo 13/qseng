@@ -1,5 +1,6 @@
 services:
   api:
+    depends_on: !reset []
     environment:
       DB_PROVIDER: sqlite
       CONNECTION_STRING: "Data Source=/data/qseng.db"

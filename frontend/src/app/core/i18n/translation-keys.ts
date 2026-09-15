@@ -172,6 +172,7 @@ export type TranslationKey =
   | 'palette.action.themeAuto'
   | 'palette.action.themeDark'
   | 'palette.action.themeLight'
+  | 'palette.action.trash'
   | 'palette.action.trees'
   | 'palette.action.users'
   | 'palette.group.actions'
@@ -326,6 +327,18 @@ export type TranslationKey =
   | 'tl.type'
   | 'tl.unknownDate'
   | 'tl.until'
+  | 'trash.col.deleted'
+  | 'trash.col.name'
+  | 'trash.col.purge'
+  | 'trash.col.tree'
+  | 'trash.empty'
+  | 'trash.hint'
+  | 'trash.purge'
+  | 'trash.purgeConfirm'
+  | 'trash.purged'
+  | 'trash.restore'
+  | 'trash.restored'
+  | 'trash.title'
   | 'tree.addPerson'
   | 'tree.addRel'
   | 'tree.children'
@@ -557,6 +570,7 @@ export const TRANSLATION_KEYS: readonly TranslationKey[] = [
   'palette.action.themeAuto',
   'palette.action.themeDark',
   'palette.action.themeLight',
+  'palette.action.trash',
   'palette.action.trees',
   'palette.action.users',
   'palette.group.actions',
@@ -711,6 +725,18 @@ export const TRANSLATION_KEYS: readonly TranslationKey[] = [
   'tl.type',
   'tl.unknownDate',
   'tl.until',
+  'trash.col.deleted',
+  'trash.col.name',
+  'trash.col.purge',
+  'trash.col.tree',
+  'trash.empty',
+  'trash.hint',
+  'trash.purge',
+  'trash.purgeConfirm',
+  'trash.purged',
+  'trash.restore',
+  'trash.restored',
+  'trash.title',
   'tree.addPerson',
   'tree.addRel',
   'tree.children',

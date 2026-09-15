@@ -1,5 +1,7 @@
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
+using Qseng.Api.RateLimiting;
 using Qseng.Application.Auth.Login;
 using Qseng.Application.Auth.Refresh;
 using Qseng.Application.Auth.Register;
@@ -15,16 +17,19 @@ public class AuthController : ControllerBase
     public AuthController(ISender mediator) => _mediator = mediator;
 
     [HttpPost("register")]
+    [EnableRateLimiting(AuthRateLimitPolicy.Name)]
     [ProducesResponseType(typeof(AuthResponse), StatusCodes.Status200OK)]
     public async Task<IActionResult> Register(RegisterRequest r, CancellationToken ct) =>
         (await _mediator.Send(new RegisterCommand(r.Username, r.Password, r.DisplayName, r.Email), ct)).ToActionResult();
 
     [HttpPost("login")]
+    [EnableRateLimiting(AuthRateLimitPolicy.Name)]
     [ProducesResponseType(typeof(AuthResponse), StatusCodes.Status200OK)]
     public async Task<IActionResult> Login(LoginRequest r, CancellationToken ct) =>
         (await _mediator.Send(new LoginCommand(r.Username, r.Password), ct)).ToActionResult();
 
     [HttpPost("refresh")]
+    [EnableRateLimiting(AuthRateLimitPolicy.Name)]
     [ProducesResponseType(typeof(AuthResponse), StatusCodes.Status200OK)]
     public async Task<IActionResult> Refresh(RefreshRequest r, CancellationToken ct) =>
         (await _mediator.Send(new RefreshCommand(r.RefreshToken), ct)).ToActionResult();

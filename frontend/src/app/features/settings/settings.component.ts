@@ -1,5 +1,6 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
-import { Router } from '@angular/router';
+import { Component, ElementRef, OnInit, effect, inject, signal, viewChild } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { ActivatedRoute, Router } from '@angular/router';
 import { DatePipe } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatCardModule } from '@angular/material/card';
@@ -20,11 +21,12 @@ import { BreadcrumbService } from '../../core/ui/breadcrumb.service';
 import { FormErrorsPipe } from '../../core/forms/form-errors.pipe';
 import { setServerErrors } from '../../core/forms/server-errors';
 import { isValidationProblem } from '../../core/api/problem-details';
+import { TrashCardComponent } from './trash-card.component';
 
 @Component({
   selector: 'qs-settings',
   imports: [ReactiveFormsModule, DatePipe, MatCardModule, MatFormFieldModule, MatInputModule, MatButtonModule, MatIconModule,
-            MatButtonToggleModule, MatProgressBarModule, TranslatePipe, FormErrorsPipe],
+            MatButtonToggleModule, MatProgressBarModule, TranslatePipe, FormErrorsPipe, TrashCardComponent],
   template: `
     <header class="qs-page-header"><h1 tabindex="-1">{{ 'settings.title' | translate }}</h1></header>
 
@@ -37,7 +39,7 @@ import { isValidationProblem } from '../../core/api/problem-details';
               <dt>{{ 'settings.profile.displayName' | translate }}</dt><dd>{{ p.displayName }}</dd>
               <dt>{{ 'settings.profile.username' | translate }}</dt><dd>{{ p.username }}</dd>
               <dt>{{ 'settings.profile.email' | translate }}</dt><dd>{{ p.email || '–' }}</dd>
-              <dt>{{ 'settings.profile.member' | translate }}</dt><dd>{{ p.createdAt | date:'mediumDate' }}</dd>
+              <dt>{{ 'settings.profile.member' | translate }}</dt><dd>{{ p.createdAt | date:'mediumDate':undefined:i18n.lang() }}</dd>
             </dl>
           } @else if (loadingProfile()) {
             <mat-progress-bar mode="indeterminate" />
@@ -101,6 +103,8 @@ import { isValidationProblem } from '../../core/api/problem-details';
         </mat-card-content>
       </mat-card>
 
+      <qs-trash-card id="trash" #trashCard tabindex="-1" />
+
       <mat-card appearance="outlined" class="qs-danger">
         <mat-card-header><mat-card-title>{{ 'settings.danger.title' | translate }}</mat-card-title></mat-card-header>
         <mat-card-content class="qs-danger__content">
@@ -149,6 +153,20 @@ export class SettingsComponent implements OnInit {
     current: ['', Validators.required],
     next: ['', [Validators.required, Validators.minLength(8)]]
   });
+
+  // Scrolls the #trash card into view when arriving (or already sitting) on /settings#trash,
+  // e.g. via the command palette's "Trash" action. anchorScrolling only fires on navigation,
+  // not on a fragment-only change while already on this route, so drive it from the signal
+  // instead; zoneless never re-renders from the fragment alone, hence the explicit effect.
+  private readonly fragment = toSignal(inject(ActivatedRoute).fragment);
+  private readonly trashCard = viewChild<unknown, ElementRef<HTMLElement>>('trashCard', { read: ElementRef });
+
+  constructor() {
+    effect(() => {
+      const el = this.trashCard()?.nativeElement;
+      if (this.fragment() === 'trash' && el) queueMicrotask(() => { el.scrollIntoView({ block: 'start' }); el.focus({ preventScroll: true }); });
+    });
+  }
 
   ngOnInit() {
     this.crumbs.set([{ label: this.i18n.t('settings.title') }]);

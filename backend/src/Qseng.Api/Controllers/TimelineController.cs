@@ -41,7 +41,7 @@ public class TimelineController : ControllerBase
     [HttpDelete("{id:guid}")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> Delete(Guid personId, Guid id, CancellationToken ct) =>
-        (await _mediator.Send(new DeleteTimelineEventCommand(id), ct)).ToActionResult();
+        (await _mediator.Send(new DeleteTimelineEventCommand(personId, id), ct)).ToActionResult();
 
     [HttpPost("{id:guid}/restore")]
     [ProducesResponseType(typeof(TimelineEventDto), StatusCodes.Status200OK)]

@@ -1,0 +1,96 @@
+name: ci
+on:
+  push: { branches: [main] }
+  pull_request:
+concurrency: { group: "ci-${{ github.ref }}", cancel-in-progress: true }
+permissions: { contents: read }
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
+        with: { dotnet-version: 10.0.x }
+      - run: dotnet restore backend/Qseng.slnx
+      - run: dotnet build backend/Qseng.slnx --configuration Release --no-restore
+      - run: dotnet test backend/Qseng.slnx --configuration Release --no-build
+      - run: dotnet publish backend/src/Qseng.Api -c Release -o out/api --no-build
+      - uses: actions/upload-artifact@v7
+        with: { name: api, path: out/api }
+  frontend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults: { run: { working-directory: frontend } }
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with: { node-version: 22, cache: npm, cache-dependency-path: frontend/package-lock.json }
+      - run: npm ci
+      - run: npm run gates
+      - run: npx ng lint
+      - run: npm run e2e:lint
+      - run: npx ng test --watch=false --coverage
+      - shell: bash
+        run: |
+          set -o pipefail
+          npx ng build 2>&1 | tee build.log
+          ! grep -E "exceeded maximum budget" build.log
+      - uses: actions/upload-artifact@v7
+        with: { name: web, path: frontend/dist/frontend/browser }
+  contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
+        with: { dotnet-version: 10.0.x }
+      - uses: actions/setup-node@v7
+        with: { node-version: 22, cache: npm, cache-dependency-path: frontend/package-lock.json }
+      - run: bash backend/export-openapi.sh
+      - run: git diff --exit-code -- contracts/openapi.json
+      - run: npm ci && npm run gen:api && npx ng build
+        working-directory: frontend
+  # Only needs backend: the api artifact is downloaded and run below. The e2e suite serves the
+  # frontend itself via `npm start` (see e2e/playwright.config.ts's webServer) from this job's own
+  # checkout — it never consumes the frontend job's build artifact, so depending on that job only
+  # serialised the pipeline without buying anything (Minor 5).
+  e2e:
+    needs: [backend]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults: { run: { working-directory: frontend } }
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
+        with: { dotnet-version: 10.0.x }
+      - uses: actions/setup-node@v7
+        with: { node-version: 22, cache: npm, cache-dependency-path: frontend/package-lock.json }
+      - uses: actions/download-artifact@v8
+        with: { name: api, path: out/api }
+      - run: npm ci
+      # Caching ~/.cache/ms-playwright keyed on the Playwright version (via the lockfile hash)
+      # turns the Chromium download in the install step below into a cache hit on repeat runs;
+      # the --with-deps OS package install still runs every time (Minor 7).
+      - uses: actions/cache@v6
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('frontend/package-lock.json') }}
+      - run: npx playwright install --with-deps chromium
+      - run: npm run e2e
+        env:
+          E2E_API_CMD: "dotnet ${{ github.workspace }}/out/api/Qseng.Api.dll"
+          # dotnet <dll> resolves appsettings.json against the process's current directory, not the
+          # dll's own folder — without this the published API can't find Jwt/Uploads/RateLimiting
+          # defaults from out/api/appsettings.json and fails OptionsValidationException at startup.
+          ASPNETCORE_CONTENTROOT: "${{ github.workspace }}/out/api"
+      - uses: actions/upload-artifact@v7
+        if: failure()
+        with: { name: playwright-report, path: frontend/playwright-report }
+  docker:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - run: docker build -f docker/Dockerfile.api -t qseng-api:ci .
+      - run: docker build -f docker/Dockerfile.web -t qseng-web:ci .

@@ -59,11 +59,18 @@ export class PaletteService {
       const dialog = this.injector.get(MatDialog);
 
       const data: CommandPaletteData = { treeId };
+      // restoreFocus is off: Material would focus the toolbar trigger after the close animation, which scrolls
+      // the page to the top and undoes a fragment scroll (e.g. /settings#trash). When the action did not
+      // navigate, focus goes back to the trigger below, without scrolling.
+      const urlBefore = location.pathname + location.hash;
       this.ref = dialog.open(CommandPaletteComponent, {
-        data, position: { top: '10vh' }, panelClass: 'qs-palette-panel', autoFocus: '[cdkFocusInitial]', restoreFocus: true,
+        data, position: { top: '10vh' }, panelClass: 'qs-palette-panel', autoFocus: '[cdkFocusInitial]', restoreFocus: false,
         width: 'min(640px, 95vw)', maxWidth: '95vw'
       });
-      this.ref.afterClosed().subscribe(() => (this.ref = null));
+      this.ref.afterClosed().subscribe(() => {
+        this.ref = null;
+        if (location.pathname + location.hash === urlBefore) document.getElementById('qs-palette-trigger')?.focus({ preventScroll: true });
+      });
     } finally {
       this.opening = false;
     }

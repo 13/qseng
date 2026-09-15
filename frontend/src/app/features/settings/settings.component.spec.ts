@@ -1,17 +1,17 @@
 import { TestBed } from '@angular/core/testing';
-import { Router, provideRouter } from '@angular/router';
+import { ActivatedRoute, Router, provideRouter } from '@angular/router';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { of } from 'rxjs';
 import { describe, expect, it, vi } from 'vitest';
 import { SettingsComponent } from './settings.component';
-import { UserApi } from '../../core/api/generated';
+import { PersonsApi, TrashApi, UserApi } from '../../core/api/generated';
 import { AuthService } from '../../core/auth/auth.service';
 import { ConfirmDialogService } from '../../core/ui/confirm-dialog.service';
 import { ToastService } from '../../core/ui/toast.service';
 import { I18nService } from '../../core/i18n/i18n.service';
 import { ThemeService } from '../../core/theme/theme.service';
 
-function setup(confirmResult: boolean | string = 'hunter2') {
+function setup(confirmResult: boolean | string = 'hunter2', fragment: string | null = null) {
   TestBed.resetTestingModule(); // setup() runs twice in one test below
   const session = { accessToken: 'new', refreshToken: 'r2', userId: 'u', displayName: 'Demo', username: 'demo', isAdmin: false };
   const api = {
@@ -22,14 +22,18 @@ function setup(confirmResult: boolean | string = 'hunter2') {
     userDeleteData: vi.fn(() => of(undefined)),
     userDeleteAccount: vi.fn(() => of(undefined))
   };
+  const trashApi = { trashList: vi.fn(() => of({ retentionDays: 30, items: [] })), trashPurge: vi.fn(() => of(undefined)) };
+  const personsApi = { personsRestore: vi.fn(() => of({})) };
   const auth = { adoptSession: vi.fn(), logout: vi.fn() };
   const confirm = { confirm: vi.fn(async () => confirmResult) };
   const toast = { success: vi.fn(), error: vi.fn(), info: vi.fn(), errorFrom: vi.fn() };
   const i18n = { t: (k: string) => k, dynamic: (k: string) => k, lang: () => 'en', setLang: vi.fn() };
+  const route = { fragment: of(fragment) };
   TestBed.configureTestingModule({
     providers: [
       provideRouter([]), provideNoopAnimations(),
-      { provide: UserApi, useValue: api }, { provide: AuthService, useValue: auth },
+      { provide: UserApi, useValue: api }, { provide: TrashApi, useValue: trashApi }, { provide: PersonsApi, useValue: personsApi },
+      { provide: AuthService, useValue: auth }, { provide: ActivatedRoute, useValue: route },
       { provide: ConfirmDialogService, useValue: confirm }, { provide: ToastService, useValue: toast },
       { provide: I18nService, useValue: i18n }, { provide: ThemeService, useValue: { mode: () => 'auto', setMode: vi.fn() } }
     ]
@@ -37,7 +41,7 @@ function setup(confirmResult: boolean | string = 'hunter2') {
   const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
   const fixture = TestBed.createComponent(SettingsComponent);
   fixture.detectChanges();
-  return { fixture, api, auth, navigate, confirm, toast, i18n, cmp: fixture.componentInstance };
+  return { fixture, api, trashApi, personsApi, auth, navigate, confirm, toast, i18n, cmp: fixture.componentInstance };
 }
 
 describe('SettingsComponent', () => {
@@ -78,5 +82,27 @@ describe('SettingsComponent', () => {
     expect(ok.api.userDeleteAccount).toHaveBeenCalledWith({ body: { password: 'hunter2' } });
     expect(ok.auth.logout).toHaveBeenCalled();
     expect(ok.navigate).toHaveBeenCalledWith(['/login']);
+  });
+
+  it('embeds the trash card', () => {
+    const { fixture } = setup();
+    expect((fixture.nativeElement as HTMLElement).querySelector('qs-trash-card#trash')).not.toBeNull();
+  });
+
+  it('scrolls the #trash card into view when arriving with the "trash" fragment', async () => {
+    // The scroll runs in a queueMicrotask inside a viewChild-driven effect; flush microtasks before asserting.
+    const original = Element.prototype.scrollIntoView;
+    const scrollSpy = vi.fn();
+    Element.prototype.scrollIntoView = scrollSpy;
+    const { fixture } = setup('hunter2', 'trash');
+    try {
+      document.body.appendChild(fixture.nativeElement);
+      fixture.autoDetectChanges();
+      await new Promise(r => setTimeout(r, 20));
+      expect(scrollSpy).toHaveBeenCalledWith({ block: 'start' });
+    } finally {
+      Element.prototype.scrollIntoView = original;
+      fixture.nativeElement.remove();
+    }
   });
 });

@@ -39,7 +39,12 @@ public class SetAvatarHandler : IRequestHandler<SetAvatarCommand, Result<bool>>
         // on its own first: SQLite's unique index check is per-statement, not
         // per-transaction, so if both changes went out in the same SaveChanges the
         // two rows could briefly both carry IsAvatar = true, in whichever order EF
-        // happens to send the UPDATEs, and the index would reject that.
+        // happens to send the UPDATEs, and the index would reject that. Both saves
+        // still need to land as one all-or-nothing unit, so they run inside an
+        // explicit transaction: if the second save fails, disposing the scope
+        // without completing it rolls the first one back too.
+        await using var scope = await _db.BeginTransactionAsync(ct);
+
         var current = await _db.Media.IgnoreQueryFilters()
             .Where(m => m.PersonId == cmd.PersonId && m.IsAvatar)
             .ToListAsync(ct);
@@ -51,6 +56,7 @@ public class SetAvatarHandler : IRequestHandler<SetAvatarCommand, Result<bool>>
 
         media.IsAvatar = true;
         await _db.SaveChangesAsync(ct);
+        await scope.CompleteAsync(ct);
         return Result<bool>.Ok(true);
     }
 }

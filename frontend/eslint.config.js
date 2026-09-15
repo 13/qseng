@@ -7,7 +7,7 @@ const angular = require('angular-eslint');
 module.exports = defineConfig([
   { ignores: ['src/app/core/api/generated/**', 'dist/**', '.angular/**'] },
   {
-    files: ['**/*.ts'],
+    files: ['src/**/*.ts'],
     extends: [
       eslint.configs.recommended,
       tseslint.configs.recommended,
@@ -39,5 +39,17 @@ module.exports = defineConfig([
     files: ['**/*.html'],
     extends: [angular.configs.templateRecommended, angular.configs.templateAccessibility],
     rules: {},
+  },
+  {
+    // Playwright e2e sources: plain TypeScript rules only — no Angular template/selector rules apply.
+    files: ['e2e/**/*.ts'],
+    extends: [
+      eslint.configs.recommended,
+      tseslint.configs.recommended,
+      tseslint.configs.stylistic,
+    ],
+    rules: {
+      'no-alert': 'error',
+    },
   },
 ]);

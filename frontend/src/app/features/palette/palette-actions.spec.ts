@@ -27,7 +27,7 @@ describe('paletteActions', () => {
   it('returns actions in the documented order', () => {
     const { actions } = setup();
     expect(actions.map(a => a.id)).toEqual([
-      'addPerson', 'addRelation', 'import', 'newTree', 'trees', 'settings',
+      'addPerson', 'addRelation', 'import', 'newTree', 'trees', 'settings', 'trash',
       'themeLight', 'themeDark', 'themeAuto', 'langDe', 'langEn', 'users', 'shortcuts', 'logout'
     ]);
   });
@@ -68,6 +68,17 @@ describe('paletteActions', () => {
     byId('langEn').run(ctx());
     expect(setLang).toHaveBeenNthCalledWith(1, 'de');
     expect(setLang).toHaveBeenNthCalledWith(2, 'en');
+  });
+
+  it('trash navigates to /settings with the trash fragment', () => {
+    const { byId, router } = setup();
+    byId('trash').run(ctx());
+    expect(router.navigate).toHaveBeenCalledWith(['/settings'], { fragment: 'trash' });
+  });
+
+  it('trash is available without a current tree', () => {
+    const { byId } = setup();
+    expect(byId('trash').available(ctx({ treeId: null }))).toBe(true);
   });
 
   it('newTree navigates to /trees with the one-shot create flag', () => {

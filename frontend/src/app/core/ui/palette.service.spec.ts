@@ -1,6 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { MatDialog } from '@angular/material/dialog';
-import { NEVER } from 'rxjs';
+import { NEVER, Subject } from 'rxjs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { PaletteService, paletteLoader } from './palette.service';
 import { I18nService } from '../i18n/i18n.service';
@@ -65,5 +65,18 @@ describe('PaletteService', () => {
     document.body.innerHTML = '<div class="cdk-overlay-container"><div class="cdk-global-overlay-wrapper"><div class="cdk-overlay-pane"></div></div><div class="cdk-overlay-backdrop cdk-overlay-transparent-backdrop"></div></div>';
     await service.open();
     expect(dialog.open).toHaveBeenCalledTimes(1);
+  });
+
+  it('opens without Material focus restore and refocuses the trigger only when no navigation happened', async () => {
+    const { service, dialog } = setup();
+    const closed = new Subject<unknown>();
+    (dialog.open as ReturnType<typeof vi.fn>).mockReturnValue({ afterClosed: () => closed.asObservable(), close: vi.fn() });
+    const trigger = document.createElement('button'); trigger.id = 'qs-palette-trigger'; document.body.appendChild(trigger);
+    const focus = vi.spyOn(trigger, 'focus');
+    await service.open();
+    expect(dialog.open).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ restoreFocus: false }));
+    closed.next(undefined);
+    expect(focus).toHaveBeenCalledWith({ preventScroll: true });
+    trigger.remove();
   });
 });

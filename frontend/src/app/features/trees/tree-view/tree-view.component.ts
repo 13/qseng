@@ -88,7 +88,7 @@ class TreeSelectionSheetComponent {
         }
         <mat-sidenav-content class="qs-tv__content">
           <div class="qs-tv__canvas-wrap">
-            <div #cyHost class="qs-tv__canvas" tabindex="0" role="application" [attr.aria-label]="'tree.graphLabel' | translate" [attr.data-compact]="graph.compact()" (keydown)="onKey($event)"></div>
+            <div #cyHost class="qs-tv__canvas" data-testid="tree-canvas" tabindex="0" role="application" [attr.aria-label]="'tree.graphLabel' | translate" [attr.data-compact]="graph.compact()" (keydown)="onKey($event)"></div>
 
             @if (store.error()) {
               <div class="qs-tv__overlay qs-empty" role="alert">

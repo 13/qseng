@@ -2,17 +2,25 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Qseng.Application;
 using Qseng.Application.Abstractions;
+using Qseng.Api.Health;
 using Qseng.Api.Middleware;
+using Qseng.Api.Options;
+using Qseng.Api.RateLimiting;
 using Qseng.Infrastructure;
 using Qseng.Infrastructure.Auth;
+using Qseng.Infrastructure.Options;
+using Qseng.Infrastructure.Persistence;
 using Qseng.Infrastructure.Seeding;
 using Serilog;
+using Serilog.Events;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -72,6 +80,10 @@ builder.Services.AddSingleton<IValidateOptions<JwtOptions>>(
 
 var jwt = builder.Configuration.GetSection(JwtOptions.SectionName).Get<JwtOptions>() ?? new JwtOptions();
 
+builder.Services.AddOptions<CorsOptions>().Bind(builder.Configuration.GetSection(CorsOptions.SectionName)).ValidateOnStart();
+builder.Services.AddSingleton<IValidateOptions<CorsOptions>>(new CorsOptionsValidator(builder.Environment.IsDevelopment()));
+var corsOrigins = (builder.Configuration.GetSection(CorsOptions.SectionName).Get<CorsOptions>() ?? new CorsOptions()).EffectiveOrigins(builder.Environment.IsDevelopment());
+
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(opt =>
     {
@@ -125,12 +137,55 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
 builder.Services.AddAuthorization();
 
-builder.Services.AddCors(opt => opt.AddDefaultPolicy(p =>
-    p.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod()));
+builder.Services.AddCors(opt => opt.AddDefaultPolicy(p => p.WithOrigins(corsOrigins).AllowAnyHeader().AllowAnyMethod()));
+
+builder.Services.AddOptions<RateLimitingOptions>().Bind(builder.Configuration.GetSection(RateLimitingOptions.SectionName)).ValidateOnStart();
+builder.Services.AddSingleton<IValidateOptions<RateLimitingOptions>, RateLimitingOptionsValidator>();
+var rateLimiting = builder.Configuration.GetSection(RateLimitingOptions.SectionName).Get<RateLimitingOptions>() ?? new RateLimitingOptions();
+builder.Services.AddRateLimiter(o => AuthRateLimitPolicy.Configure(o, rateLimiting.Auth));
+
+// The docker image sits behind nginx, which sets X-Forwarded-For/-Proto; without this the
+// per-IP rate limiter and any IP-based logic would only ever see the proxy's own address.
+// ForwardedHeadersOptions keeps its built-in loopback defaults (127.0.0.1/8 and ::1) regardless;
+// KnownNetworks configured here are added on top of those, not a replacement for them, so an
+// empty list still trusts loopback proxies, not "nothing".
+var knownNetworks = builder.Configuration.GetSection("ForwardedHeaders:KnownNetworks").Get<string[]>() ?? [];
+builder.Services.Configure<ForwardedHeadersOptions>(o =>
+{
+    o.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    foreach (var network in ForwardedHeadersSetup.Parse(knownNetworks))
+        o.KnownIPNetworks.Add(network);
+});
+
+// Rooted once here (against ContentRootPath, same as the static-files block below) so the
+// health check and the static file provider always agree on the same directory, however
+// Uploads:Path is configured.
+var uploadsPath = builder.Configuration["Uploads:Path"];
+if (uploadsPath is null || !Path.IsPathRooted(uploadsPath))
+    uploadsPath = Path.Combine(builder.Environment.ContentRootPath, uploadsPath ?? "uploads");
+
+builder.Services.AddHealthChecks()
+    .AddDbContextCheck<QsengDbContext>("database")
+    .AddCheck("uploads", new UploadsWritableCheck(uploadsPath));
 
 var app = builder.Build();
 
+app.UseForwardedHeaders();
+
 app.UseMiddleware<ExceptionMiddleware>();
+
+// Registered before UseRateLimiter/UseAuthentication so it still wraps them: a 429 rejection or a
+// 401 challenge short-circuits the pipeline without calling next(), so any request-logging
+// middleware registered after them never runs its "before" phase and produces no log line for
+// that request. The rate limiter logs its own Warning in OnRejected, but failed authentications
+// otherwise went entirely unlogged.
+app.UseSerilogRequestLogging(o =>
+{
+    o.EnrichDiagnosticContext = (d, http) => d.Set("UserId", http.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "anonymous");
+    o.GetLevel = (http, _, ex) => ex is not null || http.Response.StatusCode >= 500
+        ? LogEventLevel.Error
+        : http.Request.Path.StartsWithSegments("/health") ? LogEventLevel.Verbose : LogEventLevel.Information;
+});
 
 if (app.Environment.IsDevelopment())
 {
@@ -138,9 +193,6 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-var uploadsPath = builder.Configuration["Uploads:Path"];
-if (uploadsPath is null || !Path.IsPathRooted(uploadsPath))
-    uploadsPath = Path.Combine(builder.Environment.ContentRootPath, uploadsPath ?? "uploads");
 Directory.CreateDirectory(uploadsPath);
 
 app.UseCors();
@@ -149,10 +201,14 @@ app.UseStaticFiles(new StaticFileOptions
     FileProvider = new PhysicalFileProvider(uploadsPath),
     RequestPath = "/uploads"
 });
+app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
+
 app.MapControllers();
 app.MapGet("/api/v1/health", () => Results.Ok(new { status = "ok", timestamp = DateTime.UtcNow }));
+app.MapHealthChecks("/health/live", new HealthCheckOptions { Predicate = _ => false, ResponseWriter = HealthResponseWriter.WriteAsync }).AllowAnonymous();
+app.MapHealthChecks("/health/ready", new HealthCheckOptions { ResponseWriter = HealthResponseWriter.WriteAsync }).AllowAnonymous();
 
 using (var scope = app.Services.CreateScope())
 {

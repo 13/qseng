@@ -1,0 +1,10 @@
+/* Type-checking scope for the Playwright e2e sources; kept separate from the app's
+   tsconfig.app.json so `e2e/` is never pulled into the Angular build. */
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "outDir": "./out-tsc/e2e",
+    "types": ["node"]
+  },
+  "include": ["**/*.ts"]
+}

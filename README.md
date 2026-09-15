@@ -110,7 +110,14 @@ docker compose -f docker-compose.yml up --build
 - Frontend: http://localhost:8081
 - API:      http://localhost:8080/api/v1
 
-> **Before going to prod:** change the `Jwt__Key` value in `docker-compose.yml` to a random 32+ character string.
+> **`Jwt__Key` must be overridden.** `docker-compose.yml`'s `Jwt__Key` is the built-in development
+> placeholder (`JwtOptions.InsecureDevelopmentKey`), and `JwtOptionsValidator` rejects that exact
+> value at startup whenever `ASPNETCORE_ENVIRONMENT` is not `Development` — which is the api
+> image's default; only `docker-compose.override.yml` (the Development compose above) sets it to
+> `Development`. Running `docker compose -f docker-compose.yml up` on its own therefore fails to
+> start until you override `Jwt__Key` with a random 32+ character secret — via an env file
+> (`--env-file`, or `environment:`) or a `docker-compose.prod.yml` layered on top of
+> `docker-compose.yml`.
 
 ---
 
@@ -215,3 +222,49 @@ Use **Preview** to see what will be created before committing.
 cd backend
 dotnet test
 ```
+
+---
+
+## Running the checks
+
+The same checks CI runs, in order:
+
+```bash
+# Frontend — from frontend/
+npm run gates              # source gates: no ngModel, no legacy imports, sorted/matching i18n keys, no emoji
+npx ng lint                # ESLint over src/
+npm run e2e:lint           # ESLint over e2e/
+npx ng test --watch=false  # Vitest; coverage + thresholds run on every invocation (see below)
+npx ng build                # production build
+
+# Backend — from repo root
+dotnet test backend/Qseng.slnx
+
+# End-to-end — from frontend/, once Playwright's browser is installed
+npm run e2e:install        # one-time: installs the Playwright Chromium browser
+npm run e2e                # boots the API and dev server, runs the Playwright suite
+```
+
+Coverage is always on: `angular.json`'s `test` target sets `coverage: true`, so every `ng test`
+run computes coverage (Vitest v8, reporters `text` + `lcov`) over `src/app/core/**` and
+`src/app/shared/**` and enforces the pinned thresholds — lines 88 / functions 79 / branches 84 /
+statements 85 — failing the run if any drop below. `--coverage` on the command line is optional
+and only affects reporter verbosity. All 24 non-spec, non-generated `core/`/`shared/` files are
+instrumented on a full run (`coverage/frontend/lcov.info` has 24 `SF:` entries); some files reach
+100% on every metric and so don't print a row in the compact text table — see `lcov.info` for the
+authoritative per-file list. `@angular/build`'s Vitest integration
+(21.2.8) does not pass a `coverage.all` set via a `vitest.config.ts` runner config through to
+Vitest — its plugin rebuilds `test.coverage` from a fixed field whitelist and drops anything
+else — so that option isn't available here even where it would matter.
+
+### What CI runs
+
+`.github/workflows/ci.yml` runs on every push to `main` and on pull requests, with five jobs:
+
+| Job | What it does |
+|---|---|
+| `backend` | restore, build (Release), `dotnet test`, `dotnet publish` → uploads the published API as an artifact |
+| `frontend` | `npm ci`, `npm run gates`, `ng lint`, `npm run e2e:lint`, `ng test --coverage`, `ng build` (fails if the bundle exceeds its budget) → uploads the browser bundle as an artifact |
+| `contract` | regenerates `contracts/openapi.json` from a live API instance and fails if it drifts from the committed file, then regenerates the Angular API client and builds |
+| `e2e` | needs `backend` + `frontend`; downloads the published API artifact, installs Playwright's Chromium, runs the full Playwright suite against it |
+| `docker` | builds both `docker/Dockerfile.api` and `docker/Dockerfile.web` images (no push) |
