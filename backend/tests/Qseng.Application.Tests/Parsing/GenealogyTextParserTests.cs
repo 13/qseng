@@ -78,4 +78,28 @@ public class GenealogyTextParserTests
         var marriage = result.Marriages.Should().ContainSingle().Subject;
         marriage.SpouseBName.Should().Be("Maria Huber");
     }
+
+    [Fact]
+    public void MarriageLine_AfterPersonLineEndingInPlace_DoesNotCaptureAcrossNewline()
+    {
+        var text =
+            "Maria Huber, geb. Schmidt * 1883 in Graz\n" +
+            "Max Mustermann oo Maria Huber, 1905";
+
+        var result = new GenealogyTextParser().Parse(text);
+
+        var marriage = result.Marriages.Should().ContainSingle().Subject;
+        marriage.SpouseAName.Should().Be("Max Mustermann");
+        marriage.SpouseBName.Should().Be("Maria Huber");
+    }
+
+    [Fact]
+    public void MarriageLine_WithLowercaseParticles_CapturesFullNamesOnBothSides()
+    {
+        var result = new GenealogyTextParser().Parse("Ludwig von Beethoven oo Anna de Vries");
+
+        var marriage = result.Marriages.Should().ContainSingle().Subject;
+        marriage.SpouseAName.Should().Be("Ludwig von Beethoven");
+        marriage.SpouseBName.Should().Be("Anna de Vries");
+    }
 }

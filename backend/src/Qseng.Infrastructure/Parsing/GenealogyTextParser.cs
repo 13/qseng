@@ -17,10 +17,10 @@ public class GenealogyTextParser : IGenealogyParser
         RegexOptions.Multiline | RegexOptions.IgnoreCase);
 
     private static readonly Regex MarriageRx = new(
-        $@"(?<a>[A-ZÄÖÜ][\wäöüÄÖÜß\-]+(?:\s+[A-ZÄÖÜ][\wäöüÄÖÜß\-]+)*?)\s+oo\s+" +
-        $@"(?<b>[A-ZÄÖÜ][\wäöüÄÖÜß\-]+(?:\s+[A-ZÄÖÜ][\wäöüÄÖÜß\-]+)*?)(?=\s*,|\s+in\s|\s*$)" +
+        $@"^[^\S\n]*(?<a>[A-ZÄÖÜ][\wäöüÄÖÜß\-]+(?:[^\S\n]+[A-ZÄÖÜ][\wäöüÄÖÜß\-]+)*?)[^\S\n]+oo[^\S\n]+" +
+        $@"(?<b>[A-ZÄÖÜ][\wäöüÄÖÜß\-]+(?:[^\S\n]+[A-ZÄÖÜ][\wäöüÄÖÜß\-]+)*?)(?=[^\S\n]*,|[^\S\n]+in[^\S\n]|[^\S\n]*$)" +
         $@"(?:,\s*(?<date>{DatePat}))?" +
-        @"(?:\s+in\s+(?<place>[^\n]+))?",
+        @"(?:[^\S\n]+in[^\S\n]+(?<place>[^\n]+))?",
         RegexOptions.IgnoreCase | RegexOptions.Multiline);
 
     public ParseResult Parse(string text)
