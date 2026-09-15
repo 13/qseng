@@ -23,4 +23,9 @@
     <ProjectReference Include="..\..\src\Qseng.Application\Qseng.Application.csproj" />
     <ProjectReference Include="..\..\src\Qseng.Infrastructure\Qseng.Infrastructure.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <!-- Kept byte-identical to frontend/e2e/assets/sample-import.txt (used verbatim by
+         frontend/e2e/specs/import.spec.ts) — see GenealogyTextParserTests.SampleImportPath. -->
+    <None Include="Parsing\sample-import.txt" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
 </Project>

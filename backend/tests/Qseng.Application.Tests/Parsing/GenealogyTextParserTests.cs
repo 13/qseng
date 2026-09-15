@@ -7,8 +7,13 @@ namespace Qseng.Application.Tests.Parsing;
 
 public class GenealogyTextParserTests
 {
-    private static readonly string SampleImportPath = Path.Combine(
-        AppContext.BaseDirectory, "..", "..", "..", "..", "..", "..", "frontend", "e2e", "assets", "sample-import.txt");
+    // A copy of frontend/e2e/assets/sample-import.txt (kept byte-identical — that file is also
+    // pasted verbatim by frontend/e2e/specs/import.spec.ts), copied to the output directory via
+    // the csproj's <None ... CopyToOutputDirectory> instead of reached by hopping out to
+    // frontend/ through AppContext.BaseDirectory: that path depended on the exact
+    // bin/{Debug,Release}/net10.0 output layout and coupled this backend unit test to a frontend
+    // asset. If you change one copy, change the other the same way.
+    private static readonly string SampleImportPath = Path.Combine(AppContext.BaseDirectory, "Parsing", "sample-import.txt");
 
     [Fact]
     public void MarriageLine_WithYearOnly_CapturesFullSpouseName()
