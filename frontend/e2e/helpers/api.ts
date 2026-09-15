@@ -72,6 +72,15 @@ export async function registerAndActivate(
   return user.id;
 }
 
+/** Registers a user via the API without activating it — the row shows up inactive/"pending" until
+ *  an admin activates it. Unlike `registerAndActivate`, this takes no admin token. */
+export async function register(request: APIRequestContext, username: string, password: string): Promise<void> {
+  await unwrap<AuthResponse>(
+    request.post('/api/v1/auth/register', { data: { username, password, displayName: username } }),
+    `register ${username}`
+  );
+}
+
 /** Creates a tree owned by the given token's user. Returns its id. */
 export async function createTree(request: APIRequestContext, token: string, name: string): Promise<string> {
   const tree = await unwrap<TreeDto>(
@@ -99,5 +108,13 @@ export async function deleteTree(request: APIRequestContext, token: string, id: 
   await unwrap(
     request.delete(`/api/v1/trees/${id}`, { headers: authHeaders(token) }),
     `delete tree ${id}`
+  );
+}
+
+/** Soft-deletes a person (moves it to the trash) via the API. */
+export async function deletePerson(request: APIRequestContext, token: string, id: string): Promise<void> {
+  await unwrap(
+    request.delete(`/api/v1/persons/${id}`, { headers: authHeaders(token) }),
+    `delete person ${id}`
   );
 }
