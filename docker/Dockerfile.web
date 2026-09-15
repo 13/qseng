@@ -1,13 +1,21 @@
 # Build
-# frontend/'s postinstall (npm ci) runs generators that need the full frontend/ tree (scripts/,
-# public/assets/i18n/) and ng-openapi-gen.json's "../contracts/openapi.json", so contracts/ is
-# copied as a sibling of frontend/ here rather than frontend/ alone before npm ci.
+# frontend/'s postinstall (npm ci) runs generators that need public/assets/i18n/ (i18n keys) and
+# ../contracts/openapi.json (OpenAPI client), via scripts/ and ng-openapi-gen.json. Copying only
+# those — plus package*.json — ahead of `npm ci` keeps the dependency layer cached across
+# source-only edits, instead of the full frontend/ tree invalidating it on every commit (Minor 10).
+# The generators' own write targets (src/app/core/i18n/, src/app/core/api/generated/) don't exist
+# yet at this point, so they're pre-created; `npm run build`'s prebuild hook reruns both generators
+# once the full source is copied in below, so this first run only needs to not fail, not be final.
 FROM node:22-alpine AS build
 WORKDIR /repo
 COPY contracts/ contracts/
-COPY frontend/ frontend/
+COPY frontend/package.json frontend/package-lock.json frontend/ng-openapi-gen.json frontend/
+COPY frontend/scripts/ frontend/scripts/
+COPY frontend/public/ frontend/public/
 WORKDIR /repo/frontend
+RUN mkdir -p src/app/core/i18n src/app/core/api/generated
 RUN npm ci
+COPY frontend/ /repo/frontend/
 RUN npm run build -- --configuration=production
 
 # Serve
