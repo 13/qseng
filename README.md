@@ -215,3 +215,43 @@ Use **Preview** to see what will be created before committing.
 cd backend
 dotnet test
 ```
+
+---
+
+## Running the checks
+
+The same checks CI runs, in order:
+
+```bash
+# Frontend — from frontend/
+npm run gates              # source gates: no ngModel, no legacy imports, sorted/matching i18n keys, no emoji
+npx ng lint                # ESLint over src/
+npm run e2e:lint           # ESLint over e2e/
+npx ng test --watch=false  # Vitest; coverage + thresholds run on every invocation (see below)
+npx ng build                # production build
+
+# Backend — from repo root
+dotnet test backend/Qseng.slnx
+
+# End-to-end — from frontend/, once Playwright's browser is installed
+npm run e2e:install        # one-time: installs the Playwright Chromium browser
+npm run e2e                # boots the API and dev server, runs the Playwright suite
+```
+
+Coverage is always on: `angular.json`'s `test` target sets `coverage: true`, so every `ng test`
+run computes coverage (Vitest v8, reporters `text` + `lcov`) over `src/app/core/**` and
+`src/app/shared/**` and enforces the pinned thresholds — lines 88 / functions 79 / branches 84 /
+statements 85 — failing the run if any drop below. `--coverage` on the command line is optional
+and only affects reporter verbosity.
+
+### What CI runs
+
+`.github/workflows/ci.yml` runs on every push to `main` and on pull requests, with five jobs:
+
+| Job | What it does |
+|---|---|
+| `backend` | restore, build (Release), `dotnet test`, `dotnet publish` → uploads the published API as an artifact |
+| `frontend` | `npm ci`, `npm run gates`, `ng lint`, `npm run e2e:lint`, `ng test --coverage`, `ng build` (fails on any build WARNING/ERROR) → uploads the browser bundle as an artifact |
+| `contract` | regenerates `contracts/openapi.json` from a live API instance and fails if it drifts from the committed file, then regenerates the Angular API client and builds |
+| `e2e` | needs `backend` + `frontend`; downloads the published API artifact, installs Playwright's Chromium, runs the full Playwright suite against it |
+| `docker` | builds both `docker/Dockerfile.api` and `docker/Dockerfile.web` images (no push) |

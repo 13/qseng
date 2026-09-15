@@ -17,6 +17,7 @@
     "postinstall": "npm run gen",
     "lint": "ng lint",
     "gates": "node scripts/check-gates.mjs",
+    "e2e:lint": "eslint e2e --config eslint.config.js",
     "e2e": "playwright test -c e2e/playwright.config.ts",
     "e2e:ui": "playwright test -c e2e/playwright.config.ts --ui",
     "e2e:install": "playwright install --with-deps chromium"
