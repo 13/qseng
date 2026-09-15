@@ -36,6 +36,11 @@ test.describe('import', () => {
     await page.locator('textarea.qs-import__textarea').fill(text);
     await page.getByRole('button', { name: /^(Vorschau|Preview)$/ }).click();
 
+    // Same fixture as the "marriage line" test below: 2 persons, 1 relationship. Asserting the
+    // preview stats here too (not just after commit) makes this test self-contained — it no
+    // longer relies on the other test to be the one that actually checks the preview numbers.
+    await expect(page.locator('.qs-import__stats')).toHaveText(/^2\s+(persons|Personen)\s+·\s+1\s+(relationships|Beziehungen)$/);
+
     await page.getByRole('button', { name: /Import übernehmen|Commit import/ }).click();
     await expect(page.getByRole('link', { name: /Stammbaum öffnen|Open tree/ })).toBeVisible();
 
