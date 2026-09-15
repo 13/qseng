@@ -17,10 +17,11 @@ public class GenealogyTextParser : IGenealogyParser
         RegexOptions.Multiline | RegexOptions.IgnoreCase);
 
     private static readonly Regex MarriageRx = new(
-        $@"(?<a>[A-ZÄÖÜ][\wäöüÄÖÜß\- ]+?)\s+oo\s+(?<b>[A-ZÄÖÜ][\wäöüÄÖÜß\- ]+?)" +
+        $@"(?<a>[A-ZÄÖÜ][\wäöüÄÖÜß\-]+(?:\s+[A-ZÄÖÜ][\wäöüÄÖÜß\-]+)*?)\s+oo\s+" +
+        $@"(?<b>[A-ZÄÖÜ][\wäöüÄÖÜß\-]+(?:\s+[A-ZÄÖÜ][\wäöüÄÖÜß\-]+)*?)(?=\s*,|\s+in\s|\s*$)" +
         $@"(?:,\s*(?<date>{DatePat}))?" +
         @"(?:\s+in\s+(?<place>[^\n]+))?",
-        RegexOptions.IgnoreCase);
+        RegexOptions.IgnoreCase | RegexOptions.Multiline);
 
     public ParseResult Parse(string text)
     {
