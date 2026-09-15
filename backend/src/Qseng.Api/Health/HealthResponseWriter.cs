@@ -12,6 +12,8 @@ public static class HealthResponseWriter
         var payload = new
         {
             status = report.Status.ToString(),
+            version = AppVersion.Version,
+            commit = AppVersion.Commit,
             checks = report.Entries.Select(e => new
             {
                 name = e.Key,

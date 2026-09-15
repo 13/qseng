@@ -1,4 +1,4 @@
-import { HttpErrorResponse, HttpInterceptorFn, HttpRequest } from '@angular/common/http';
+import { HttpContextToken, HttpErrorResponse, HttpInterceptorFn, HttpRequest } from '@angular/common/http';
 import { inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { catchError, switchMap, throwError } from 'rxjs';
@@ -6,6 +6,9 @@ import { AuthService } from './auth/auth.service';
 import { I18nService } from './i18n/i18n.service';
 import { ToastService } from './ui/toast.service';
 import { problemMessage } from './api/problem-details';
+
+/** Set on requests whose failure the caller renders itself (e.g. the About card's version probes). */
+export const SKIP_ERROR_TOAST = new HttpContextToken<boolean>(() => false);
 
 /** Refreshing on a 401 from these would loop. */
 const AUTH_ENDPOINTS = ['/auth/login', '/auth/register', '/auth/refresh', '/auth/logout'];
@@ -44,8 +47,9 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
           catchError(refreshErr => { endSession(); return throwError(() => refreshErr); })
         );
       }
-      if (err.status === 403) toast.error(problemMessage(err, i18n.t('err.forbidden')));
-      else if (err.status === 0 || err.status >= 500) toast.error(problemMessage(err, i18n.t('err.server')));
+      const quiet = req.context.get(SKIP_ERROR_TOAST);
+      if (err.status === 403 && !quiet) toast.error(problemMessage(err, i18n.t('err.forbidden')));
+      else if ((err.status === 0 || err.status >= 500) && !quiet) toast.error(problemMessage(err, i18n.t('err.server')));
       return throwError(() => err);
     })
   );
