@@ -107,20 +107,21 @@ The override file (`docker-compose.override.yml`) disables PostgreSQL and mounts
 # build locally
 docker compose -f docker-compose.yml up --build
 # or deploy a published release
+export Jwt__Key="$(openssl rand -base64 48)"   # or put it in a .env file next to docker-compose.yml
 QSENG_VERSION=1.2.0 docker compose -f docker-compose.yml up -d --no-build --pull always
 ```
 
 - Frontend: http://localhost:8081
-- API:      http://localhost:8080/api/v1
+- API:      http://localhost:8081/api/v1 (proxied by nginx; the api container publishes no host port)
 
 > **`Jwt__Key` must be overridden.** `docker-compose.yml`'s `Jwt__Key` is the built-in development
 > placeholder (`JwtOptions.InsecureDevelopmentKey`), and `JwtOptionsValidator` rejects that exact
 > value at startup whenever `ASPNETCORE_ENVIRONMENT` is not `Development` — which is the api
 > image's default; only `docker-compose.override.yml` (the Development compose above) sets it to
 > `Development`. Running `docker compose -f docker-compose.yml up` on its own therefore fails to
-> start until you override `Jwt__Key` with a random 32+ character secret — via an env file
-> (`--env-file`, or `environment:`) or a `docker-compose.prod.yml` layered on top of
-> `docker-compose.yml`.
+> start until you override `Jwt__Key` with a random 32+ character secret. `docker-compose.yml`
+> interpolates it (`${Jwt__Key:-<placeholder>}`), so `export Jwt__Key=…` in the shell or a `.env`
+> file next to `docker-compose.yml` is enough; a `docker-compose.prod.yml` layered on top works too.
 
 ---
 

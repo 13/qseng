@@ -79,3 +79,11 @@ The controller performs steps 2–4 after the user's go-ahead on the merge and t
 ## 6. Non-goals
 
 Multi-arch images; Helm/Kubernetes manifests; automatic version bumping or changelog files; signing with cosign (attestations cover provenance); publishing on PRs; Docker Hub.
+
+## 7. Results (2026-09-15)
+
+- PR #2 (run 34932317068): `images (api)` / `images (web)` built without pushing; all six jobs green.
+- Merge dfd5347 → main run 34932737967: `ghcr.io/13/qseng-api:edge` and `qseng-web:edge` published; anonymous `docker pull` works (packages public on first publish, no visibility change needed); `/health/ready` reports `"version":"0.0.0-edge"` with the merge SHA; `version.json` matches.
+- Tag `v0.1.0` → run 34933279698 (release job 8 s): tags `0.1.0`, `0.1`, `latest` share digest `sha256:31f84804…` (api) / `sha256:3e42dee9…` (web); Release https://github.com/13/qseng/releases/tag/v0.1.0 with generated notes + Images block; `gh attestation verify … --owner 13` passes for both images (SLSA provenance v1) and for the SPDX 2.3 SBOM predicate.
+- `QSENG_VERSION=0.1.0 docker compose -f docker-compose.yml up -d --no-build --pull always` serves 0.1.0 for both API (`/health/ready` via nginx) and web (`/version.json`). Finding: an exported `Jwt__Key` did not override the literal compose value (container exited at options validation); `docker-compose.yml` now interpolates `${Jwt__Key:-<placeholder>}` and the README documents the export/.env path.
+- Warnings to follow up: `actions/attest-sbom` is deprecated in favour of `actions/attest` (both still work); `gh` tokens need the `read:packages` scope to query package metadata (pulls are anonymous).

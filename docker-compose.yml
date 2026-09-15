@@ -24,7 +24,9 @@ services:
       CONNECTION_STRING: "Host=postgres;Database=qseng;Username=qseng;Password=qseng"
       Jwt__Issuer: qseng
       Jwt__Audience: qseng
-      Jwt__Key: "change-me-in-prod-please-32+chars-long-key!"
+      # Interpolated so `export Jwt__Key=...` (or a .env file) overrides the placeholder; a literal
+      # value here would win over the host environment and the override could never take effect.
+      Jwt__Key: "${Jwt__Key:-change-me-in-prod-please-32+chars-long-key!}"
       Cors__AllowedOrigins__0: "http://localhost:8081"
       Uploads__Path: /app/uploads
       ForwardedHeaders__KnownNetworks__0: "172.28.0.0/16"
