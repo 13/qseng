@@ -255,7 +255,7 @@ against the new, lower measurement is a planned follow-up.
 | Job | What it does |
 |---|---|
 | `backend` | restore, build (Release), `dotnet test`, `dotnet publish` → uploads the published API as an artifact |
-| `frontend` | `npm ci`, `npm run gates`, `ng lint`, `npm run e2e:lint`, `ng test --coverage`, `ng build` (fails on any build WARNING/ERROR) → uploads the browser bundle as an artifact |
+| `frontend` | `npm ci`, `npm run gates`, `ng lint`, `npm run e2e:lint`, `ng test --coverage`, `ng build` (fails if the bundle exceeds its budget) → uploads the browser bundle as an artifact |
 | `contract` | regenerates `contracts/openapi.json` from a live API instance and fails if it drifts from the committed file, then regenerates the Angular API client and builds |
 | `e2e` | needs `backend` + `frontend`; downloads the published API artifact, installs Playwright's Chromium, runs the full Playwright suite against it |
 | `docker` | builds both `docker/Dockerfile.api` and `docker/Dockerfile.web` images (no push) |
