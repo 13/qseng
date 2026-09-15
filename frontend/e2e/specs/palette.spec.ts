@@ -101,6 +101,15 @@ test.describe('palette', () => {
   test('does not open while the relationship dialog is open; Escape closes the dialog', async ({ demo }) => {
     const page = demo;
     await page.goto(`/trees/${treeId}`);
+
+    // Pre-warm the palette's lazy chunk: right after goto it has never been loaded, so a
+    // `toHaveCount(0)` assertion below would pass trivially just because the chunk hasn't
+    // arrived yet, not because the dialog actually blocked it. Open and close it once here so
+    // it's cached before the real (negative) assertion.
+    const warmupPalette = await openPalette(page);
+    await page.keyboard.press('Escape');
+    await expect(warmupPalette).toHaveCount(0);
+
     await page.locator(`.qs-people__row[data-person-id="${personId}"]`).click();
 
     const panel = page.locator('qs-tree-selection-panel');
@@ -111,6 +120,9 @@ test.describe('palette', () => {
     await expect(dialog).toBeVisible();
 
     await page.keyboard.press('Control+k');
+    // Negative assertion: give the (now-cached) palette chunk a settle window so a real
+    // regression — the palette opening anyway — has time to render before we check for it.
+    await page.waitForTimeout(300);
     await expect(page.locator('.qs-palette')).toHaveCount(0);
 
     await page.keyboard.press('Escape');
