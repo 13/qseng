@@ -29,4 +29,9 @@
   <ItemGroup>
     <ProjectReference Include="..\Qseng.Application\Qseng.Application.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <!-- Qseng.Application.Tests drives TrashPurgeService.Interval (internal) directly to advance
+         a FakeTimeProvider past exactly the loop's delay; see TrashPurgeServiceTests. -->
+    <InternalsVisibleTo Include="Qseng.Application.Tests" />
+  </ItemGroup>
 </Project>

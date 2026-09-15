@@ -8,9 +8,11 @@ namespace Qseng.Infrastructure.Trash;
 
 public class TrashPurgeService : BackgroundService
 {
-    /// <summary>How often the background loop re-runs the purge. Public so tests can drive a
-    /// <see cref="TimeProvider"/> fake past exactly this much time to trigger the next run.</summary>
-    public static readonly TimeSpan Interval = TimeSpan.FromHours(24);
+    /// <summary>How often the background loop re-runs the purge. Internal (see
+    /// <c>InternalsVisibleTo</c> in this project's csproj) rather than public: tests need it to
+    /// drive a <see cref="TimeProvider"/> fake past exactly this much time to trigger the next
+    /// run, but it has no reason to be part of this assembly's public surface otherwise.</summary>
+    internal static readonly TimeSpan Interval = TimeSpan.FromHours(24);
     private readonly IServiceScopeFactory _scopes;
     private readonly IOptions<TrashOptions> _options;
     private readonly TimeProvider _clock;
