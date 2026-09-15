@@ -51,8 +51,12 @@ jobs:
       - run: git diff --exit-code -- contracts/openapi.json
       - run: npm ci && npm run gen:api && npx ng build
         working-directory: frontend
+  # Only needs backend: the api artifact is downloaded and run below. The e2e suite serves the
+  # frontend itself via `npm start` (see e2e/playwright.config.ts's webServer) from this job's own
+  # checkout — it never consumes the frontend job's build artifact, so depending on that job only
+  # serialised the pipeline without buying anything (Minor 5).
   e2e:
-    needs: [backend, frontend]
+    needs: [backend]
     runs-on: ubuntu-latest
     timeout-minutes: 20
     defaults: { run: { working-directory: frontend } }
