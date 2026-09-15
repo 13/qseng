@@ -6,7 +6,7 @@ const DEMO_USERNAME = 'demo';
 const DEMO_PASSWORD = 'Demo123!';
 
 test.describe('relationships', () => {
-  let treeId: string;
+  let treeId: string | undefined;
   let anchorId: string;
 
   test.beforeEach(async ({ request }) => {
@@ -18,8 +18,13 @@ test.describe('relationships', () => {
   });
 
   test.afterEach(async ({ request }) => {
+    // A beforeEach failure before treeId is assigned would otherwise leave this
+    // deleting the previous test's already-deleted tree, masking the real failure
+    // with a 404 stacked on top of it.
+    if (!treeId) return;
     const token = await login(request, DEMO_USERNAME, DEMO_PASSWORD);
     await deleteTree(request, token, treeId);
+    treeId = undefined;
   });
 
   test('existing-person mode from the family section, then chip remove with undo', async ({ demo }) => {

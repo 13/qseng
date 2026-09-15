@@ -76,7 +76,7 @@ test.describe('settings', () => {
   });
 
   test.describe('trash card', () => {
-    let treeId: string;
+    let treeId: string | undefined;
 
     test.beforeEach(async ({ request }) => {
       const token = await login(request, DEMO_USERNAME, DEMO_PASSWORD);
@@ -84,8 +84,13 @@ test.describe('settings', () => {
     });
 
     test.afterEach(async ({ request }) => {
+      // A beforeEach failure before treeId is assigned would otherwise leave this
+      // deleting the previous test's already-deleted tree, masking the real failure
+      // with a 404 stacked on top of it.
+      if (!treeId) return;
       const token = await login(request, DEMO_USERNAME, DEMO_PASSWORD);
       await deleteTree(request, token, treeId);
+      treeId = undefined;
     });
 
     test('delete via API, restore it, then delete again and confirm "delete now"', async ({ demo, api, request }) => {
@@ -93,7 +98,9 @@ test.describe('settings', () => {
       const token = await login(request, DEMO_USERNAME, DEMO_PASSWORD);
       const lastName = `Trashling${Date.now()}`;
       const fullName = `Trudy ${lastName}`;
-      const personId = await createPerson(request, token, treeId, { firstName: 'Trudy', lastName, sex: 'Female' });
+      // beforeEach always assigns treeId before a test runs; the non-null assertion mirrors
+      // that same invariant the afterEach guard above relies on.
+      const personId = await createPerson(request, token, treeId!, { firstName: 'Trudy', lastName, sex: 'Female' });
       await deletePerson(request, token, personId);
 
       await page.goto('/settings#trash');

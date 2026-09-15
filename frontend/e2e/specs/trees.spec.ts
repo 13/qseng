@@ -8,7 +8,7 @@ const DEMO_PASSWORD = 'Demo123!';
 test.describe('trees', () => {
   // A baseline tree keeps the list non-empty (avoiding the hero empty-state) and gives every
   // count assertion below a stable delta to compare against, independent of the seeded demo tree.
-  let baselineTreeId: string;
+  let baselineTreeId: string | undefined;
 
   test.beforeEach(async ({ request }) => {
     const token = await login(request, DEMO_USERNAME, DEMO_PASSWORD);
@@ -16,8 +16,13 @@ test.describe('trees', () => {
   });
 
   test.afterEach(async ({ request }) => {
+    // A beforeEach failure before baselineTreeId is assigned would otherwise leave this
+    // deleting the previous test's already-deleted tree, masking the real failure
+    // with a 404 stacked on top of it.
+    if (!baselineTreeId) return;
     const token = await login(request, DEMO_USERNAME, DEMO_PASSWORD);
     await deleteTree(request, token, baselineTreeId);
+    baselineTreeId = undefined;
   });
 
   test('create via the header dialog, rename via the kebab menu, then delete with confirm', async ({ demo }) => {

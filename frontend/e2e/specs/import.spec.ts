@@ -9,7 +9,7 @@ const DEMO_PASSWORD = 'Demo123!';
 const SAMPLE_PATH = path.resolve(__dirname, '../assets/sample-import.txt');
 
 test.describe('import', () => {
-  let treeId: string;
+  let treeId: string | undefined;
 
   test.beforeEach(async ({ request }) => {
     const token = await login(request, DEMO_USERNAME, DEMO_PASSWORD);
@@ -17,8 +17,13 @@ test.describe('import', () => {
   });
 
   test.afterEach(async ({ request }) => {
+    // A beforeEach failure before treeId is assigned would otherwise leave this
+    // deleting the previous test's already-deleted tree, masking the real failure
+    // with a 404 stacked on top of it.
+    if (!treeId) return;
     const token = await login(request, DEMO_USERNAME, DEMO_PASSWORD);
     await deleteTree(request, token, treeId);
+    treeId = undefined;
   });
 
   test('paste the format-guide example, preview counts, commit, and see the people in the tree', async ({ demo, api }) => {

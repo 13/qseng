@@ -32,7 +32,7 @@ async function rightClickSelectedNode(page: Page): Promise<void> {
 }
 
 test.describe('person', () => {
-  let treeId: string;
+  let treeId: string | undefined;
 
   test.beforeEach(async ({ request }) => {
     const token = await login(request, DEMO_USERNAME, DEMO_PASSWORD);
@@ -40,8 +40,13 @@ test.describe('person', () => {
   });
 
   test.afterEach(async ({ request }) => {
+    // A beforeEach failure before treeId is assigned would otherwise leave this
+    // deleting the previous test's already-deleted tree, masking the real failure
+    // with a 404 stacked on top of it.
+    if (!treeId) return;
     const token = await login(request, DEMO_USERNAME, DEMO_PASSWORD);
     await deleteTree(request, token, treeId);
+    treeId = undefined;
   });
 
   test('add via the header, edit with Ctrl+S, then delete from the context menu (undo, then let a second delete expire)', async ({ demo }) => {
